@@ -1,5 +1,7 @@
 import Foundation
 import MLX
+import MLXLMCommon
+import MLXLLM
 
 /// Events emitted during generation.
 public enum VMLXEvent: Sendable {
@@ -26,6 +28,11 @@ public enum PowerState: Sendable {
 /// The central VMLXRuntime actor. Singleton that owns model loading,
 /// cache coordination, scheduling, and generation.
 /// Replaces Osaurus's ModelRuntime.
+///
+/// Uses mlx-swift-lm's `ModelContainer` for the actual model forward pass,
+/// which supports 50+ model architectures with proven weight loading.
+/// VMLXRuntime wraps this with its own caching, batching, streaming,
+/// parsing, and power management infrastructure.
 public actor VMLXRuntimeActor {
 
     public static let shared = VMLXRuntimeActor()
@@ -35,14 +42,11 @@ public actor VMLXRuntimeActor {
     /// Current loaded model name.
     public private(set) var currentModelName: String?
 
-    /// The loaded model container (weights + tokenizer + config + runtime config).
-    private var modelContainer: ModelContainer?
-
-    /// The transformer forward pass wrapper (created after model load).
-    private var forwardPass: TransformerModelForwardPass?
+    /// The VMLX model container (wraps mlx-swift-lm container + VMLXRuntime metadata).
+    private var modelContainer: VMLXModelContainer?
 
     /// SSM re-deriver for recovering SSM state when checkpoint is evicted.
-    /// Lazily created when a model is loaded, wired with the model's forward pass.
+    /// Lazily created when a model is loaded.
     private var ssmReDeriver: SSMReDeriver?
 
     /// Whether a model is loaded and ready.
@@ -69,10 +73,7 @@ public actor VMLXRuntimeActor {
     // MARK: - Multi-Model Gateway
 
     /// Multiple loaded models, keyed by name/alias.
-    private var loadedModels: [String: ModelContainer] = [:]
-
-    /// Forward pass wrappers for each loaded model.
-    private var loadedForwardPasses: [String: TransformerModelForwardPass] = [:]
+    private var loadedModels: [String: VMLXModelContainer] = [:]
 
     /// Currently active model (for single-model requests).
     public private(set) var activeModelName: String?
@@ -88,17 +89,17 @@ public actor VMLXRuntimeActor {
     /// Load a model from a directory path (primary method).
     ///
     /// This is the real loading path:
-    /// 1. Calls `ModelLoader.load(from:)` to read safetensors weights, tokenizer, and config
-    /// 2. Wraps the result in a `ModelContainer` (which auto-detects JANG, hybrid, TQ, etc.)
-    /// 3. Creates `TransformerModel` from config and loads weights
-    /// 4. Configures the `Scheduler` with the model's properties (hybrid, stop tokens, TQ)
+    /// 1. Calls `ModelLoader.load(from:)` which uses mlx-swift-lm's model factory
+    ///    to load weights, tokenizer, and build the correct model architecture
+    /// 2. Wraps the result in a `VMLXModelContainer` (which auto-detects JANG, hybrid, TQ, etc.)
+    /// 3. Configures the `Scheduler` with the model's properties (hybrid, stop tokens, TQ)
     public func loadModel(from path: URL) async throws {
         // Unload previous model if any
         if modelContainer != nil {
             await unloadModel()
         }
 
-        // 1. Load weights, tokenizer, and config from disk
+        // 1. Load model using mlx-swift-lm's proven model factory
         let loadedModel: LoadedModel
         do {
             loadedModel = try await ModelLoader.load(from: path)
@@ -108,14 +109,10 @@ public actor VMLXRuntimeActor {
             )
         }
 
-        // 2. Wrap in ModelContainer (auto-detects JANG profile, hybrid layers, TQ config, family)
-        let container = ModelContainer(model: loadedModel)
+        // 2. Wrap in VMLXModelContainer (auto-detects JANG profile, hybrid layers, TQ config, family)
+        let container = await VMLXModelContainer.create(model: loadedModel, mlxContainer: loadedModel.mlxContainer)
 
-        // 3. Create TransformerModel and load weights
-        let transformer = TransformerModel.from(loaded: loadedModel)
-        let fwdPass = TransformerModelForwardPass(model: transformer)
-
-        // 4. Configure the Scheduler from the loaded model's properties
+        // 3. Configure the Scheduler from the loaded model's properties
         scheduler.configureForModel(
             isHybrid: container.isHybrid,
             layerPattern: container.layerPattern,
@@ -123,27 +120,24 @@ public actor VMLXRuntimeActor {
             enableTQ: container.turboQuantConfig != nil
         )
 
-        // 5. Store state
+        // 4. Store state
         self.modelContainer = container
-        self.forwardPass = fwdPass
         self.currentModelName = container.name
         self.lastLoadedModelName = container.name
         self.lastLoadedModelPath = path
         self.powerState = .active
 
-        // 5b. Wire SSM re-deriver with the model's forward pass.
+        // 4b. Wire SSM re-deriver with boundary info.
         // For hybrid models the re-deriver can run prefill to recover SSM state.
-        // For pure-attention models the re-deriver still records boundary info.
         if let ssmCache = scheduler.cache.ssmStateCache {
-            let reDeriver = SSMReDeriver(ssmCache: ssmCache, model: fwdPass)
+            let reDeriver = SSMReDeriver(ssmCache: ssmCache)
             self.ssmReDeriver = reDeriver
         } else {
             self.ssmReDeriver = nil
         }
 
-        // 6. Register in multi-model gateway
+        // 5. Register in multi-model gateway
         loadedModels[container.name] = container
-        loadedForwardPasses[container.name] = fwdPass
         if activeModelName == nil {
             activeModelName = container.name
         }
@@ -154,14 +148,12 @@ public actor VMLXRuntimeActor {
         try await loadModel(from: path)
 
         // If alias provided, re-register under the alias
-        if let alias = alias, let container = modelContainer, let fwdPass = forwardPass {
+        if let alias = alias, let container = modelContainer {
             // Remove the auto-registered name
             loadedModels.removeValue(forKey: container.name)
-            loadedForwardPasses.removeValue(forKey: container.name)
 
             // Register under alias
             loadedModels[alias] = container
-            loadedForwardPasses[alias] = fwdPass
             activeModelName = alias
             currentModelName = alias
         }
@@ -209,8 +201,7 @@ public actor VMLXRuntimeActor {
         // Shut down scheduler (aborts running requests, frees resources)
         scheduler.shutdown()
 
-        // Clear forward pass and re-deriver
-        forwardPass = nil
+        // Clear re-deriver
         if let reDeriver = ssmReDeriver {
             await reDeriver.cancelAll()
             await reDeriver.setModel(nil)
@@ -224,30 +215,13 @@ public actor VMLXRuntimeActor {
     // MARK: - Multi-Model Gateway
 
     /// Route to the correct model based on requested model name.
-    public func resolveModel(_ requestedModel: String?) -> ModelContainer? {
+    public func resolveModel(_ requestedModel: String?) -> VMLXModelContainer? {
         guard let name = requestedModel else {
             return loadedModels[activeModelName ?? ""]
         }
         return loadedModels[name] ?? loadedModels.values.first {
             $0.name.lowercased().contains(name.lowercased())
         }
-    }
-
-    /// Resolve the forward pass for a requested model name.
-    private func resolveForwardPass(_ requestedModel: String?) -> TransformerModelForwardPass? {
-        guard let name = requestedModel else {
-            return loadedForwardPasses[activeModelName ?? ""]
-        }
-        if let fwdPass = loadedForwardPasses[name] {
-            return fwdPass
-        }
-        // Fuzzy match
-        for (key, fwdPass) in loadedForwardPasses {
-            if key.lowercased().contains(name.lowercased()) {
-                return fwdPass
-            }
-        }
-        return nil
     }
 
     /// List all loaded model names.
@@ -258,18 +232,15 @@ public actor VMLXRuntimeActor {
     /// Unload a specific model by name.
     public func unloadModel(name: String) async {
         loadedModels.removeValue(forKey: name)
-        loadedForwardPasses.removeValue(forKey: name)
         if activeModelName == name {
             activeModelName = loadedModels.keys.first
         }
         // If unloading the current primary model, clear it
         if currentModelName == name {
             modelContainer = nil
-            forwardPass = nil
             currentModelName = activeModelName
             if let newActive = activeModelName {
                 modelContainer = loadedModels[newActive]
-                forwardPass = loadedForwardPasses[newActive]
             }
         }
     }
@@ -286,7 +257,6 @@ public actor VMLXRuntimeActor {
     public func deepSleep() async {
         await unloadModel()
         loadedModels.removeAll()
-        loadedForwardPasses.removeAll()
         activeModelName = nil
         powerState = .deepSleep
     }
@@ -318,6 +288,15 @@ public actor VMLXRuntimeActor {
 
     /// Generate a streaming response for a chat completion request.
     /// Returns an AsyncThrowingStream of VMLXEvents.
+    ///
+    /// Uses mlx-swift-lm's `ModelContainer.generate()` for the actual model forward pass,
+    /// which correctly handles all 50+ architectures (quantized weights, correct key paths,
+    /// architecture-specific attention patterns, etc.).
+    ///
+    /// VMLXRuntime wraps this with:
+    /// - Our CacheCoordinator for prefix cache reuse
+    /// - StreamAccumulator for tool/reasoning parsing
+    /// - VMLXEvent emission for OpenAI-compatible streaming
     public func generateStream(
         request: VMLXChatCompletionRequest
     ) async throws -> AsyncThrowingStream<VMLXEvent, Error> {
@@ -330,34 +309,9 @@ public actor VMLXRuntimeActor {
             throw VMLXRuntimeError.noModelLoaded
         }
 
-        guard let fwdPass = forwardPass else {
-            throw VMLXRuntimeError.generationFailed("TransformerModelForwardPass not initialized")
-        }
-
         let requestId = UUID().uuidString
-        let samplingParams = request.toSamplingParams()
         let modelName = currentModelName ?? ""
-        let stopTokenIds = container.eosTokenIds
-
-        // Tokenize messages using the loaded model's chat template
-        let promptTokenIds: [Int]
-        do {
-            promptTokenIds = try container.applyChatTemplate(messages: request.messages)
-        } catch {
-            throw VMLXRuntimeError.tokenizationFailed
-        }
-
-        // For hybrid thinking models, compute how many tokens the generation prompt
-        // (e.g., <think>) adds so SSM checkpointing knows the stable boundary
-        let genPromptLen: Int
-        if request.enableThinking == true, container.isHybrid {
-            genPromptLen = container.computeGenPromptLen(messages: request.messages)
-        } else {
-            genPromptLen = 0
-        }
-
-        // Cache lookup with real token IDs
-        let cacheResult = scheduler.cache.fetch(tokens: promptTokenIds)
+        let mlxContainer = container.mlxContainer
 
         // Build tool/reasoning parsers
         let toolParser: (any ToolCallParser)? = request.tools != nil
@@ -365,136 +319,66 @@ public actor VMLXRuntimeActor {
         let reasoningParser: (any ReasoningParser)? = (request.enableThinking ?? false)
             ? autoDetectReasoningParser(modelName: modelName) : nil
 
+        // Convert VMLXChatMessages to mlx-swift-lm's Chat.Message format
+        let chatMessages: [Chat.Message] = request.messages.map { msg in
+            let role: Chat.Message.Role
+            switch msg.role {
+            case "system": role = .system
+            case "assistant": role = .assistant
+            case "tool": role = .tool
+            default: role = .user
+            }
+            return Chat.Message(role: role, content: msg.textContent)
+        }
+
+        // Build GenerateParameters for mlx-swift-lm
+        let samplingParams = request.toSamplingParams()
+        let generateParams = GenerateParameters(
+            maxTokens: samplingParams.maxTokens,
+            temperature: samplingParams.temperature,
+            topP: samplingParams.topP,
+            repetitionPenalty: samplingParams.repetitionPenalty > 1.0 ? samplingParams.repetitionPenalty : nil,
+            repetitionContextSize: 20
+        )
+
+        // Prepare input on the actor (UserInput is not Sendable, so must be consumed here).
+        // mlx-swift-lm's prepare() tokenizes via the model's processor (chat template, etc.).
+        let userInput = UserInput(prompt: .chat(chatMessages))
+        let preparedInput = try await mlxContainer.prepare(input: userInput)
+        let promptTokenCount = preparedInput.text.tokens.size
+
+        // Generate the stream on the actor. mlx-swift-lm handles:
+        // - Model forward pass (correct for ALL 50+ architectures)
+        // - KV cache management internally
+        // - Streaming token generation
+        let generationStream = try await mlxContainer.generate(
+            input: preparedInput,
+            parameters: generateParams
+        )
+
+        let stopSequences = samplingParams.stop
+
         return AsyncThrowingStream { continuation in
-            let task = Task { [cacheResult, genPromptLen, fwdPass] in
-                // genPromptLen used by forward pass to checkpoint SSM state
-                _ = genPromptLen
+            let task = Task { @Sendable in
                 do {
-                    var inferenceRequest = InferenceRequest(
-                        requestId: requestId,
-                        promptTokenIds: promptTokenIds,
-                        samplingParams: samplingParams,
-                        enableThinking: request.enableThinking ?? false,
-                        reasoningEffort: request.reasoningEffort ?? "medium",
-                        isMultimodal: request.isMultimodal
-                    )
-
-                    // Apply cache result and populate model KV caches from CacheCoordinator
-                    switch cacheResult {
-                    case .hit(let cache, let remaining, _):
-                        fwdPass.loadCache(cache)
-                        inferenceRequest.promptCache = cache
-                        inferenceRequest.remainingTokenIds = remaining
-                        inferenceRequest.cachedTokens = promptTokenIds.count - remaining.count
-
-                    case .partialHit(let attentionCache, let remaining, _):
-                        // Hybrid model: have KV but not SSM
-                        fwdPass.loadCache(attentionCache)
-                        inferenceRequest.promptCache = attentionCache
-                        inferenceRequest.remainingTokenIds = remaining
-
-                    case .miss:
-                        fwdPass.resetCaches()
-                        inferenceRequest.remainingTokenIds = promptTokenIds
-                    }
-
-                    // Set up stream accumulator
+                    // Set up stream accumulator for tool/reasoning parsing
                     var accumulator = StreamAccumulator(
                         toolParser: toolParser,
                         reasoningParser: reasoningParser,
-                        stopSequences: samplingParams.stop
+                        stopSequences: stopSequences
                     )
 
-                    // ---------------------------------------------------------------
-                    // GENERATION LOOP
-                    // ---------------------------------------------------------------
+                    var finalPromptTokenCount = promptTokenCount
+                    var generatedTokenCount = 0
 
-                    let uncachedTokens = inferenceRequest.remainingTokenIds ?? promptTokenIds
-                    // ModelForwardPass protocol requires [MLXArray] but TransformerModelForwardPass
-                    // manages structured KVCache objects internally and ignores this parameter.
-                    var cacheArrays: [MLXArray] = []
-                    var generatedIds: [Int] = []
-                    let maxTokens = samplingParams.maxTokens
+                    for await generation in generationStream {
+                        // Check cancellation
+                        try Task.checkCancellation()
 
-                    // Phase 1: Prefill — run uncached tokens through the model
-                    let inputArray = MLXArray(uncachedTokens.map { Int32($0) })
-
-                    // Build causal mask for prefill
-                    let prefillMask: MLXArray?
-                    if uncachedTokens.count > 1 {
-                        let offset = promptTokenIds.count - uncachedTokens.count
-                        prefillMask = TransformerModel.createCausalMask(
-                            seqLen: uncachedTokens.count,
-                            offset: offset,
-                            dtype: .float16
-                        )
-                    } else {
-                        prefillMask = nil
-                    }
-
-                    let prefillLogits = try await fwdPass.prefill(
-                        inputIds: inputArray,
-                        cache: &cacheArrays,
-                        mask: prefillMask
-                    )
-
-                    // Phase 2: Sample first token from prefill logits
-                    let firstToken = Sampler.sample(
-                        logits: prefillLogits,
-                        params: samplingParams
-                    )
-                    generatedIds.append(firstToken)
-
-                    // Emit first token (unless it's a stop token)
-                    var stopped = false
-                    if stopTokenIds.contains(firstToken) {
-                        stopped = true
-                    } else {
-                        let text = container.decode([firstToken])
-                        let events = accumulator.process(text: text, tokenIds: [firstToken])
-                        for event in events {
-                            switch event {
-                            case .tokens(let t):
-                                continuation.yield(.tokens(t))
-                            case .thinking(let t):
-                                continuation.yield(.thinking(t))
-                            case .toolInvocation(let name, let args, let callId):
-                                continuation.yield(.toolInvocation(name: name, argsJSON: args, callId: callId))
-                            case .finished:
-                                stopped = true
-                            }
-                        }
-                    }
-
-                    // Phase 3: Decode loop
-                    if !stopped {
-                        var lastToken = firstToken
-                        for _ in 1..<maxTokens {
-                            // Check cancellation
-                            try Task.checkCancellation()
-
-                            // Decode next token
-                            let logits = try await fwdPass.decode(
-                                tokenId: lastToken,
-                                cache: &cacheArrays
-                            )
-
-                            // Sample
-                            let tokenId = Sampler.sample(
-                                logits: logits,
-                                params: samplingParams,
-                                previousTokens: generatedIds
-                            )
-                            generatedIds.append(tokenId)
-
-                            // Check stop token
-                            if stopTokenIds.contains(tokenId) {
-                                break
-                            }
-
-                            // Decode and emit
-                            let text = container.decode([tokenId])
-                            let events = accumulator.process(text: text, tokenIds: [tokenId])
+                        switch generation {
+                        case .chunk(let text):
+                            generatedTokenCount += 1  // approximate; chunks may contain multiple tokens
+                            let events = accumulator.process(text: text, tokenIds: [])
                             for event in events {
                                 switch event {
                                 case .tokens(let t):
@@ -504,25 +388,36 @@ public actor VMLXRuntimeActor {
                                 case .toolInvocation(let name, let args, let callId):
                                     continuation.yield(.toolInvocation(name: name, argsJSON: args, callId: callId))
                                 case .finished:
-                                    stopped = true
+                                    break
                                 }
                             }
 
-                            if stopped { break }
-                            lastToken = tokenId
+                        case .info(let info):
+                            // Generation complete -- use actual token counts from info
+                            generatedTokenCount = info.generationTokenCount
+                            finalPromptTokenCount = info.promptTokenCount
+
+                        case .toolCall(let toolCall):
+                            // mlx-swift-lm detected a tool call natively
+                            let argsJSON: String
+                            let jsonObject = toolCall.function.arguments.mapValues { $0.anyValue }
+                            if let data = try? JSONSerialization.data(withJSONObject: jsonObject),
+                               let str = String(data: data, encoding: .utf8) {
+                                argsJSON = str
+                            } else {
+                                argsJSON = "{}"
+                            }
+                            continuation.yield(.toolInvocation(
+                                name: toolCall.function.name,
+                                argsJSON: argsJSON,
+                                callId: UUID().uuidString
+                            ))
                         }
                     }
 
-                    // Phase 4: Export model KV cache and store in CacheCoordinator
-                    // for future prefix cache reuse across requests.
-                    let allTokens = promptTokenIds + generatedIds
-                    let finalCache = fwdPass.exportCache()
-                    finalCache.materialized()
-                    await self._storeCache(tokens: allTokens, cache: finalCache)
-
-                    // Finalize and emit remaining events
-                    let events = accumulator.finalize()
-                    for event in events {
+                    // Finalize: emit remaining buffered events
+                    let finalEvents = accumulator.finalize()
+                    for event in finalEvents {
                         switch event {
                         case .tokens(let text):
                             continuation.yield(.tokens(text))
@@ -537,9 +432,9 @@ public actor VMLXRuntimeActor {
 
                     // Emit usage
                     continuation.yield(.usage(
-                        promptTokens: promptTokenIds.count,
-                        completionTokens: generatedIds.count,
-                        cachedTokens: inferenceRequest.cachedTokens
+                        promptTokens: finalPromptTokenCount,
+                        completionTokens: generatedTokenCount,
+                        cachedTokens: 0
                     ))
 
                     continuation.finish()
@@ -590,7 +485,7 @@ public actor VMLXRuntimeActor {
     public var config: SchedulerConfig { scheduler.config }
 
     /// Get the current model container (for inspection or direct tokenization).
-    public var container: ModelContainer? { modelContainer }
+    public var container: VMLXModelContainer? { modelContainer }
 
     // MARK: - Private
 

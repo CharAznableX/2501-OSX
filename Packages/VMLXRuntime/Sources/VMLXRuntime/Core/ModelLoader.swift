@@ -1,22 +1,31 @@
 import Foundation
 import MLX
 import MLXNN
+import MLXLMCommon
+import MLXLLM
 import Tokenizers
 import Hub
 
 /// A loaded model ready for inference.
+///
+/// Holds both the mlx-swift-lm `ModelContainer` (proven model implementations for 50+
+/// architectures including quantized weights) and VMLXRuntime metadata (JANG detection,
+/// hybrid layer info, family config).
 public final class LoadedModel: @unchecked Sendable {
-    /// Model weights as flat dictionary.
-    public let weights: [String: MLXArray]
 
-    /// Tokenizer for encoding/decoding text.
-    public let tokenizer: any Tokenizer
+    /// The mlx-swift-lm model container.
+    /// Handles the actual forward pass, tokenizer, KV cache, and weight loading
+    /// for all supported architectures (Qwen3.5, Nemotron-H, DeepSeek, Llama, etc.).
+    public let mlxContainer: MLXLMCommon.ModelContainer
 
-    /// Model configuration from config.json.
+    /// Model configuration from config.json (raw dictionary for VMLXRuntime introspection).
     public let config: [String: Any]
 
-    /// Detected model properties.
+    /// Detected model properties (name, family, hybrid, JANG, etc.).
     public let detected: DetectedModel
+
+    /// Model directory path.
+    public let modelPath: URL
 
     /// Vocabulary size.
     public var vocabSize: Int {
@@ -61,8 +70,7 @@ public final class LoadedModel: @unchecked Sendable {
     /// EOS token IDs.
     public var eosTokenIds: Set<Int> {
         var ids = Set<Int>()
-        if let eos = tokenizer.eosTokenId { ids.insert(eos) }
-        // Check config for additional stop tokens
+        // Check config for stop tokens
         if let eosIds = config["eos_token_id"] as? [Int] {
             ids.formUnion(eosIds)
         } else if let eosId = config["eos_token_id"] as? Int {
@@ -71,47 +79,70 @@ public final class LoadedModel: @unchecked Sendable {
         return ids
     }
 
-    public init(weights: [String: MLXArray], tokenizer: any Tokenizer,
-                config: [String: Any], detected: DetectedModel) {
-        self.weights = weights
-        self.tokenizer = tokenizer
+    /// Tokenizer (accessed via mlx-swift-lm container).
+    public var tokenizer: any Tokenizer {
+        get async {
+            await mlxContainer.tokenizer
+        }
+    }
+
+    public init(mlxContainer: MLXLMCommon.ModelContainer,
+                config: [String: Any], detected: DetectedModel,
+                modelPath: URL) {
+        self.mlxContainer = mlxContainer
         self.config = config
         self.detected = detected
+        self.modelPath = modelPath
     }
 }
 
-/// Loads models from disk (safetensors weights + tokenizer).
+/// Loads models from disk using mlx-swift-lm's proven model factory.
+///
+/// Instead of custom weight loading and model construction, delegates to
+/// `MLXLMCommon.loadModelContainer(directory:)` which handles:
+/// - Config parsing and model architecture detection (50+ families)
+/// - Quantized weight loading (QuantizedLinear with scales/biases)
+/// - Correct weight key path mapping for each architecture
+/// - Tokenizer setup
 public struct ModelLoader: Sendable {
 
-    /// Load a model from a directory path.
-    /// Reads safetensors weight files, tokenizer, and config.
+    /// Load a model from a directory path using mlx-swift-lm's model factory.
+    ///
+    /// This is the primary loading path:
+    /// 1. Uses `MLXLMCommon.loadModelContainer(directory:)` for proven weight loading
+    /// 2. Runs `ModelDetector.detect(at:)` for JANG/hybrid/family metadata
+    /// 3. Parses config.json for VMLXRuntime introspection
     public static func load(from path: URL) async throws -> LoadedModel {
-        // 1. Detect model
+        // 1. Detect model properties (JANG, hybrid, family, etc.)
         let detected = try ModelDetector.detect(at: path)
 
-        // 2. Load config.json
+        // 2. Load config.json for VMLXRuntime metadata
         let config = try _loadConfig(at: path)
 
-        // 3. Load tokenizer
-        let tokenizer = try await _loadTokenizer(at: path)
-
-        // 4. Load weights from safetensors
-        //    Check for JANG v1 format (legacy uint8 repacking) first
-        let weights: [String: MLXArray]
-        if JangLoader.isJangModel(at: path),
-           let jangConfig = try? JangLoader.loadConfig(at: path),
-           !jangConfig.isV2,
-           JangLoader.hasV1Weights(at: path) {
-            weights = try JangLoader.loadV1Weights(at: path)
-        } else {
-            weights = try _loadWeights(at: path)
+        // 3. Use mlx-swift-lm's model factory to load the model.
+        //    This handles ALL architectures: Qwen3.5, Nemotron-H, DeepSeek-V3,
+        //    Llama, Mistral, Gemma, Phi, MiniMax, GLM4, Falcon-H1, etc.
+        //    It correctly handles:
+        //    - QuantizedLinear (scales, biases, weight packing)
+        //    - Architecture-specific weight key paths
+        //    - Tokenizer loading and chat template setup
+        let modelConfig = MLXLMCommon.ModelConfiguration(directory: path)
+        let mlxContainer: MLXLMCommon.ModelContainer
+        do {
+            mlxContainer = try await MLXLMCommon.loadModelContainer(
+                configuration: modelConfig
+            )
+        } catch {
+            throw ModelLoaderError.unsupportedArchitecture(
+                "mlx-swift-lm failed to load model at \(path.path): \(error.localizedDescription)"
+            )
         }
 
         return LoadedModel(
-            weights: weights,
-            tokenizer: tokenizer,
+            mlxContainer: mlxContainer,
             config: config,
-            detected: detected
+            detected: detected,
+            modelPath: path
         )
     }
 
@@ -135,59 +166,6 @@ public struct ModelLoader: Sendable {
             throw ModelLoaderError.invalidConfig("Failed to parse config.json")
         }
         return json
-    }
-
-    private static func _loadTokenizer(at path: URL) async throws -> any Tokenizer {
-        // AutoTokenizer.from(modelFolder:) handles tokenizer_config.json + tokenizer.json
-        let tokenizer = try await AutoTokenizer.from(modelFolder: path)
-        return tokenizer
-    }
-
-    private static func _loadWeights(at path: URL) throws -> [String: MLXArray] {
-        // Check for sharded model (model.safetensors.index.json)
-        let indexURL = path.appendingPathComponent("model.safetensors.index.json")
-
-        if FileManager.default.fileExists(atPath: indexURL.path) {
-            return try _loadShardedWeights(indexURL: indexURL, basePath: path)
-        }
-
-        // Single file model
-        let singleURL = path.appendingPathComponent("model.safetensors")
-        if FileManager.default.fileExists(atPath: singleURL.path) {
-            return try loadArrays(url: singleURL)
-        }
-
-        // Try weights.safetensors (some models use this name)
-        let altURL = path.appendingPathComponent("weights.safetensors")
-        if FileManager.default.fileExists(atPath: altURL.path) {
-            return try loadArrays(url: altURL)
-        }
-
-        throw ModelLoaderError.weightsNotFound(path.path)
-    }
-
-    private static func _loadShardedWeights(indexURL: URL, basePath: URL) throws -> [String: MLXArray] {
-        let data = try Data(contentsOf: indexURL)
-        guard let index = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let weightMap = index["weight_map"] as? [String: String] else {
-            throw ModelLoaderError.invalidWeightIndex
-        }
-
-        // Get unique shard filenames
-        let shardFiles = Set(weightMap.values).sorted()
-
-        // Load each shard
-        var allWeights: [String: MLXArray] = [:]
-        for shardFile in shardFiles {
-            let shardURL = basePath.appendingPathComponent(shardFile)
-            guard FileManager.default.fileExists(atPath: shardURL.path) else {
-                throw ModelLoaderError.shardNotFound(shardFile)
-            }
-            let shardWeights = try loadArrays(url: shardURL)
-            allWeights.merge(shardWeights) { _, new in new }
-        }
-
-        return allWeights
     }
 }
 

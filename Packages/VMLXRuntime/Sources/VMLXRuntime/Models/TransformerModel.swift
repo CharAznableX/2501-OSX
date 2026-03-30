@@ -386,12 +386,15 @@ public class TransformerModel: Module {
         self.update(parameters: parameters)
     }
 
-    /// Convenience factory: create model from a `LoadedModel` instance.
-    /// Initializes the model from the config and loads weights.
-    public static func from(loaded: LoadedModel) -> TransformerModel {
-        let config = TransformerConfig.from(config: loaded.config)
-        let model = TransformerModel(config)
-        model.loadWeights(loaded.weights)
+    /// Convenience factory: create model from a config dictionary and raw weights.
+    ///
+    /// Note: This is the custom/experimental model path. The primary path uses
+    /// mlx-swift-lm's model factory via `ModelLoader.load(from:)` which handles
+    /// 50+ architectures with proven weight loading (including QuantizedLinear).
+    public static func from(config: [String: Any], weights: [String: MLXArray]) -> TransformerModel {
+        let tfConfig = TransformerConfig.from(config: config)
+        let model = TransformerModel(tfConfig)
+        model.loadWeights(weights)
         return model
     }
 }

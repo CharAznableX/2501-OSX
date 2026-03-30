@@ -1,13 +1,23 @@
 import Foundation
 import MLX
+import MLXLMCommon
 import Tokenizers
 
 /// Container wrapping a loaded model with runtime configuration.
 /// This is what gets passed around during inference.
-public final class ModelContainer: @unchecked Sendable {
+///
+/// Named `VMLXModelContainer` to avoid collision with `MLXLMCommon.ModelContainer`.
+public final class VMLXModelContainer: @unchecked Sendable {
 
     /// The loaded model (weights + tokenizer + config).
     public let model: LoadedModel
+
+    /// The mlx-swift-lm model container (handles forward pass, tokenizer, KV cache, etc.).
+    /// This is the proven implementation that supports 50+ model architectures.
+    public let mlxContainer: MLXLMCommon.ModelContainer
+
+    /// Cached tokenizer reference (fetched from mlxContainer during init).
+    public let tokenizer: any Tokenizer
 
     /// Model name/path.
     public let name: String
@@ -33,13 +43,29 @@ public final class ModelContainer: @unchecked Sendable {
     /// Model family config (tool format, reasoning format, etc.).
     public let familyConfig: ModelFamilyConfig
 
-    public init(model: LoadedModel) {
+    /// Use the async factory method `create(model:mlxContainer:)` instead.
+    private init(model: LoadedModel, mlxContainer: MLXLMCommon.ModelContainer,
+                 tokenizer: any Tokenizer,
+                 turboQuantConfig: TurboQuantConfig?, layerPattern: [LayerType]?) {
         self.model = model
+        self.mlxContainer = mlxContainer
+        self.tokenizer = tokenizer
         self.name = model.detected.name
         self.eosTokenIds = model.eosTokenIds
         self.familyConfig = ModelConfigRegistry.configFor(modelName: model.detected.name)
+        self.turboQuantConfig = turboQuantConfig
+        self.layerPattern = layerPattern
+    }
 
-        // Build TQ config from JANG settings if applicable
+    /// Async factory method. Fetches the tokenizer from the mlx-swift-lm container
+    /// and builds TQ/hybrid configuration from detected model properties.
+    public static func create(model: LoadedModel, mlxContainer: MLXLMCommon.ModelContainer) async -> VMLXModelContainer {
+        let tokenizer = await mlxContainer.tokenizer
+
+        // Build TQ config and layer pattern
+        let turboQuantConfig: TurboQuantConfig?
+        let layerPattern: [LayerType]?
+
         if model.detected.isJang,
            JangLoader.isJangModel(at: model.detected.modelPath),
            let jangConfig = try? JangLoader.loadConfig(at: model.detected.modelPath) {
@@ -60,22 +86,22 @@ public final class ModelContainer: @unchecked Sendable {
                 detectedLayerPattern = nil
             }
 
-            self.turboQuantConfig = JangLoader.buildTQConfig(
+            turboQuantConfig = JangLoader.buildTQConfig(
                 from: jangConfig,
                 layerPattern: detectedLayerPattern,
                 kvLoraRank: model.detected.kvLoraRank,
                 qkNopeHeadDim: model.detected.qkNopeHeadDim,
                 qkRopeHeadDim: model.detected.qkRopeHeadDim
             )
-            self.layerPattern = detectedLayerPattern
+            layerPattern = detectedLayerPattern
         } else {
-            self.turboQuantConfig = nil
+            turboQuantConfig = nil
 
             // Still parse layer pattern for non-JANG hybrid models
             if let patternStr = model.detected.hybridOverridePattern {
-                self.layerPattern = parseHybridPattern(patternStr)
+                layerPattern = parseHybridPattern(patternStr)
             } else if let layerTypeStrs = model.detected.layerTypes {
-                self.layerPattern = layerTypeStrs.map { str -> LayerType in
+                layerPattern = layerTypeStrs.map { str -> LayerType in
                     switch str.lowercased() {
                     case "attention", "attn": return .attention
                     case "ssm", "mamba", "recurrent": return .ssm
@@ -83,21 +109,29 @@ public final class ModelContainer: @unchecked Sendable {
                     }
                 }
             } else {
-                self.layerPattern = nil
+                layerPattern = nil
             }
         }
+
+        return VMLXModelContainer(
+            model: model,
+            mlxContainer: mlxContainer,
+            tokenizer: tokenizer,
+            turboQuantConfig: turboQuantConfig,
+            layerPattern: layerPattern
+        )
     }
 
     // MARK: - Tokenization
 
     /// Encode text to token IDs.
     public func encode(_ text: String) -> [Int] {
-        model.tokenizer.encode(text: text)
+        tokenizer.encode(text: text)
     }
 
     /// Decode token IDs to text.
     public func decode(_ tokens: [Int]) -> String {
-        model.tokenizer.decode(tokens: tokens)
+        tokenizer.decode(tokens: tokens)
     }
 
     /// Apply chat template to messages and encode.
@@ -114,8 +148,8 @@ public final class ModelContainer: @unchecked Sendable {
         }
 
         // Try using the tokenizer's chat template
-        if model.tokenizer.hasChatTemplate {
-            return try model.tokenizer.applyChatTemplate(
+        if tokenizer.hasChatTemplate {
+            return try tokenizer.applyChatTemplate(
                 messages: chatMessages,
                 chatTemplate: nil,
                 addGenerationPrompt: addGenerationPrompt,
@@ -139,7 +173,7 @@ public final class ModelContainer: @unchecked Sendable {
     /// (e.g., `<think>`) tokens contaminate SSM state, so we need to know where
     /// the stable boundary is for checkpointing.
     public func computeGenPromptLen(messages: [VMLXChatMessage]) -> Int {
-        guard model.tokenizer.hasChatTemplate else { return 0 }
+        guard tokenizer.hasChatTemplate else { return 0 }
 
         do {
             let withGen = try applyChatTemplate(messages: messages, addGenerationPrompt: true)
