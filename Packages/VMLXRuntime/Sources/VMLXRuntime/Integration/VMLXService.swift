@@ -66,9 +66,14 @@ public actor VMLXService: VMLXToolCapableService {
     public nonisolated func handles(requestedModel: String?) -> Bool {
         guard let model = requestedModel else { return true }
         let lower = model.lowercased()
-        // Handle local models, JANG models, or explicit "vmlx" requests
+        // Handle local models (JANG, MLX, or explicit "vmlx" requests).
+        // VMLXRuntime supports both JANG quantized and standard MLX models.
         return lower == "local" || lower == "default" || lower == "vmlx"
-            || lower.contains("jang") || lower.isEmpty
+            || lower.contains("jang") || lower.contains("mlx")
+            || lower.contains("llama") || lower.contains("qwen")
+            || lower.contains("mistral") || lower.contains("gemma")
+            || lower.contains("phi") || lower.contains("granite")
+            || lower.isEmpty
     }
 
     public func generateOneShot(
@@ -103,7 +108,8 @@ public actor VMLXService: VMLXToolCapableService {
             topP: params.topP,
             repetitionPenalty: params.repetitionPenalty,
             stop: stopSequences,
-            stream: true
+            stream: true,
+            enableThinking: params.enableThinking
         )
 
         let eventStream = try await runtime.generateStream(request: request)
@@ -117,8 +123,9 @@ public actor VMLXService: VMLXToolCapableService {
                         case .tokens(let text):
                             continuation.yield(text)
                         case .thinking(let text):
-                            // Encode as reasoning content (Osaurus uses sentinel encoding)
-                            continuation.yield("\u{FFFE}think:" + text)
+                            // Pass thinking content as raw text with think tags.
+                            // Osaurus's StreamingDeltaProcessor handles <think> parsing at the UI level.
+                            continuation.yield(text)
                         case .toolInvocation(let name, let args, _):
                             continuation.yield("\u{FFFE}tool:" + name)
                             continuation.yield("\u{FFFE}args:" + args)
@@ -190,7 +197,7 @@ public actor VMLXService: VMLXToolCapableService {
                         case .tokens(let text):
                             continuation.yield(text)
                         case .thinking(let text):
-                            continuation.yield("\u{FFFE}think:" + text)
+                            continuation.yield(text)
                         case .toolInvocation(let name, let args, _):
                             continuation.yield("\u{FFFE}tool:" + name)
                             continuation.yield("\u{FFFE}args:" + args)
@@ -204,6 +211,29 @@ public actor VMLXService: VMLXToolCapableService {
                 }
             }
         }
+    }
+
+    // MARK: - Runtime Configuration Passthrough
+
+    /// Forward user-facing runtime settings to VMLXRuntimeActor.
+    public func applyUserConfig(
+        kvBits: Int? = nil,
+        kvGroupSize: Int = 64,
+        maxContextLength: Int? = nil,
+        prefillStepSize: Int? = nil,
+        enableDiskCache: Bool = false,
+        diskCacheDir: URL? = nil,
+        enableTurboQuant: Bool = false
+    ) async {
+        await runtime.applyUserConfig(
+            kvBits: kvBits,
+            kvGroupSize: kvGroupSize,
+            maxContextLength: maxContextLength,
+            prefillStepSize: prefillStepSize,
+            enableDiskCache: enableDiskCache,
+            diskCacheDir: diskCacheDir,
+            enableTurboQuant: enableTurboQuant
+        )
     }
 
     // MARK: - Model Management Passthrough

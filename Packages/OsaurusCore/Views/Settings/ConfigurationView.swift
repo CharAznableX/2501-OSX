@@ -49,6 +49,9 @@ struct ConfigurationView: View {
     @State private var tempMaxKV: String = ""
     @State private var tempPrefillStep: String = ""
     @State private var tempEvictionPolicy: ModelEvictionPolicy = .strictSingleModel
+    @State private var tempEnableTurboQuant: Bool = false
+    @State private var tempEnableDiskCache: Bool = false
+    @State private var tempCacheMemoryPercent: String = ""
 
     // Toast settings state
     @State private var tempToastPosition: ToastPosition = .topRight
@@ -473,6 +476,52 @@ struct ConfigurationView: View {
                                         }
                                     }
 
+                                    // Cache Stack Settings
+                                    SettingsSubsection(label: "Cache Stack") {
+                                        VStack(alignment: .leading, spacing: 12) {
+                                            Toggle("TurboQuant (3-bit KV compression)", isOn: $tempEnableTurboQuant)
+                                                .font(.system(size: 13))
+
+                                            Text("Compresses KV cache to 3-bit using random projection codebook quantization. Reduces KV memory ~10x. Best for long contexts.")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(theme.tertiaryText)
+
+                                            Toggle("Disk Cache (L2 SSD)", isOn: $tempEnableDiskCache)
+                                                .font(.system(size: 13))
+
+                                            Text("Persist KV cache to disk as safetensors. Enables instant resume across app restarts for previously seen prompts.")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(theme.tertiaryText)
+
+                                            SettingsSliderField(
+                                                label: "Memory Cache Budget",
+                                                help: "Fraction of RAM for KV cache (0.1–0.6)",
+                                                text: $tempCacheMemoryPercent,
+                                                range: 0.1 ... 0.6,
+                                                step: 0.05,
+                                                defaultValue: 0.30,
+                                                formatString: "%.0f%%"
+                                            )
+
+                                            DisclosureGroup("Always-On Layers") {
+                                                VStack(alignment: .leading, spacing: 8) {
+                                                    Text("Memory Cache: ON (LRU, adapts to memory pressure)")
+                                                        .font(.system(size: 11))
+                                                        .foregroundColor(theme.secondaryText)
+
+                                                    Text("Prefix Cache: ON (token-trie matching)")
+                                                        .font(.system(size: 11))
+                                                        .foregroundColor(theme.secondaryText)
+
+                                                    Text("SSM Companion Cache: ON (50 entries, hybrid models)")
+                                                        .font(.system(size: 11))
+                                                        .foregroundColor(theme.secondaryText)
+                                                }
+                                                .padding(.top, 8)
+                                            }
+                                        }
+                                    }
+
                                     SettingsDivider()
 
                                     // Eviction Policy
@@ -687,6 +736,12 @@ struct ConfigurationView: View {
         tempPrefillStep = configuration.genPrefillStepSize.map(String.init) ?? ""
         tempAllowedOrigins = configuration.allowedOrigins.joined(separator: ", ")
         tempEvictionPolicy = configuration.modelEvictionPolicy
+        tempEnableTurboQuant = configuration.enableTurboQuant ?? false
+        tempEnableDiskCache = configuration.enableDiskCache ?? false
+        tempCacheMemoryPercent = {
+            let pct = configuration.cacheMemoryPercent ?? 0.30
+            return pct == 0.30 ? "" : String(format: "%.0f", pct * 100)
+        }()
 
         // Load toast configuration
         let toastConfig = ToastConfigurationStore.load()
@@ -791,6 +846,17 @@ struct ConfigurationView: View {
 
         configuration.modelEvictionPolicy = tempEvictionPolicy
 
+        // Save VMLXRuntime cache stack settings
+        configuration.enableTurboQuant = tempEnableTurboQuant
+        configuration.enableDiskCache = tempEnableDiskCache
+        let trimmedMemPct = tempCacheMemoryPercent.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let pctVal = Float(trimmedMemPct) {
+            configuration.cacheMemoryPercent = pctVal / 100.0
+        } else {
+            configuration.cacheMemoryPercent = nil
+        }
+
+        // Save CORS allowed origins
         let parsedOrigins: [String] =
             tempAllowedOrigins
             .split(separator: ",")

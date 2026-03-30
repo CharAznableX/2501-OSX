@@ -1,10 +1,13 @@
 # VMLXRuntime vs VMLX Python — Feature Comparison
 
 Last updated: 2026-03-29
-OsaurusCore build: PASSING (3290/3290 files, 193s)
+Build: PASSING (VMLXRuntime + OsaurusCore, zero errors)
+Tests: 28/28 passing (unit + real model inference)
+Dependencies: mlx-swift + swift-transformers only (zero mlx-swift-lm)
 
 ## Legend
 - DONE = Fully implemented and connected
+- VERIFIED = DONE + tested with real models
 - STUB = Interface exists, implementation deferred (documented why)
 - TODO = Not started
 - N/A = Not applicable (Osaurus handles this natively)
@@ -34,23 +37,23 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 | Chat template application | utils/chat_templates.py | ModelContainer.applyChatTemplate() | DONE | Core/ModelContainer.swift |
 | gen_prompt_len computation | engine/batched.py | ModelContainer.computeGenPromptLen() | DONE | Core/ModelContainer.swift |
 
-## 2. Transformer Model / Forward Pass
+## 2. Model Architectures (Native, Zero mlx-swift-lm Dependency)
 
 | Feature | VMLX Python | VMLXRuntime Swift | Status | File |
 |---------|-------------|-------------------|--------|------|
-| Embedding layer | mlx-lm | Embedding via MLXNN | DONE | Models/TransformerModel.swift |
-| RMSNorm | mlx-lm | RMSNorm via MLXNN | DONE | Models/TransformerModel.swift |
-| Attention (Q/K/V/O projections) | mlx-lm | TransformerAttention | DONE | Models/TransformerModel.swift |
-| RoPE (rotary position embeddings) | mlx-lm | MLXNN.RoPE | DONE | Models/TransformerModel.swift |
-| GQA (grouped query attention) | mlx-lm | numKVHeads < numAttentionHeads | DONE | Models/TransformerModel.swift |
-| Scaled dot-product attention | mlx-lm | MLXFast.scaledDotProductAttention | DONE | Models/TransformerModel.swift |
-| SwiGLU FFN (gate/up/down) | mlx-lm | TransformerFFN | DONE | Models/TransformerModel.swift |
-| KV cache (per-layer) | mlx-lm | KVCache struct | DONE | Models/TransformerModel.swift |
-| Causal attention mask | mlx-lm | TransformerModel.createCausalMask() | DONE | Models/TransformerModel.swift |
-| LM head (logits projection) | mlx-lm | Linear(hidden -> vocab) | DONE | Models/TransformerModel.swift |
-| Weight loading from safetensors | mlx-lm | TransformerModel.loadWeights() | DONE | Models/TransformerModel.swift |
-| ModelForwardPass protocol | -- | prefill()/decode() | DONE | Generation/GenerationEngine.swift |
-| Cache load/export (HybridCache) | -- | loadCache()/exportCache() | DONE | Models/TransformerModel.swift |
+| **Standard Transformer (Llama/Qwen2/3/Mistral/Gemma/Phi)** | mlx-lm | StandardTransformerModel | VERIFIED | Models/StandardModel.swift |
+| **Qwen3.5 Hybrid (GatedDeltaNet+GQA+MoE)** | mlx-lm | Qwen35TopLevelModel | VERIFIED | Models/Qwen35Model.swift |
+| **Native weight loading (sanitize+quantize)** | mlx-lm Load.swift | vmlxLoadWeights() | VERIFIED | Models/WeightLoader.swift |
+| **Per-layer mixed-precision auto-quantize** | -- | Infer bits from weight/scales shapes | VERIFIED | Models/WeightLoader.swift |
+| **Model registry (model_type dispatch)** | mlx-lm registry | VMLXModelRegistry (18+ types) | VERIFIED | Models/ModelRegistry.swift |
+| VMLXKVCache protocol + KVCacheSimple | mlx-lm KVCache | VMLXKVCache/VMLXKVCacheSimple | VERIFIED | Models/Utilities/KVCache.swift |
+| MambaCache (SSM state) | mlx-lm MambaCache | VMLXMambaCache | VERIFIED | Models/Utilities/KVCache.swift |
+| GatedDeltaNet Metal kernel | mlx-lm GatedDelta.swift | vmlxGatedDeltaUpdate() | VERIFIED | Models/Utilities/GatedDelta.swift |
+| RoPE factory (default/llama3/yarn/longrope/su) | mlx-lm RoPEUtils | vmlxInitializeRope() | DONE | Models/Utilities/RoPEUtils.swift |
+| SwitchGLU (MoE experts) | mlx-lm SwitchLayers | VMLXSwitchGLU + QuantizedSwitchLinear | DONE | Models/Utilities/SwitchLayers.swift |
+| Attention mask helpers | mlx-lm AttentionUtils | vmlxCreateAttentionMask/SSMMask | DONE | Models/Utilities/KVCache.swift |
+| Tied word embeddings | mlx-lm | sanitize removes lm_head.weight | VERIFIED | Models/StandardModel.swift |
+| Qwen2 attention bias detection | -- | Model-type-aware defaults | VERIFIED | Models/StandardModel.swift |
 | Mamba/SSM layers | utils/mamba_cache.py | MambaBlock + MambaState | DONE | Models/MambaLayer.swift |
 | Hybrid transformer | -- | HybridTransformerModel | DONE | Models/HybridTransformerModel.swift |
 | MoE routing | mlx-lm | MoELayer | DONE | Models/MoELayer.swift |

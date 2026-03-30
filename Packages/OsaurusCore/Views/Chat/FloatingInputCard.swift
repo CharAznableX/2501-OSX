@@ -1093,6 +1093,17 @@ extension FloatingInputCard {
                     .foregroundColor(theme.tertiaryText)
             }
         }
+        .contextMenu {
+            Button(role: .destructive) {
+                Task {
+                    // Unload from both runtimes
+                    await VMLXServiceBridge.shared.unloadModel()
+                    await ModelRuntime.shared.clearAll()
+                }
+            } label: {
+                Label("Unload Model", systemImage: "eject")
+            }
+        }
         .popover(isPresented: $showModelPicker, arrowEdge: .top) {
             ModelPickerView(
                 options: cachedPickerItems,

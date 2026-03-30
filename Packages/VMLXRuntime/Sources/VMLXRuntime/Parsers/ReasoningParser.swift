@@ -47,5 +47,9 @@ public func autoDetectReasoningParser(modelName: String) -> (any ReasoningParser
         return MistralReasoningParser()
     }
 
-    return nil
+    // Default: use ThinkTag parser for any model.
+    // Many models (MiniMax, Qwen3.5, etc.) include <think> in their chat template.
+    // The ThinkTag parser is safe for non-thinking models too — if no <think> tags
+    // appear in the output, it passes everything through unchanged.
+    return ThinkTagReasoningParser()
 }

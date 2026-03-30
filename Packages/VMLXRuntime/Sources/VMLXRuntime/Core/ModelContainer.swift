@@ -40,6 +40,23 @@ public final class VMLXModelContainer: @unchecked Sendable {
     /// Model family config (tool format, reasoning format, etc.).
     public let familyConfig: ModelFamilyConfig
 
+    /// Map config.json layer_type strings to LayerType enum.
+    /// Handles Qwen3.5 ("linear_attention"/"full_attention"),
+    /// Nemotron-H ("mamba"/"attention"), and generic variants.
+    private static func parseLayerTypeString(_ str: String) -> LayerType {
+        let lower = str.lowercased()
+        switch lower {
+        case "full_attention", "attention", "attn", "self_attention":
+            return .attention
+        case "linear_attention", "ssm", "mamba", "recurrent", "gated_delta":
+            return .ssm
+        case "expert", "moe":
+            return .expert
+        default:
+            return .attention
+        }
+    }
+
     private init(model: LoadedModel,
                  turboQuantConfig: TurboQuantConfig?, layerPattern: [LayerType]?) {
         self.model = model
@@ -66,13 +83,7 @@ public final class VMLXModelContainer: @unchecked Sendable {
             if let patternStr = model.detected.hybridOverridePattern {
                 detectedLayerPattern = parseHybridPattern(patternStr)
             } else if let layerTypeStrs = model.detected.layerTypes {
-                detectedLayerPattern = layerTypeStrs.map { str -> LayerType in
-                    switch str.lowercased() {
-                    case "attention", "attn": return .attention
-                    case "ssm", "mamba", "recurrent": return .ssm
-                    default: return .attention
-                    }
-                }
+                detectedLayerPattern = layerTypeStrs.map { parseLayerTypeString($0) }
             } else {
                 detectedLayerPattern = nil
             }
@@ -125,7 +136,8 @@ public final class VMLXModelContainer: @unchecked Sendable {
     /// Apply chat template to messages and encode.
     public func applyChatTemplate(
         messages: [VMLXChatMessage],
-        addGenerationPrompt: Bool = true
+        addGenerationPrompt: Bool = true,
+        enableThinking: Bool = true
     ) throws -> [Int] {
         let chatMessages: [Message] = messages.map { msg in
             ["role": msg.role, "content": msg.textContent]
@@ -138,7 +150,8 @@ public final class VMLXModelContainer: @unchecked Sendable {
                 addGenerationPrompt: addGenerationPrompt,
                 truncation: false,
                 maxLength: nil,
-                tools: nil
+                tools: nil,
+                additionalContext: ["enable_thinking": enableThinking]
             )
         }
 

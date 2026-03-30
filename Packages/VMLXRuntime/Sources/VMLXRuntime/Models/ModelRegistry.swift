@@ -32,6 +32,37 @@ extension Qwen35TextModel: VMLXNativeModel, VMLXSanitizable {}
 /// Maps `model_type` from config.json to model construction + weight loading.
 public struct VMLXModelRegistry {
 
+    /// Standard transformer model types that use the generic StandardTransformerModel.
+    /// These all share the same weight key layout: model.layers.N.self_attn/mlp.
+    private static let standardTransformerTypes: Set<String> = [
+        "llama",            // Llama 2/3/3.1/3.2/3.3/4
+        "qwen2",            // Qwen 2/2.5
+        "qwen3",            // Qwen 3
+        "mistral",          // Mistral v0.1/v0.2/v0.3 (standard quantization only)
+        "minimax_m2",       // MiniMax M2.5 (MoE + q/k norm)
+        "gemma2",           // Gemma 2
+        "gemma3",           // Gemma 3
+        "gemma3_text",      // Gemma 3 text
+        "phi3",             // Phi 3
+        "phi4mm",           // Phi 4
+        "starcoder2",       // StarCoder 2
+        "internlm2",        // InternLM 2
+        "granite",          // IBM Granite
+        "cohere",           // Command-R
+        "cohere2",          // Command-R2
+        "exaone",           // LG ExaOne
+        "olmo",             // OLMo
+        "olmo2",            // OLMo 2
+        "stablelm",         // StableLM
+    ]
+
+    /// Model types that use FP8 quantization or other unsupported weight formats.
+    /// These cannot be loaded by VMLXRuntime and get a clear error message.
+    private static let unsupportedTypes: Set<String> = [
+        "mistral3",         // Mistral Small 4 — FP8 quantization + fused gate_up_proj
+        "mistral4",         // Mistral 4 text — FP8
+    ]
+
     /// Load a native model from a directory.
     ///
     /// 1. Reads config.json to determine model_type and quantization
@@ -50,27 +81,42 @@ public struct VMLXModelRegistry {
         let model: VMLXNativeModel & Module
         let modelType = baseConfig.modelType
 
+        // Reject unsupported models with a clear error
+        if unsupportedTypes.contains(modelType) {
+            throw ModelLoaderError.unsupportedArchitecture(
+                "\(modelType) uses FP8 quantization which is not yet supported. "
+                + "Supported formats: JANG (2/4/6/8-bit), MLX (4/8-bit standard quantization)."
+            )
+        }
+
         switch modelType {
+        // Qwen3.5 hybrid (GatedDeltaNet + GQA + optional MoE)
         case "qwen3_5":
-            // Has language_model wrapper (VL-compatible or top-level)
             let config = try JSONDecoder().decode(Qwen35Configuration.self, from: configData)
             model = Qwen35TopLevelModel(config)
 
         case "qwen3_5_text":
-            // Direct text model (no language_model wrapper)
             let config = try JSONDecoder().decode(Qwen35TextConfiguration.self, from: configData)
             model = Qwen35TextModel(config)
 
-        case "qwen3_5_moe":
-            // MoE variant uses same top-level wrapper
+        case "qwen3_5_moe", "qwen3_5_moe_text":
             let config = try JSONDecoder().decode(Qwen35Configuration.self, from: configData)
             model = Qwen35TopLevelModel(config)
 
         default:
-            throw ModelLoaderError.unsupportedArchitecture(
-                "Native model type '\(modelType)' is not yet supported. " +
-                "Supported: qwen3_5, qwen3_5_text, qwen3_5_moe"
-            )
+            // Standard transformer models (Llama, Qwen2, Qwen3, Mistral, Gemma, etc.)
+            if standardTransformerTypes.contains(modelType) {
+                let config = try JSONDecoder().decode(
+                    StandardModelConfiguration.self, from: configData)
+                model = StandardTransformerModel(config)
+            } else {
+                // Last resort: try loading as standard transformer anyway.
+                // Many custom/fine-tuned models use the standard architecture
+                // but have non-standard model_type strings.
+                let config = try JSONDecoder().decode(
+                    StandardModelConfiguration.self, from: configData)
+                model = StandardTransformerModel(config)
+            }
         }
 
         // Load weights
@@ -86,10 +132,11 @@ public struct VMLXModelRegistry {
     /// Check if a model_type is supported natively.
     public static func isSupported(modelType: String) -> Bool {
         switch modelType {
-        case "qwen3_5", "qwen3_5_text", "qwen3_5_moe":
+        case "qwen3_5", "qwen3_5_text", "qwen3_5_moe", "qwen3_5_moe_text":
             return true
         default:
-            return false
+            // Standard transformers + unknown types (fallback to standard)
+            return true
         }
     }
 }

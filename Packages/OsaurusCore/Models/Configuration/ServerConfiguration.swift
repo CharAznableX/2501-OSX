@@ -65,6 +65,15 @@ public struct ServerConfiguration: Codable, Equatable, Sendable {
     /// Memory management policy for loaded models
     public var modelEvictionPolicy: ModelEvictionPolicy
 
+    /// Enable TurboQuant 3-bit KV cache compression
+    public var enableTurboQuant: Bool?
+
+    /// Enable L2 disk cache (safetensors on SSD)
+    public var enableDiskCache: Bool?
+
+    /// Fraction of RAM for memory cache (0.1–0.6, nil = default 0.30)
+    public var cacheMemoryPercent: Float?
+
     private enum CodingKeys: String, CodingKey {
         case port
         case exposeToNetwork
@@ -81,6 +90,9 @@ public struct ServerConfiguration: Codable, Equatable, Sendable {
         case genPrefillStepSize
         case allowedOrigins
         case modelEvictionPolicy
+        case enableTurboQuant
+        case enableDiskCache
+        case cacheMemoryPercent
     }
 
     public init(from decoder: Decoder) throws {
@@ -113,6 +125,9 @@ public struct ServerConfiguration: Codable, Equatable, Sendable {
         self.modelEvictionPolicy =
             try container.decodeIfPresent(ModelEvictionPolicy.self, forKey: .modelEvictionPolicy)
             ?? defaults.modelEvictionPolicy
+        self.enableTurboQuant = try container.decodeIfPresent(Bool.self, forKey: .enableTurboQuant)
+        self.enableDiskCache = try container.decodeIfPresent(Bool.self, forKey: .enableDiskCache)
+        self.cacheMemoryPercent = try container.decodeIfPresent(Float.self, forKey: .cacheMemoryPercent)
     }
 
     public init(
@@ -130,7 +145,10 @@ public struct ServerConfiguration: Codable, Equatable, Sendable {
         genMaxKVSize: Int?,
         genPrefillStepSize: Int?,
         allowedOrigins: [String] = [],
-        modelEvictionPolicy: ModelEvictionPolicy = .strictSingleModel
+        modelEvictionPolicy: ModelEvictionPolicy = .strictSingleModel,
+        enableTurboQuant: Bool? = nil,
+        enableDiskCache: Bool? = nil,
+        cacheMemoryPercent: Float? = nil
     ) {
         self.port = port
         self.exposeToNetwork = exposeToNetwork
@@ -147,6 +165,9 @@ public struct ServerConfiguration: Codable, Equatable, Sendable {
         self.genPrefillStepSize = genPrefillStepSize
         self.allowedOrigins = allowedOrigins
         self.modelEvictionPolicy = modelEvictionPolicy
+        self.enableTurboQuant = enableTurboQuant
+        self.enableDiskCache = enableDiskCache
+        self.cacheMemoryPercent = cacheMemoryPercent
     }
 
     /// Default configuration

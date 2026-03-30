@@ -74,7 +74,12 @@ struct ModelCacheInspectorView: View {
                             item: item,
                             onUnload: {
                                 Task {
+                                    // Unload from both runtimes
                                     await MLXService.shared.unloadRuntimeModel(named: item.name)
+                                    let vmlxName = await VMLXServiceBridge.shared.loadedModelName
+                                    if vmlxName == item.name {
+                                        await VMLXServiceBridge.shared.unloadModel()
+                                    }
                                     await refresh()
                                 }
                             }
@@ -100,6 +105,7 @@ struct ModelCacheInspectorView: View {
                     Task {
                         isClearingAll = true
                         await MLXService.shared.clearRuntimeCache()
+                        await VMLXServiceBridge.shared.unloadModel()
                         await refresh()
                         isClearingAll = false
                     }
@@ -124,7 +130,18 @@ struct ModelCacheInspectorView: View {
 
     private func refresh() async {
         isRefreshing = true
-        items = await MLXService.shared.cachedRuntimeSummaries()
+        var allItems = await MLXService.shared.cachedRuntimeSummaries()
+
+        // Include VMLX-loaded model if any
+        let vmlxLoaded = await VMLXServiceBridge.shared.isModelLoaded
+        if vmlxLoaded, let name = await VMLXServiceBridge.shared.loadedModelName {
+            // Add VMLX model to the list (avoid duplicates)
+            if !allItems.contains(where: { $0.name == name }) {
+                allItems.append(ModelRuntime.ModelCacheSummary(name: name, bytes: 0, isCurrent: true))
+            }
+        }
+
+        items = allItems
         isRefreshing = false
         onRefresh?()
     }

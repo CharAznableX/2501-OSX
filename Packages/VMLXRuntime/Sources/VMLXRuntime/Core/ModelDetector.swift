@@ -286,13 +286,37 @@ public struct ModelDetector: Sendable {
             || hfConfig?["vision_config"] != nil
         let hasVision = jangVision || hfVision || hasPreprocessorConfig
 
-        // SSM detection
-        let hasSSM = jangArch?.hasSSM ?? false
+        // SSM detection: check jang_config first, then fall back to config.json evidence.
+        // Some JANG configs have has_ssm=false despite the model having Mamba2 layers
+        // (e.g., Nemotron Cascade JANG reports has_ssm=false but hybrid_override_pattern
+        // contains "M" for Mamba2 layers). Always cross-check config.json.
+        let jangHasSSM = jangArch?.hasSSM ?? false
+        let hfHasSSM: Bool = {
+            if let hop = hfConfig?["hybrid_override_pattern"] as? String, hop.contains("M") {
+                return true
+            }
+            let lt: [String]? = (hfConfig?["layer_types"] as? [String])
+                ?? (hfConfig?["text_config"] as? [String: Any])?["layer_types"] as? [String]
+            if let types = lt {
+                let ssmTypes: Set<String> = ["linear_attention", "ssm", "mamba", "recurrent", "gated_delta"]
+                return types.contains(where: { ssmTypes.contains($0.lowercased()) })
+            }
+            return false
+        }()
+        let hasSSM = jangHasSSM || hfHasSSM
 
-        // MoE detection
-        let hasMoE = jangArch?.hasMoE ?? false
+        // MoE detection: jang_config OR config.json
+        let jangHasMoE = jangArch?.hasMoE ?? false
+        let hfHasMoE: Bool = {
+            let experts = hfConfig?["num_local_experts"] as? Int
+                ?? hfConfig?["num_experts"] as? Int
+                ?? (hfConfig?["text_config"] as? [String: Any])?["num_experts"] as? Int
+                ?? (hfConfig?["text_config"] as? [String: Any])?["num_local_experts"] as? Int
+            return (experts ?? 0) > 1
+        }()
+        let hasMoE = jangHasMoE || hfHasMoE
 
-        // Hybrid = has SSM (architecture.has_ssm implies mixed SSM+attention or SSM-only)
+        // Hybrid = has SSM (mixed SSM+attention or SSM-only architecture)
         let isHybrid = hasSSM
 
         // HF config fields
@@ -452,6 +476,7 @@ public struct ModelDetector: Sendable {
         let customDirs = [
             home.appendingPathComponent("jang/models"),
             home.appendingPathComponent("models"),
+            home.appendingPathComponent("MLXModels"),
             home.appendingPathComponent(".mlxstudio/models"),
             home.appendingPathComponent(".osaurus/models"),
         ]
@@ -464,8 +489,22 @@ public struct ModelDetector: Sendable {
                 guard fm.fileExists(atPath: entryPath.path, isDirectory: &isDir),
                       isDir.boolValue else { continue }
 
+                // Try direct detection (single-level: ~/models/model-name/)
                 if let model = try? detect(at: entryPath) {
                     models.append(model)
+                } else {
+                    // Try two-level org/repo structure (~/MLXModels/JANGQ-AI/model-name/)
+                    if let subEntries = try? fm.contentsOfDirectory(atPath: entryPath.path) {
+                        for subEntry in subEntries {
+                            let subPath = entryPath.appendingPathComponent(subEntry)
+                            var subIsDir: ObjCBool = false
+                            guard fm.fileExists(atPath: subPath.path, isDirectory: &subIsDir),
+                                  subIsDir.boolValue else { continue }
+                            if let model = try? detect(at: subPath) {
+                                models.append(model)
+                            }
+                        }
+                    }
                 }
             }
         }

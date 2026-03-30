@@ -13,6 +13,7 @@ public struct SamplingParams: Sendable {
     public var repetitionPenalty: Float
     public var stop: [String]
     public var stopTokenIds: [Int]
+    public var enableThinking: Bool
 
     /// True when temperature is zero (deterministic / argmax sampling).
     public var isGreedy: Bool { temperature == 0 }
@@ -25,7 +26,8 @@ public struct SamplingParams: Sendable {
         minP: Float = 0.0,
         repetitionPenalty: Float = 1.0,
         stop: [String] = [],
-        stopTokenIds: [Int] = []
+        stopTokenIds: [Int] = [],
+        enableThinking: Bool = true
     ) {
         self.maxTokens = maxTokens
         self.temperature = temperature
@@ -35,6 +37,7 @@ public struct SamplingParams: Sendable {
         self.repetitionPenalty = repetitionPenalty
         self.stop = stop
         self.stopTokenIds = stopTokenIds
+        self.enableThinking = enableThinking
     }
 }
 

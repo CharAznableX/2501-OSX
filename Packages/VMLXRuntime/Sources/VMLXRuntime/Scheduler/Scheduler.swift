@@ -26,7 +26,7 @@ public struct SchedulerOutput: Sendable {
 ///   5. cleanup() — frees resources for finished requests
 public final class Scheduler: @unchecked Sendable {
 
-    public let config: SchedulerConfig
+    public var config: SchedulerConfig
     private let requestQueue: RequestQueue
     private let cacheCoordinator: CacheCoordinator
     private let lock = OSAllocatedUnfairLock()

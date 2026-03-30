@@ -135,11 +135,14 @@ struct OpenAIReasoningProfile: ModelProfile {
 /// Qwen3 / Qwen3.5 local models — supports disabling thinking via `enable_thinking` chat template kwarg.
 /// Excludes Qwen3-Coder variants which are non-thinking only.
 struct QwenThinkingProfile: ModelProfile {
-    static let displayName = "Qwen Thinking"
+    static let displayName = "Thinking"
 
     static func matches(modelId: String) -> Bool {
         let lower = modelId.lowercased()
-        return lower.contains("qwen3") && !lower.contains("coder")
+        // Models that use <think> tags in their chat template
+        return (lower.contains("qwen3") && !lower.contains("coder"))
+            || lower.contains("minimax")
+            || lower.contains("deepseek")
     }
 
     static let options: [ModelOptionDefinition] = [

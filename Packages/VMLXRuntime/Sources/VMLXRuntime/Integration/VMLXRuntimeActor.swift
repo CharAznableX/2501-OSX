@@ -80,6 +80,47 @@ public actor VMLXRuntimeActor {
         self.scheduler = Scheduler(config: config)
     }
 
+    // MARK: - Runtime Configuration
+
+    /// Apply user-facing runtime settings.
+    /// Called by the host app (Osaurus) to forward UI settings to the scheduler.
+    ///
+    /// Settings map:
+    ///   kvBits (2-8)     -> kvCacheQuantization ("q2"/"q4"/"q8" or "none")
+    ///   kvGroup (1-256)  -> kvCacheGroupSize
+    ///   maxKV (tokens)   -> maxNumBatchedTokens (caps context window)
+    ///   prefillStep      -> prefillStepSize (tokens per prefill chunk)
+    ///   topP             -> default topP for SamplingParams
+    ///   enableDiskCache  -> enableDiskCache + diskCacheDir
+    ///   enableTQ         -> enableTurboQuant
+    public func applyUserConfig(
+        kvBits: Int? = nil,
+        kvGroupSize: Int = 64,
+        maxContextLength: Int? = nil,
+        prefillStepSize: Int? = nil,
+        enableDiskCache: Bool = false,
+        diskCacheDir: URL? = nil,
+        enableTurboQuant: Bool = false
+    ) {
+        if let bits = kvBits, bits < 16 {
+            scheduler.config.kvCacheQuantization = "q\(bits)"
+        } else {
+            scheduler.config.kvCacheQuantization = "none"
+        }
+        scheduler.config.kvCacheGroupSize = kvGroupSize
+        if let maxKV = maxContextLength {
+            scheduler.config.maxNumBatchedTokens = maxKV
+        }
+        if let step = prefillStepSize {
+            scheduler.config.prefillStepSize = step
+        }
+        scheduler.config.enableDiskCache = enableDiskCache
+        if let dir = diskCacheDir {
+            scheduler.config.diskCacheDir = dir
+        }
+        scheduler.config.enableTurboQuant = enableTurboQuant
+    }
+
     // MARK: - Model Management
 
     /// Load a model from a directory path (primary method).
@@ -188,7 +229,11 @@ public actor VMLXRuntimeActor {
         ssmReDeriver = nil
 
         modelContainer = nil
+        loadedModels.removeAll()
         currentModelName = nil
+
+        // Force Metal memory cleanup before loading a new model
+        Memory.clearCache()
     }
 
     // MARK: - Multi-Model Gateway
@@ -267,6 +312,13 @@ public actor VMLXRuntimeActor {
     public func generateStream(
         request: VMLXChatCompletionRequest
     ) async throws -> AsyncThrowingStream<VMLXEvent, Error> {
+        // Cancel any in-flight generation before starting a new one.
+        // Metal command buffers cannot be shared across concurrent tasks.
+        for (id, task) in activeGenerations {
+            task.cancel()
+            activeGenerations.removeValue(forKey: id)
+        }
+
         if powerState == .jitWake {
             try await wake()
         }
@@ -281,16 +333,21 @@ public actor VMLXRuntimeActor {
         // Build tool/reasoning parsers
         let toolParser: (any ToolCallParser)? = request.tools != nil
             ? autoDetectToolParser(modelName: modelName) : nil
-        let reasoningParser: (any ReasoningParser)? = (request.enableThinking ?? false)
-            ? autoDetectReasoningParser(modelName: modelName) : nil
+
+        // Don't use reasoning parser here — Osaurus's StreamingDeltaProcessor
+        // handles <think> tag parsing at the UI level. If we strip tags here,
+        // the UI can't detect thinking blocks.
+        let reasoningParser: (any ReasoningParser)? = nil
 
         // Tokenize via chat template
         let samplingParams = request.toSamplingParams()
+        let enableThinking = request.enableThinking ?? true
         let tokens: [Int]
         do {
             tokens = try container.applyChatTemplate(
                 messages: request.messages,
-                addGenerationPrompt: true
+                addGenerationPrompt: true,
+                enableThinking: enableThinking
             )
         } catch {
             throw VMLXRuntimeError.tokenizationFailed
@@ -314,10 +371,57 @@ public actor VMLXRuntimeActor {
                         stopSequences: stopSequences
                     )
 
-                    // Create cache and run generation
+                    // Check CacheCoordinator for cached KV state from previous turns
                     let cache = container.newCache()
-                    var inputTokens = MLXArray(tokens)
+                    var inputTokens: MLXArray
+                    var cachedTokenCount = 0
+
+                    let fetchResult = self.scheduler.cache.fetch(tokens: tokens)
+                    switch fetchResult {
+                    case .hit(let cachedHybrid, let remaining, _)
+                        where cachedHybrid.layerCount == cache.count:
+                        // Restore cached KV state into the VMLXKVCache objects
+                        for (i, entry) in cachedHybrid.layers.enumerated() {
+                            guard i < cache.count else { break }
+                            switch entry {
+                            case .attention(let kv):
+                                if let kvSimple = cache[i] as? VMLXKVCacheSimple {
+                                    kvSimple.state = [kv.keys, kv.values]
+                                }
+                            case .ssm(let ssm):
+                                if let mambaCache = cache[i] as? VMLXMambaCache {
+                                    mambaCache.state = ssm.state
+                                }
+                            }
+                        }
+                        cachedTokenCount = tokens.count - remaining.count
+                        // Only process uncached tokens
+                        if remaining.isEmpty {
+                            // Full cache hit — trim last token from cache and re-process it
+                        // to get fresh logits for sampling the next token
+                            for c in cache {
+                                if let kvc = c as? VMLXKVCacheSimple {
+                                    kvc.trim(1)
+                                }
+                            }
+                            cachedTokenCount -= 1
+                            inputTokens = MLXArray([Int32(tokens.last!)])
+                        } else {
+                            inputTokens = MLXArray(remaining.map { Int32($0) })
+                        }
+                    case .partialHit(_, _, _), .miss, .hit(_, _, _):
+                        // No usable cache hit — prefill all tokens
+                        inputTokens = MLXArray(tokens.map { Int32($0) })
+                    }
+
                     var generatedTokenCount = 0
+
+                    // When thinking is enabled, the chat template adds <think> to the
+                    // prompt but the model's output doesn't include the tag itself.
+                    // Inject it so Osaurus's StreamingDeltaProcessor enters thinking mode.
+                    if enableThinking {
+                        continuation.yield(.tokens("<think>\n"))
+                    }
 
                     for _ in 0 ..< maxTokens {
                         try Task.checkCancellation()
@@ -327,6 +431,11 @@ public actor VMLXRuntimeActor {
                             inputTokens.expandedDimensions(axis: 0),
                             cache: cache
                         )
+
+                        // Force MLX lazy evaluation to materialize the logits tensor.
+                        // Without this, the computation graph grows unbounded across decode steps.
+                        // Note: MLX.eval() triggers Metal GPU computation, not code evaluation.
+                        MLX.eval(logits)
 
                         // Sample next token from last position's logits
                         var nextLogits = logits[0, -1]
@@ -340,21 +449,11 @@ public actor VMLXRuntimeActor {
                             // Greedy
                             nextToken = nextLogits.argMax().item(Int.self)
                         } else {
-                            // Temperature scaling
-                            nextLogits = nextLogits / temperature
-
-                            // Top-p (nucleus) sampling
-                            if topP < 1.0 {
-                                let sortedVals = sorted(nextLogits, axis: -1)
-                                let sortedIndices = argSort(nextLogits, axis: -1)
-                                let cumProbs = cumsum(softmax(sortedVals, axis: -1), axis: -1)
-                                let mask = cumProbs .< (1.0 - topP)
-                                nextLogits[sortedIndices] = MLX.where(mask, Float(-1e9), sortedVals)
-                            }
-
-                            // Sample from distribution
-                            let probs = MLX.softmax(nextLogits, axis: -1)
-                            let sampled = MLXRandom.categorical(probs.expandedDimensions(axis: 0))
+                            // Temperature scaling + categorical sampling
+                            // MLXRandom.categorical takes unnormalized logits directly
+                            let scaledLogits = nextLogits / temperature
+                            let sampled = MLXRandom.categorical(
+                                scaledLogits.expandedDimensions(axis: 0))
                             nextToken = sampled.item(Int.self)
                         }
 
@@ -402,18 +501,44 @@ public actor VMLXRuntimeActor {
                         }
                     }
 
+                    // Store cache for future turn reuse
+                    let allTokens = tokens + accumulator.generatedTokenIds
+                    if !allTokens.isEmpty {
+                        var layers: [LayerCacheEntry] = []
+                        for c in cache {
+                            if let mc = c as? VMLXMambaCache {
+                                layers.append(.ssm(SSMStateLayer(state: mc.state)))
+                            } else if let kvc = c as? VMLXKVCacheSimple {
+                                let s = kvc.state
+                                if s.count == 2 {
+                                    layers.append(.attention(KVCacheLayer(
+                                        keys: s[0], values: s[1], offset: kvc.offset)))
+                                }
+                            }
+                        }
+                        if !layers.isEmpty {
+                            let hybridCache = HybridCache(layers: layers)
+                            hybridCache.materialized()
+                            self.scheduler.cache.store(tokens: allTokens, cache: hybridCache)
+                        }
+                    }
+
                     // Emit usage
                     continuation.yield(.usage(
                         promptTokens: promptTokenCount,
                         completionTokens: generatedTokenCount,
-                        cachedTokens: 0
+                        cachedTokens: cachedTokenCount
                     ))
 
                     continuation.finish()
 
                 } catch is CancellationError {
+                    // Generation was stopped — don't store partial cache
+                    // Clear any stale cache that might have wrong shapes
+                    self.scheduler.cache.clearAll()
                     continuation.finish()
                 } catch {
+                    self.scheduler.cache.clearAll()
                     continuation.finish(throwing: error)
                 }
             }

@@ -19,6 +19,9 @@ actor VMLXServiceBridge: ToolCapableService {
 
     nonisolated let id: String = "vmlx"
 
+    /// Shared singleton for model management (unload, status checks).
+    static let shared = VMLXServiceBridge()
+
     private let service: VMLXService
 
     init(service: VMLXService = .shared) {
@@ -35,29 +38,76 @@ actor VMLXServiceBridge: ToolCapableService {
         service.handles(requestedModel: requestedModel)
     }
 
+    /// Apply user-configured runtime settings from Osaurus's ConfigurationView
+    /// to VMLXRuntime's scheduler. Called after model load so UI settings
+    /// (KV cache bits, max context, prefill step, etc.) take effect.
+    ///
+    /// Settings flow:
+    ///   ConfigurationView (UI sliders/steppers)
+    ///     -> ServerConfiguration (UserDefaults)
+    ///       -> RuntimeConfig.snapshot()
+    ///         -> VMLXService.applyUserConfig()
+    ///           -> VMLXRuntimeActor.applyUserConfig()
+    ///             -> SchedulerConfig fields
+    ///
+    /// What each setting controls in VMLXRuntime:
+    ///   topP          -> default nucleus sampling threshold (SamplingParams)
+    ///   kvBits        -> KV cache quantization: "q2"/"q4"/"q8" or "none"
+    ///   kvGroup       -> quantization group size (default 64)
+    ///   maxKV         -> maxNumBatchedTokens (caps context window)
+    ///   prefillStep   -> prefillStepSize (tokens per prefill chunk)
+    private func applyRuntimeConfig() async {
+        let cfg = await RuntimeConfig.snapshot()
+        let serverCfg = await ServerController.sharedConfiguration()
+
+        await service.applyUserConfig(
+            kvBits: cfg.kvBits,
+            kvGroupSize: cfg.kvGroup,
+            maxContextLength: cfg.maxKV,
+            prefillStepSize: cfg.prefillStep,
+            enableDiskCache: serverCfg?.enableDiskCache ?? false,
+            enableTurboQuant: serverCfg?.enableTurboQuant ?? false
+        )
+    }
+
     /// Ensure the requested model is loaded before inference.
     /// Auto-loads by resolving model name to directory path via ModelManager.
-    private func ensureModelLoaded(requestedModel: String?) async throws {
-        let modelLoaded = await service.isModelLoaded
-        if modelLoaded { return }
+    /// Track which model is currently loaded so we can detect switches.
+    private var currentLoadedModel: String?
 
-        // Resolve model name to a path
+    private func ensureModelLoaded(requestedModel: String?) async throws {
         let modelName = requestedModel ?? ""
         guard !modelName.isEmpty else {
             throw NSError(domain: "VMLXServiceBridge", code: 1,
                          userInfo: [NSLocalizedDescriptionKey: "No model specified"])
         }
 
-        // Try to find the model in Osaurus's model directory
+        // Check if the CORRECT model is already loaded (not just any model)
+        let modelLoaded = await service.isModelLoaded
+        if modelLoaded, let current = currentLoadedModel,
+           modelName.lowercased() == current.lowercased() {
+            return
+        }
+
+        // Different model requested or no model loaded — unload first
+        if modelLoaded {
+            await service.unloadModel()
+        }
+
+        // Load the requested model
         if let found = ModelManager.findInstalledModel(named: modelName) {
             let modelsDir = DirectoryPickerService.effectiveModelsDirectory()
             let modelPath = modelsDir.appendingPathComponent(found.id)
             let resolved = modelPath.resolvingSymlinksInPath()
             try await service.loadModel(from: resolved)
         } else {
-            // Try loading by name (VMLXRuntime scans its own directories)
             try await service.loadModel(name: modelName)
         }
+
+        currentLoadedModel = modelName
+
+        // Apply user's inference settings
+        await applyRuntimeConfig()
     }
 
     func generateOneShot(
@@ -147,14 +197,21 @@ actor VMLXServiceBridge: ToolCapableService {
 
     func loadModel(name: String) async throws {
         try await service.loadModel(name: name)
+        currentLoadedModel = name
     }
 
     func unloadModel() async {
         await service.unloadModel()
+        currentLoadedModel = nil
     }
 
     var isModelLoaded: Bool {
         get async { await service.isModelLoaded }
+    }
+
+    /// Name of the currently loaded VMLX model (nil if none).
+    var loadedModelName: String? {
+        currentLoadedModel
     }
 
     // MARK: - Static Model Discovery
@@ -235,8 +292,36 @@ extension GenerationParameters {
             maxTokens: maxTokens,
             temperature: temperature ?? 0.7,
             topP: topPOverride ?? 0.9,
-            repetitionPenalty: repetitionPenalty ?? 1.0
+            repetitionPenalty: repetitionPenalty ?? 1.0,
+            enableThinking: !isThinkingDisabled
         )
+    }
+
+    /// Whether thinking is explicitly disabled via modelOptions.
+    private var isThinkingDisabled: Bool {
+        if let val = modelOptions["disableThinking"] {
+            switch val {
+            case .bool(let b): return b
+            case .string(let s): return s.lowercased() == "true"
+            default: return false
+            }
+        }
+        return false
+    }
+
+    /// Whether thinking/reasoning mode is enabled via modelOptions.
+    /// The UI sets "disableThinking" (inverted) via ModelProfileRegistry.
+    var isThinkingEnabled: Bool {
+        if let val = modelOptions["disableThinking"] {
+            // Inverted: disableThinking=false means thinking IS enabled
+            switch val {
+            case .bool(let b): return !b
+            case .string(let s): return s.lowercased() == "false"
+            default: return false
+            }
+        }
+        // If no explicit option, default to false (no thinking)
+        return false
     }
 }
 
