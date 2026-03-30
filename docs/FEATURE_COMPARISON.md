@@ -51,7 +51,8 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 | Weight loading from safetensors | mlx-lm | TransformerModel.loadWeights() | DONE | Models/TransformerModel.swift |
 | ModelForwardPass protocol | -- | prefill()/decode() | DONE | Generation/GenerationEngine.swift |
 | Cache load/export (HybridCache) | -- | loadCache()/exportCache() | DONE | Models/TransformerModel.swift |
-| Mamba/SSM layers | utils/mamba_cache.py | -- | TODO | Needs Mamba block implementation |
+| Mamba/SSM layers | utils/mamba_cache.py | MambaBlock + MambaState | DONE | Models/MambaLayer.swift |
+| Hybrid transformer | -- | HybridTransformerModel | DONE | Models/HybridTransformerModel.swift |
 | MoE routing | mlx-lm | -- | TODO | Needs MoE layer implementation |
 | MLA (multi-head latent attention) | mlx-lm | -- | TODO | Needs MLA variant |
 
@@ -186,13 +187,13 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 | DeepSeek parser | deepseek_tool_parser.py | DeepSeekToolParser | DONE | Parsers/ToolParsers/DeepSeekToolParser.swift |
 | Hermes parser | hermes_tool_parser.py | HermesToolParser | DONE | Parsers/ToolParsers/HermesToolParser.swift |
 | Functionary parser | functionary_tool_parser.py | FunctionaryToolParser | DONE | Parsers/ToolParsers/FunctionaryToolParser.swift |
-| Granite parser | granite_tool_parser.py | -- | TODO | |
+| Granite parser | granite_tool_parser.py | GraniteToolParser | DONE | Parsers/ToolParsers/GraniteToolParser.swift |
 | GLM parser | glm_tool_parser.py | GLMToolParser | DONE | Parsers/ToolParsers/GLMToolParser.swift |
 | MiniMax parser | minimax_tool_parser.py | MiniMaxToolParser | DONE | Parsers/ToolParsers/MiniMaxToolParser.swift |
 | Nemotron parser | nemotron_tool_parser.py | NemotronToolParser | DONE | Parsers/ToolParsers/NemotronToolParser.swift |
-| xLAM parser | xlam_tool_parser.py | -- | TODO | |
-| Moonshot parser | moonshot_tool_parser.py | -- | TODO | |
-| StepFun parser | stepfun_tool_parser.py | -- | TODO | |
+| xLAM parser | xlam_tool_parser.py | XLAMToolParser | DONE | Parsers/ToolParsers/XLAMToolParser.swift |
+| Moonshot parser | moonshot_tool_parser.py | MoonshotToolParser | DONE | Parsers/ToolParsers/MoonshotToolParser.swift |
+| StepFun parser | stepfun_tool_parser.py | StepFunToolParser | DONE | Parsers/ToolParsers/StepFunToolParser.swift |
 
 ## 11. Reasoning Parsers
 
@@ -253,7 +254,7 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 | Category | Total Features | DONE | STUB | TODO |
 |----------|---------------|------|------|------|
 | Model Loading | 17 | 15 | 0 | 2 |
-| Transformer | 16 | 13 | 0 | 3 |
+| Transformer | 17 | 15 | 0 | 2 |
 | Cache Stack | 17 | 16 | 0 | 1 |
 | TurboQuant | 14 | 9 | 5 | 0 |
 | Scheduler | 14 | 13 | 0 | 1 |
@@ -261,10 +262,10 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 | Power Mgmt | 6 | 6 | 0 | 0 |
 | Multi-Model | 6 | 6 | 0 | 0 |
 | Vision | 10 | 9 | 0 | 1 |
-| Tool Parsers | 16 | 12 | 0 | 4 |
-| Reasoning Parsers | 5 | 3 | 0 | 2 |
+| Tool Parsers | 16 | 16 | 0 | 0 |
+| Reasoning Parsers | 5 | 5 | 0 | 0 |
 | API Compat | 18 | 0 | 0 | 8 (10 N/A) |
 | Integration | 12 | 12 | 0 | 0 |
-| **TOTAL** | **167** | **128 (77%)** | **5 (3%)** | **24 (14%)** |
+| **TOTAL** | **168** | **138 (82%)** | **5 (3%)** | **15 (9%)** |
 
 (10 features marked N/A = handled by Osaurus natively)
