@@ -382,8 +382,9 @@ public actor VMLXRuntimeActor {
 
                     let fetchResult = self.scheduler.cache.fetch(tokens: tokens)
                     switch fetchResult {
-                    case .hit(let cachedHybrid, let remaining, _)
+                    case .hit(let cachedHybrid, let remaining, let detail)
                         where cachedHybrid.layerCount == cache.count:
+                        print("[Gen] Cache HIT: \(cachedHybrid.layerCount) layers, \(remaining.count) remaining tokens, detail=\(detail)")
                         // Restore cached KV state into the VMLXKVCache objects
                         for (i, entry) in cachedHybrid.layers.enumerated() {
                             guard i < cache.count else { break }
@@ -415,6 +416,7 @@ public actor VMLXRuntimeActor {
                         }
                     case .partialHit(_, _, _), .miss, .hit(_, _, _):
                         // No usable cache hit — prefill all tokens
+                        print("[Gen] Cache MISS: prefilling \(tokens.count) tokens")
                         inputTokens = MLXArray(tokens.map { Int32($0) })
                     }
 
@@ -526,6 +528,7 @@ public actor VMLXRuntimeActor {
                     }
 
                     // Store cache for future turn reuse
+                    print("[Gen] Storing cache: \(tokens.count) prompt + \(accumulator.generatedTokenIds.count) generated = \(tokens.count + accumulator.generatedTokenIds.count) total tokens")
                     let allTokens = tokens + accumulator.generatedTokenIds
                     if !allTokens.isEmpty {
                         var layers: [LayerCacheEntry] = []
