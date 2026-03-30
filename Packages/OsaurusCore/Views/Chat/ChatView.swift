@@ -117,7 +117,7 @@ final class ChatSession: ObservableObject {
                     let active = ChatWindowManager.shared.activeLocalModelNames()
                     await ModelRuntime.shared.unloadModelsNotIn(active)
                     // Also unload from VMLXRuntime when switching models
-                    await VMLXServiceBridge.shared.unloadModel()
+                    await VMLXServiceBridge.forceUnload()
                 }
             }
 

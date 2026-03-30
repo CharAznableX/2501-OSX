@@ -221,6 +221,20 @@ actor VMLXServiceBridge: ToolCapableService {
     nonisolated static func getAvailableModels() -> [String] {
         ModelDetector.scanAvailableModels().map(\.name)
     }
+
+    /// Force-unload the model from the shared VMLXService singleton.
+    /// Use this from UI buttons — it unloads from the actual runtime
+    /// regardless of which bridge instance loaded it.
+    static func forceUnload() async {
+        await VMLXService.shared.unloadModel()
+        // Also reset the shared bridge's tracking
+        await VMLXServiceBridge.shared.resetLoadedModel()
+    }
+
+    /// Reset loaded model tracking (called after force unload).
+    func resetLoadedModel() {
+        currentLoadedModel = nil
+    }
 }
 
 // MARK: - ChatMessage → VMLXChatMessage

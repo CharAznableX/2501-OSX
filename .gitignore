@@ -137,4 +137,4 @@ private_key.txt
 benchmarks/
 
 # Generated benchmark/test output
-results/
+results/*.profraw

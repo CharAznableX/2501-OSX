@@ -1097,7 +1097,7 @@ extension FloatingInputCard {
             Button(role: .destructive) {
                 Task {
                     // Unload from both runtimes
-                    await VMLXServiceBridge.shared.unloadModel()
+                    await VMLXServiceBridge.forceUnload()
                     await ModelRuntime.shared.clearAll()
                 }
             } label: {

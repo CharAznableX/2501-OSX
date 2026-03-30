@@ -415,6 +415,9 @@ public actor VMLXRuntimeActor {
                     }
 
                     var generatedTokenCount = 0
+                    var thinkingTokenCount = 0
+                    var insideThinking = enableThinking
+                    let thinkingBudget = maxTokens / 2  // Cap thinking at half of maxTokens
 
                     // When thinking is enabled, the chat template adds <think> to the
                     // prompt but the model's output doesn't include the tag itself.
@@ -466,6 +469,18 @@ public actor VMLXRuntimeActor {
 
                         // Decode token to text
                         let text = container.decode([nextToken])
+
+                        // Track thinking tokens and enforce budget
+                        if insideThinking {
+                            thinkingTokenCount += 1
+                            if text.contains("</think>") {
+                                insideThinking = false
+                            } else if thinkingTokenCount >= thinkingBudget {
+                                // Force close thinking — model is looping
+                                insideThinking = false
+                                continuation.yield(.tokens("\n</think>\n"))
+                            }
+                        }
 
                         // Process through accumulator
                         let events = accumulator.process(text: text, tokenIds: [nextToken])
