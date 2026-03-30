@@ -1,22 +1,19 @@
 import Foundation
 import MLX
-import MLXLMCommon
+import MLXNN
 import Tokenizers
 
 /// Container wrapping a loaded model with runtime configuration.
 /// This is what gets passed around during inference.
-///
-/// Named `VMLXModelContainer` to avoid collision with `MLXLMCommon.ModelContainer`.
 public final class VMLXModelContainer: @unchecked Sendable {
 
     /// The loaded model (weights + tokenizer + config).
     public let model: LoadedModel
 
-    /// The mlx-swift-lm model container (handles forward pass, tokenizer, KV cache, etc.).
-    /// This is the proven implementation that supports 50+ model architectures.
-    public let mlxContainer: MLXLMCommon.ModelContainer
+    /// The native model for direct forward pass access.
+    public let nativeModel: any VMLXNativeModel & Module
 
-    /// Cached tokenizer reference (fetched from mlxContainer during init).
+    /// Tokenizer reference.
     public let tokenizer: any Tokenizer
 
     /// Model name/path.
@@ -43,13 +40,11 @@ public final class VMLXModelContainer: @unchecked Sendable {
     /// Model family config (tool format, reasoning format, etc.).
     public let familyConfig: ModelFamilyConfig
 
-    /// Use the async factory method `create(model:mlxContainer:)` instead.
-    private init(model: LoadedModel, mlxContainer: MLXLMCommon.ModelContainer,
-                 tokenizer: any Tokenizer,
+    private init(model: LoadedModel,
                  turboQuantConfig: TurboQuantConfig?, layerPattern: [LayerType]?) {
         self.model = model
-        self.mlxContainer = mlxContainer
-        self.tokenizer = tokenizer
+        self.nativeModel = model.nativeModel
+        self.tokenizer = model.tokenizer
         self.name = model.detected.name
         self.eosTokenIds = model.eosTokenIds
         self.familyConfig = ModelConfigRegistry.configFor(modelName: model.detected.name)
@@ -57,11 +52,8 @@ public final class VMLXModelContainer: @unchecked Sendable {
         self.layerPattern = layerPattern
     }
 
-    /// Async factory method. Fetches the tokenizer from the mlx-swift-lm container
-    /// and builds TQ/hybrid configuration from detected model properties.
-    public static func create(model: LoadedModel, mlxContainer: MLXLMCommon.ModelContainer) async -> VMLXModelContainer {
-        let tokenizer = await mlxContainer.tokenizer
-
+    /// Factory method. Builds TQ/hybrid configuration from detected model properties.
+    public static func create(model: LoadedModel) -> VMLXModelContainer {
         // Build TQ config and layer pattern
         let turboQuantConfig: TurboQuantConfig?
         let layerPattern: [LayerType]?
@@ -70,7 +62,6 @@ public final class VMLXModelContainer: @unchecked Sendable {
            JangLoader.isJangModel(at: model.detected.modelPath),
            let jangConfig = try? JangLoader.loadConfig(at: model.detected.modelPath) {
 
-            // Build layer pattern from detected hybrid info
             let detectedLayerPattern: [LayerType]?
             if let patternStr = model.detected.hybridOverridePattern {
                 detectedLayerPattern = parseHybridPattern(patternStr)
@@ -97,7 +88,6 @@ public final class VMLXModelContainer: @unchecked Sendable {
         } else {
             turboQuantConfig = nil
 
-            // Still parse layer pattern for non-JANG hybrid models
             if let patternStr = model.detected.hybridOverridePattern {
                 layerPattern = parseHybridPattern(patternStr)
             } else if let layerTypeStrs = model.detected.layerTypes {
@@ -115,8 +105,6 @@ public final class VMLXModelContainer: @unchecked Sendable {
 
         return VMLXModelContainer(
             model: model,
-            mlxContainer: mlxContainer,
-            tokenizer: tokenizer,
             turboQuantConfig: turboQuantConfig,
             layerPattern: layerPattern
         )
@@ -135,19 +123,14 @@ public final class VMLXModelContainer: @unchecked Sendable {
     }
 
     /// Apply chat template to messages and encode.
-    ///
-    /// Converts `VMLXChatMessage` to swift-transformers `Message` format
-    /// (`[String: any Sendable]` dictionaries) and delegates to the tokenizer.
     public func applyChatTemplate(
         messages: [VMLXChatMessage],
         addGenerationPrompt: Bool = true
     ) throws -> [Int] {
-        // Convert VMLXChatMessage to swift-transformers Message format
         let chatMessages: [Message] = messages.map { msg in
             ["role": msg.role, "content": msg.textContent]
         }
 
-        // Try using the tokenizer's chat template
         if tokenizer.hasChatTemplate {
             return try tokenizer.applyChatTemplate(
                 messages: chatMessages,
@@ -159,7 +142,6 @@ public final class VMLXModelContainer: @unchecked Sendable {
             )
         }
 
-        // Fallback: simple concatenation
         let fullText = messages.map { msg in
             "\(msg.role): \(msg.textContent)"
         }.joined(separator: "\n")
@@ -168,13 +150,8 @@ public final class VMLXModelContainer: @unchecked Sendable {
     }
 
     /// Compute gen_prompt_len: difference between encoding with and without generation prompt.
-    ///
-    /// Used for SSM checkpointing in hybrid thinking models: the generation prompt
-    /// (e.g., `<think>`) tokens contaminate SSM state, so we need to know where
-    /// the stable boundary is for checkpointing.
     public func computeGenPromptLen(messages: [VMLXChatMessage]) -> Int {
         guard tokenizer.hasChatTemplate else { return 0 }
-
         do {
             let withGen = try applyChatTemplate(messages: messages, addGenerationPrompt: true)
             let withoutGen = try applyChatTemplate(messages: messages, addGenerationPrompt: false)
@@ -182,5 +159,17 @@ public final class VMLXModelContainer: @unchecked Sendable {
         } catch {
             return 0
         }
+    }
+
+    // MARK: - Inference
+
+    /// Run the model forward pass (tokens in, logits out).
+    public func forward(_ tokens: MLXArray, cache: [VMLXKVCache]?) -> MLXArray {
+        nativeModel(tokens, cache: cache)
+    }
+
+    /// Create fresh caches for inference.
+    public func newCache() -> [VMLXKVCache] {
+        nativeModel.newCache()
     }
 }

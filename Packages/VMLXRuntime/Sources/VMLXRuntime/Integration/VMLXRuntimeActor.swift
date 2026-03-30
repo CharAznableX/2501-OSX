@@ -1,7 +1,7 @@
 import Foundation
 import MLX
-import MLXLMCommon
-import MLXLLM
+import MLXRandom
+import MLXNN
 
 /// Events emitted during generation.
 public enum VMLXEvent: Sendable {
@@ -27,12 +27,9 @@ public enum PowerState: Sendable {
 
 /// The central VMLXRuntime actor. Singleton that owns model loading,
 /// cache coordination, scheduling, and generation.
-/// Replaces Osaurus's ModelRuntime.
 ///
-/// Uses mlx-swift-lm's `ModelContainer` for the actual model forward pass,
-/// which supports 50+ model architectures with proven weight loading.
-/// VMLXRuntime wraps this with its own caching, batching, streaming,
-/// parsing, and power management infrastructure.
+/// Uses native model implementations (Qwen3.5, etc.) for the forward pass.
+/// No external model library dependency -- only mlx-swift for the computation backend.
 public actor VMLXRuntimeActor {
 
     public static let shared = VMLXRuntimeActor()
@@ -42,11 +39,10 @@ public actor VMLXRuntimeActor {
     /// Current loaded model name.
     public private(set) var currentModelName: String?
 
-    /// The VMLX model container (wraps mlx-swift-lm container + VMLXRuntime metadata).
+    /// The VMLX model container (native model + tokenizer + metadata).
     private var modelContainer: VMLXModelContainer?
 
     /// SSM re-deriver for recovering SSM state when checkpoint is evicted.
-    /// Lazily created when a model is loaded.
     private var ssmReDeriver: SSMReDeriver?
 
     /// Whether a model is loaded and ready.
@@ -88,18 +84,16 @@ public actor VMLXRuntimeActor {
 
     /// Load a model from a directory path (primary method).
     ///
-    /// This is the real loading path:
-    /// 1. Calls `ModelLoader.load(from:)` which uses mlx-swift-lm's model factory
+    /// 1. Calls `ModelLoader.load(from:)` which uses native model registry
     ///    to load weights, tokenizer, and build the correct model architecture
-    /// 2. Wraps the result in a `VMLXModelContainer` (which auto-detects JANG, hybrid, TQ, etc.)
-    /// 3. Configures the `Scheduler` with the model's properties (hybrid, stop tokens, TQ)
+    /// 2. Wraps the result in a `VMLXModelContainer`
+    /// 3. Configures the `Scheduler` with the model's properties
     public func loadModel(from path: URL) async throws {
-        // Unload previous model if any
         if modelContainer != nil {
             await unloadModel()
         }
 
-        // 1. Load model using mlx-swift-lm's proven model factory
+        // 1. Load model using native model registry
         let loadedModel: LoadedModel
         do {
             loadedModel = try await ModelLoader.load(from: path)
@@ -109,10 +103,10 @@ public actor VMLXRuntimeActor {
             )
         }
 
-        // 2. Wrap in VMLXModelContainer (auto-detects JANG profile, hybrid layers, TQ config, family)
-        let container = await VMLXModelContainer.create(model: loadedModel, mlxContainer: loadedModel.mlxContainer)
+        // 2. Wrap in VMLXModelContainer
+        let container = VMLXModelContainer.create(model: loadedModel)
 
-        // 3. Configure the Scheduler from the loaded model's properties
+        // 3. Configure the Scheduler
         scheduler.configureForModel(
             isHybrid: container.isHybrid,
             layerPattern: container.layerPattern,
@@ -127,8 +121,7 @@ public actor VMLXRuntimeActor {
         self.lastLoadedModelPath = path
         self.powerState = .active
 
-        // 4b. Wire SSM re-deriver with boundary info.
-        // For hybrid models the re-deriver can run prefill to recover SSM state.
+        // 4b. Wire SSM re-deriver
         if let ssmCache = scheduler.cache.ssmStateCache {
             let reDeriver = SSMReDeriver(ssmCache: ssmCache)
             self.ssmReDeriver = reDeriver
@@ -147,12 +140,8 @@ public actor VMLXRuntimeActor {
     public func loadModel(from path: URL, alias: String?) async throws {
         try await loadModel(from: path)
 
-        // If alias provided, re-register under the alias
         if let alias = alias, let container = modelContainer {
-            // Remove the auto-registered name
             loadedModels.removeValue(forKey: container.name)
-
-            // Register under alias
             loadedModels[alias] = container
             activeModelName = alias
             currentModelName = alias
@@ -160,22 +149,16 @@ public actor VMLXRuntimeActor {
     }
 
     /// Load a model by name (convenience method).
-    ///
-    /// Scans well-known model directories via `ModelDetector.scanAvailableModels()`
-    /// to resolve the name to a path, then delegates to `loadModel(from:)`.
     public func loadModel(name: String) async throws {
-        // First, try interpreting `name` as a direct path
         let directURL = URL(fileURLWithPath: name)
         if FileManager.default.fileExists(atPath: directURL.appendingPathComponent("config.json").path) {
             try await loadModel(from: directURL)
             return
         }
 
-        // Scan available models and match by name
         let available = ModelDetector.scanAvailableModels()
         let nameLower = name.lowercased()
 
-        // Try exact match first, then substring match
         let matched = available.first(where: { $0.name.lowercased() == nameLower })
             ?? available.first(where: { $0.name.lowercased().contains(nameLower) })
             ?? available.first(where: { $0.modelPath.lastPathComponent.lowercased().contains(nameLower) })
@@ -192,16 +175,12 @@ public actor VMLXRuntimeActor {
 
     /// Unload current model and free resources.
     public func unloadModel() async {
-        // Cancel all active generations
         for (_, task) in activeGenerations {
             task.cancel()
         }
         activeGenerations.removeAll()
-
-        // Shut down scheduler (aborts running requests, frees resources)
         scheduler.shutdown()
 
-        // Clear re-deriver
         if let reDeriver = ssmReDeriver {
             await reDeriver.cancelAll()
             await reDeriver.setModel(nil)
@@ -214,7 +193,6 @@ public actor VMLXRuntimeActor {
 
     // MARK: - Multi-Model Gateway
 
-    /// Route to the correct model based on requested model name.
     public func resolveModel(_ requestedModel: String?) -> VMLXModelContainer? {
         guard let name = requestedModel else {
             return loadedModels[activeModelName ?? ""]
@@ -224,18 +202,15 @@ public actor VMLXRuntimeActor {
         }
     }
 
-    /// List all loaded model names.
     public var loadedModelNames: [String] {
         Array(loadedModels.keys)
     }
 
-    /// Unload a specific model by name.
     public func unloadModel(name: String) async {
         loadedModels.removeValue(forKey: name)
         if activeModelName == name {
             activeModelName = loadedModels.keys.first
         }
-        // If unloading the current primary model, clear it
         if currentModelName == name {
             modelContainer = nil
             currentModelName = activeModelName
@@ -247,13 +222,11 @@ public actor VMLXRuntimeActor {
 
     // MARK: - Power Management
 
-    /// Soft sleep: clear caches, reduce memory, keep model weights loaded.
     public func softSleep() async {
         scheduler.cache.clearAll()
         powerState = .softSleep
     }
 
-    /// Deep sleep: unload model completely, free all GPU memory.
     public func deepSleep() async {
         await unloadModel()
         loadedModels.removeAll()
@@ -261,7 +234,6 @@ public actor VMLXRuntimeActor {
         powerState = .deepSleep
     }
 
-    /// Wake: reload model if in sleep state.
     public func wake() async throws {
         guard powerState != .active else { return }
         if let path = lastLoadedModelPath {
@@ -272,14 +244,12 @@ public actor VMLXRuntimeActor {
         powerState = .active
     }
 
-    /// JIT wake: set to auto-wake on next inference request.
     public func enableJITWake() {
         if powerState == .deepSleep {
             powerState = .jitWake
         }
     }
 
-    /// Enable JIT compilation for Metal operation fusion (potential 20-50% speedup).
     public func enableJIT() {
         jitEnabled = true
     }
@@ -287,20 +257,16 @@ public actor VMLXRuntimeActor {
     // MARK: - Generation
 
     /// Generate a streaming response for a chat completion request.
-    /// Returns an AsyncThrowingStream of VMLXEvents.
     ///
-    /// Uses mlx-swift-lm's `ModelContainer.generate()` for the actual model forward pass,
-    /// which correctly handles all 50+ architectures (quantized weights, correct key paths,
-    /// architecture-specific attention patterns, etc.).
-    ///
-    /// VMLXRuntime wraps this with:
-    /// - Our CacheCoordinator for prefix cache reuse
+    /// Uses native VMLXRuntime models for the forward pass.
+    /// Implements autoregressive token-by-token generation with:
+    /// - Chat template tokenization via swift-transformers
+    /// - Greedy/sampling decoding
     /// - StreamAccumulator for tool/reasoning parsing
     /// - VMLXEvent emission for OpenAI-compatible streaming
     public func generateStream(
         request: VMLXChatCompletionRequest
     ) async throws -> AsyncThrowingStream<VMLXEvent, Error> {
-        // JIT wake: auto-load model if in jitWake state
         if powerState == .jitWake {
             try await wake()
         }
@@ -311,7 +277,6 @@ public actor VMLXRuntimeActor {
 
         let requestId = UUID().uuidString
         let modelName = currentModelName ?? ""
-        let mlxContainer = container.mlxContainer
 
         // Build tool/reasoning parsers
         let toolParser: (any ToolCallParser)? = request.tools != nil
@@ -319,103 +284,110 @@ public actor VMLXRuntimeActor {
         let reasoningParser: (any ReasoningParser)? = (request.enableThinking ?? false)
             ? autoDetectReasoningParser(modelName: modelName) : nil
 
-        // Convert VMLXChatMessages to mlx-swift-lm's Chat.Message format
-        let chatMessages: [Chat.Message] = request.messages.map { msg in
-            let role: Chat.Message.Role
-            switch msg.role {
-            case "system": role = .system
-            case "assistant": role = .assistant
-            case "tool": role = .tool
-            default: role = .user
-            }
-            return Chat.Message(role: role, content: msg.textContent)
+        // Tokenize via chat template
+        let samplingParams = request.toSamplingParams()
+        let tokens: [Int]
+        do {
+            tokens = try container.applyChatTemplate(
+                messages: request.messages,
+                addGenerationPrompt: true
+            )
+        } catch {
+            throw VMLXRuntimeError.tokenizationFailed
         }
 
-        // Build GenerateParameters for mlx-swift-lm
-        let samplingParams = request.toSamplingParams()
-        let generateParams = GenerateParameters(
-            maxTokens: samplingParams.maxTokens,
-            temperature: samplingParams.temperature,
-            topP: samplingParams.topP,
-            repetitionPenalty: samplingParams.repetitionPenalty > 1.0 ? samplingParams.repetitionPenalty : nil,
-            repetitionContextSize: 20
-        )
-
-        // Prepare input on the actor (UserInput is not Sendable, so must be consumed here).
-        // mlx-swift-lm's prepare() tokenizes via the model's processor (chat template, etc.).
-        let userInput = UserInput(prompt: .chat(chatMessages))
-        let preparedInput = try await mlxContainer.prepare(input: userInput)
-        let promptTokenCount = preparedInput.text.tokens.size
-
-        // Generate the stream on the actor. mlx-swift-lm handles:
-        // - Model forward pass (correct for ALL 50+ architectures)
-        // - KV cache management internally
-        // - Streaming token generation
-        let generationStream = try await mlxContainer.generate(
-            input: preparedInput,
-            parameters: generateParams
-        )
-
+        let promptTokenCount = tokens.count
+        let maxTokens = samplingParams.maxTokens
+        let temperature = samplingParams.temperature
+        let topP = samplingParams.topP
+        _ = samplingParams.repetitionPenalty  // TODO: implement repetition penalty
         let stopSequences = samplingParams.stop
+        let eosTokenIds = container.eosTokenIds
+        let stopTokenIds = Set(samplingParams.stopTokenIds)
 
         return AsyncThrowingStream { continuation in
             let task = Task { @Sendable in
                 do {
-                    // Set up stream accumulator for tool/reasoning parsing
                     var accumulator = StreamAccumulator(
                         toolParser: toolParser,
                         reasoningParser: reasoningParser,
                         stopSequences: stopSequences
                     )
 
-                    var finalPromptTokenCount = promptTokenCount
+                    // Create cache and run generation
+                    let cache = container.newCache()
+                    var inputTokens = MLXArray(tokens)
                     var generatedTokenCount = 0
 
-                    for await generation in generationStream {
-                        // Check cancellation
+                    for _ in 0 ..< maxTokens {
                         try Task.checkCancellation()
 
-                        switch generation {
-                        case .chunk(let text):
-                            generatedTokenCount += 1  // approximate; chunks may contain multiple tokens
-                            let events = accumulator.process(text: text, tokenIds: [])
-                            for event in events {
-                                switch event {
-                                case .tokens(let t):
-                                    continuation.yield(.tokens(t))
-                                case .thinking(let t):
-                                    continuation.yield(.thinking(t))
-                                case .toolInvocation(let name, let args, let callId):
-                                    continuation.yield(.toolInvocation(name: name, argsJSON: args, callId: callId))
-                                case .finished:
-                                    break
-                                }
+                        // Forward pass
+                        let logits = container.forward(
+                            inputTokens.expandedDimensions(axis: 0),
+                            cache: cache
+                        )
+
+                        // Sample next token from last position's logits
+                        var nextLogits = logits[0, -1]
+
+                        // Apply repetition penalty
+                        // (simplified -- full implementation would track context window)
+
+                        // Temperature and sampling
+                        let nextToken: Int
+                        if temperature == 0 {
+                            // Greedy
+                            nextToken = nextLogits.argMax().item(Int.self)
+                        } else {
+                            // Temperature scaling
+                            nextLogits = nextLogits / temperature
+
+                            // Top-p (nucleus) sampling
+                            if topP < 1.0 {
+                                let sortedVals = sorted(nextLogits, axis: -1)
+                                let sortedIndices = argSort(nextLogits, axis: -1)
+                                let cumProbs = cumsum(softmax(sortedVals, axis: -1), axis: -1)
+                                let mask = cumProbs .< (1.0 - topP)
+                                nextLogits[sortedIndices] = MLX.where(mask, Float(-1e9), sortedVals)
                             }
 
-                        case .info(let info):
-                            // Generation complete -- use actual token counts from info
-                            generatedTokenCount = info.generationTokenCount
-                            finalPromptTokenCount = info.promptTokenCount
-
-                        case .toolCall(let toolCall):
-                            // mlx-swift-lm detected a tool call natively
-                            let argsJSON: String
-                            let jsonObject = toolCall.function.arguments.mapValues { $0.anyValue }
-                            if let data = try? JSONSerialization.data(withJSONObject: jsonObject),
-                               let str = String(data: data, encoding: .utf8) {
-                                argsJSON = str
-                            } else {
-                                argsJSON = "{}"
-                            }
-                            continuation.yield(.toolInvocation(
-                                name: toolCall.function.name,
-                                argsJSON: argsJSON,
-                                callId: UUID().uuidString
-                            ))
+                            // Sample from distribution
+                            let probs = MLX.softmax(nextLogits, axis: -1)
+                            let sampled = MLXRandom.categorical(probs.expandedDimensions(axis: 0))
+                            nextToken = sampled.item(Int.self)
                         }
+
+                        generatedTokenCount += 1
+
+                        // Check for EOS
+                        if eosTokenIds.contains(nextToken) || stopTokenIds.contains(nextToken) {
+                            break
+                        }
+
+                        // Decode token to text
+                        let text = container.decode([nextToken])
+
+                        // Process through accumulator
+                        let events = accumulator.process(text: text, tokenIds: [nextToken])
+                        for event in events {
+                            switch event {
+                            case .tokens(let t):
+                                continuation.yield(.tokens(t))
+                            case .thinking(let t):
+                                continuation.yield(.thinking(t))
+                            case .toolInvocation(let name, let args, let callId):
+                                continuation.yield(.toolInvocation(name: name, argsJSON: args, callId: callId))
+                            case .finished:
+                                break
+                            }
+                        }
+
+                        // Set up next input
+                        inputTokens = MLXArray([Int32(nextToken)])
                     }
 
-                    // Finalize: emit remaining buffered events
+                    // Finalize
                     let finalEvents = accumulator.finalize()
                     for event in finalEvents {
                         switch event {
@@ -432,7 +404,7 @@ public actor VMLXRuntimeActor {
 
                     // Emit usage
                     continuation.yield(.usage(
-                        promptTokens: finalPromptTokenCount,
+                        promptTokens: promptTokenCount,
                         completionTokens: generatedTokenCount,
                         cachedTokens: 0
                     ))
@@ -446,8 +418,7 @@ public actor VMLXRuntimeActor {
                 }
             }
 
-            // Track active generation
-            Task { [requestId] in
+            Task { @MainActor [requestId] in
                 await self._trackGeneration(requestId: requestId, task: task)
             }
 
@@ -471,25 +442,20 @@ public actor VMLXRuntimeActor {
 
     // MARK: - Cache Management
 
-    /// Clear all caches (delegates to the scheduler's cache coordinator).
     public func clearCache() {
         scheduler.cache.clearAll()
     }
 
-    /// Get cache statistics.
     public var cacheStats: CacheCoordinatorStats {
         scheduler.cacheStats
     }
 
-    /// Get scheduler config.
     public var config: SchedulerConfig { scheduler.config }
 
-    /// Get the current model container (for inspection or direct tokenization).
     public var container: VMLXModelContainer? { modelContainer }
 
     // MARK: - Private
 
-    /// Store cache state in the scheduler's CacheCoordinator.
     private func _storeCache(tokens: [Int], cache: HybridCache) {
         scheduler.cache.store(tokens: tokens, cache: cache)
     }

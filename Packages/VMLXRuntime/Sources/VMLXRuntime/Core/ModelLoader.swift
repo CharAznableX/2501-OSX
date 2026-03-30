@@ -1,22 +1,18 @@
 import Foundation
 import MLX
 import MLXNN
-import MLXLMCommon
-import MLXLLM
 import Tokenizers
 import Hub
 
 /// A loaded model ready for inference.
 ///
-/// Holds both the mlx-swift-lm `ModelContainer` (proven model implementations for 50+
-/// architectures including quantized weights) and VMLXRuntime metadata (JANG detection,
-/// hybrid layer info, family config).
+/// Holds the native VMLXRuntime model (Qwen3.5, etc.) with its tokenizer,
+/// config dictionary, and detected model metadata.
 public final class LoadedModel: @unchecked Sendable {
 
-    /// The mlx-swift-lm model container.
-    /// Handles the actual forward pass, tokenizer, KV cache, and weight loading
-    /// for all supported architectures (Qwen3.5, Nemotron-H, DeepSeek, Llama, etc.).
-    public let mlxContainer: MLXLMCommon.ModelContainer
+    /// The native model (VMLXNativeModel conformant Module).
+    /// Handles the forward pass, KV/SSM cache creation, and weight sanitization.
+    public let nativeModel: (any VMLXNativeModel & Module)
 
     /// Model configuration from config.json (raw dictionary for VMLXRuntime introspection).
     public let config: [String: Any]
@@ -27,12 +23,12 @@ public final class LoadedModel: @unchecked Sendable {
     /// Model directory path.
     public let modelPath: URL
 
+    /// Tokenizer for this model.
+    public let tokenizer: any Tokenizer
+
     /// Vocabulary size.
     public var vocabSize: Int {
-        if let vs = config["vocab_size"] as? Int { return vs }
-        if let tc = config["text_config"] as? [String: Any],
-           let vs = tc["vocab_size"] as? Int { return vs }
-        return 32000
+        nativeModel.vocabularySize
     }
 
     /// Number of layers.
@@ -70,7 +66,6 @@ public final class LoadedModel: @unchecked Sendable {
     /// EOS token IDs.
     public var eosTokenIds: Set<Int> {
         var ids = Set<Int>()
-        // Check config for stop tokens
         if let eosIds = config["eos_token_id"] as? [Int] {
             ids.formUnion(eosIds)
         } else if let eosId = config["eos_token_id"] as? Int {
@@ -79,39 +74,31 @@ public final class LoadedModel: @unchecked Sendable {
         return ids
     }
 
-    /// Tokenizer (accessed via mlx-swift-lm container).
-    public var tokenizer: any Tokenizer {
-        get async {
-            await mlxContainer.tokenizer
-        }
-    }
-
-    public init(mlxContainer: MLXLMCommon.ModelContainer,
+    public init(nativeModel: any VMLXNativeModel & Module,
                 config: [String: Any], detected: DetectedModel,
-                modelPath: URL) {
-        self.mlxContainer = mlxContainer
+                modelPath: URL, tokenizer: any Tokenizer) {
+        self.nativeModel = nativeModel
         self.config = config
         self.detected = detected
         self.modelPath = modelPath
+        self.tokenizer = tokenizer
     }
 }
 
-/// Loads models from disk using mlx-swift-lm's proven model factory.
+/// Loads models from disk using VMLXRuntime's native model registry.
 ///
-/// Instead of custom weight loading and model construction, delegates to
-/// `MLXLMCommon.loadModelContainer(directory:)` which handles:
-/// - Config parsing and model architecture detection (50+ families)
+/// Uses `VMLXModelRegistry.loadModel(from:)` which handles:
+/// - Config parsing and model architecture detection
 /// - Quantized weight loading (QuantizedLinear with scales/biases)
 /// - Correct weight key path mapping for each architecture
-/// - Tokenizer setup
+/// - Tokenizer setup via swift-transformers
 public struct ModelLoader: Sendable {
 
-    /// Load a model from a directory path using mlx-swift-lm's model factory.
+    /// Load a model from a directory path using VMLXRuntime's native model registry.
     ///
-    /// This is the primary loading path:
-    /// 1. Uses `MLXLMCommon.loadModelContainer(directory:)` for proven weight loading
+    /// 1. Uses `VMLXModelRegistry.loadModel(from:)` for weight loading and model construction
     /// 2. Runs `ModelDetector.detect(at:)` for JANG/hybrid/family metadata
-    /// 3. Parses config.json for VMLXRuntime introspection
+    /// 3. Loads tokenizer via swift-transformers
     public static func load(from path: URL) async throws -> LoadedModel {
         // 1. Detect model properties (JANG, hybrid, family, etc.)
         let detected = try ModelDetector.detect(at: path)
@@ -119,30 +106,18 @@ public struct ModelLoader: Sendable {
         // 2. Load config.json for VMLXRuntime metadata
         let config = try _loadConfig(at: path)
 
-        // 3. Use mlx-swift-lm's model factory to load the model.
-        //    This handles ALL architectures: Qwen3.5, Nemotron-H, DeepSeek-V3,
-        //    Llama, Mistral, Gemma, Phi, MiniMax, GLM4, Falcon-H1, etc.
-        //    It correctly handles:
-        //    - QuantizedLinear (scales, biases, weight packing)
-        //    - Architecture-specific weight key paths
-        //    - Tokenizer loading and chat template setup
-        let modelConfig = MLXLMCommon.ModelConfiguration(directory: path)
-        let mlxContainer: MLXLMCommon.ModelContainer
-        do {
-            mlxContainer = try await MLXLMCommon.loadModelContainer(
-                configuration: modelConfig
-            )
-        } catch {
-            throw ModelLoaderError.unsupportedArchitecture(
-                "mlx-swift-lm failed to load model at \(path.path): \(error.localizedDescription)"
-            )
-        }
+        // 3. Load the native model (creates architecture, loads weights)
+        let (nativeModel, _) = try VMLXModelRegistry.loadModel(from: path)
+
+        // 4. Load tokenizer
+        let tokenizer = try await _loadTokenizer(at: path)
 
         return LoadedModel(
-            mlxContainer: mlxContainer,
+            nativeModel: nativeModel,
             config: config,
             detected: detected,
-            modelPath: path
+            modelPath: path,
+            tokenizer: tokenizer
         )
     }
 
@@ -166,6 +141,17 @@ public struct ModelLoader: Sendable {
             throw ModelLoaderError.invalidConfig("Failed to parse config.json")
         }
         return json
+    }
+
+    private static func _loadTokenizer(at path: URL) async throws -> any Tokenizer {
+        let tokenizerURL = path.appendingPathComponent("tokenizer.json")
+
+        guard FileManager.default.fileExists(atPath: tokenizerURL.path) else {
+            throw ModelLoaderError.tokenizerNotFound(path.path)
+        }
+
+        // Use swift-transformers' AutoTokenizer to load from local directory
+        return try await AutoTokenizer.from(modelFolder: path)
     }
 }
 
