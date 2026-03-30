@@ -208,8 +208,14 @@ public actor VMLXService: VMLXToolCapableService {
 
     // MARK: - Model Management Passthrough
 
-    public func loadModel(name: String, isHybrid: Bool = false, turboQuant: TurboQuantConfig? = nil) async throws {
-        try await runtime.loadModel(name: name, isHybrid: isHybrid, turboQuant: turboQuant)
+    /// Load a model from a directory path.
+    public func loadModel(from path: URL) async throws {
+        try await runtime.loadModel(from: path)
+    }
+
+    /// Load a model by name (scans well-known directories to resolve).
+    public func loadModel(name: String) async throws {
+        try await runtime.loadModel(name: name)
     }
 
     public func unloadModel() async {

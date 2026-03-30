@@ -14,35 +14,50 @@ struct VMLXRuntimeActorTests {
         #expect(name == nil)
     }
 
-    @Test("Load model sets name")
-    func loadModel() async throws {
+    @Test("Load model with invalid name throws modelLoadFailed")
+    func loadInvalidName() async {
         let runtime = VMLXRuntimeActor()
-        try await runtime.loadModel(name: "test-model")
-        let loaded = await runtime.isModelLoaded
-        #expect(loaded)
-        let name = await runtime.currentModelName
-        #expect(name == "test-model")
+        do {
+            try await runtime.loadModel(name: "nonexistent-model-xyz")
+            Issue.record("Expected modelLoadFailed error")
+        } catch let error as VMLXRuntimeError {
+            if case .modelLoadFailed = error {
+                // Expected
+            } else {
+                Issue.record("Wrong error type: \(error)")
+            }
+        } catch {
+            // Also acceptable (e.g., underlying loader error)
+        }
     }
 
-    @Test("Unload clears state")
-    func unloadModel() async throws {
+    @Test("Load model from invalid path throws modelLoadFailed")
+    func loadInvalidPath() async {
         let runtime = VMLXRuntimeActor()
-        try await runtime.loadModel(name: "test-model")
+        let fakePath = URL(fileURLWithPath: "/tmp/vmlx-nonexistent-model-\(UUID().uuidString)")
+        do {
+            try await runtime.loadModel(from: fakePath)
+            Issue.record("Expected modelLoadFailed error")
+        } catch let error as VMLXRuntimeError {
+            if case .modelLoadFailed = error {
+                // Expected
+            } else {
+                Issue.record("Wrong error type: \(error)")
+            }
+        } catch {
+            // Also acceptable
+        }
+    }
+
+    @Test("Unload on fresh runtime is safe")
+    func unloadWithoutLoad() async {
+        let runtime = VMLXRuntimeActor()
         await runtime.unloadModel()
         let loaded = await runtime.isModelLoaded
         #expect(!loaded)
     }
 
-    @Test("Load with hybrid flag")
-    func hybridModel() async throws {
-        let runtime = VMLXRuntimeActor()
-        let tqConfig = TurboQuantConfig(defaultKeyBits: 3)
-        try await runtime.loadModel(name: "nemotron-h", isHybrid: true, turboQuant: tqConfig)
-        let loaded = await runtime.isModelLoaded
-        #expect(loaded)
-    }
-
-    @Test("Generate without model throws")
+    @Test("Generate without model throws noModelLoaded")
     func generateNoModel() async {
         let runtime = VMLXRuntimeActor()
         let request = VMLXChatCompletionRequest(
@@ -51,8 +66,14 @@ struct VMLXRuntimeActorTests {
         do {
             _ = try await runtime.generateStream(request: request)
             Issue.record("Expected error")
+        } catch let error as VMLXRuntimeError {
+            if case .noModelLoaded = error {
+                // Expected
+            } else {
+                Issue.record("Wrong error: \(error)")
+            }
         } catch {
-            // Expected: noModelLoaded
+            Issue.record("Unexpected error type: \(error)")
         }
     }
 
@@ -84,48 +105,30 @@ struct VMLXRuntimeActorTests {
         #expect(config.prefillStepSize >= 1024)
     }
 
-    @Test("Reload replaces previous model")
-    func reloadModel() async throws {
-        let runtime = VMLXRuntimeActor()
-        try await runtime.loadModel(name: "model-a")
-        try await runtime.loadModel(name: "model-b")
-        let name = await runtime.currentModelName
-        #expect(name == "model-b")
-    }
-
     @Test("Clear cache does not crash when no model loaded")
     func clearCacheNoModel() async {
-        let runtime = VMLXRuntimeActor()
-        await runtime.clearCache()
+        await VMLXRuntimeActor().clearCache()
         // No crash = pass
     }
 
-    @Test("Generate stream emits usage after model loaded")
-    func generateStreamUsage() async throws {
+    @Test("Container is nil when no model loaded")
+    func containerNilInitially() async {
         let runtime = VMLXRuntimeActor()
-        try await runtime.loadModel(name: "test-model")
-        let request = VMLXChatCompletionRequest(
-            messages: [VMLXChatMessage(role: "user", content: "Hello")]
-        )
-        let stream = try await runtime.generateStream(request: request)
-        var gotUsage = false
-        for try await event in stream {
-            if case .usage = event {
-                gotUsage = true
-            }
-        }
-        #expect(gotUsage)
+        let c = await runtime.container
+        #expect(c == nil)
     }
 
-    @Test("Non-streaming generate returns string")
-    func nonStreamingGenerate() async throws {
+    @Test("Non-streaming generate without model throws")
+    func nonStreamingNoModel() async {
         let runtime = VMLXRuntimeActor()
-        try await runtime.loadModel(name: "test-model")
         let request = VMLXChatCompletionRequest(
             messages: [VMLXChatMessage(role: "user", content: "Hi")]
         )
-        // With placeholder generation, result is empty but should not throw
-        let result = try await runtime.generate(request: request)
-        #expect(result.isEmpty)  // No actual model loaded, so no tokens generated
+        do {
+            _ = try await runtime.generate(request: request)
+            Issue.record("Expected error")
+        } catch {
+            // Expected
+        }
     }
 }
