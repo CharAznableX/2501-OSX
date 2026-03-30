@@ -96,7 +96,16 @@ public struct ModelLoader: Sendable {
         let tokenizer = try await _loadTokenizer(at: path)
 
         // 4. Load weights from safetensors
-        let weights = try _loadWeights(at: path)
+        //    Check for JANG v1 format (legacy uint8 repacking) first
+        let weights: [String: MLXArray]
+        if JangLoader.isJangModel(at: path),
+           let jangConfig = try? JangLoader.loadConfig(at: path),
+           !jangConfig.isV2,
+           JangLoader.hasV1Weights(at: path) {
+            weights = try JangLoader.loadV1Weights(at: path)
+        } else {
+            weights = try _loadWeights(at: path)
+        }
 
         return LoadedModel(
             weights: weights,

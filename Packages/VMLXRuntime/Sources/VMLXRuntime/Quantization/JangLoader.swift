@@ -1,4 +1,5 @@
 import Foundation
+import MLX
 
 /// JANG config file name.
 public let jangConfigFileName = "jang_config.json"
@@ -295,6 +296,68 @@ public struct JangLoader: Sendable {
     /// Whether the model is a Mixture-of-Experts model.
     public static func isMoE(config: JangConfig) -> Bool {
         config.architecture.hasMoE
+    }
+
+    // MARK: - V1 Format Loading
+
+    /// Load JANG v1 format weights (legacy uint8 repacking).
+    ///
+    /// JANG v1 uses uint8 packed weights in `.jang.safetensors` files that need
+    /// to be repacked to MLX uint32 format. The conversion groups 4 uint8 values
+    /// into 1 uint32 (little-endian byte packing).
+    public static func loadV1Weights(at modelPath: URL) throws -> [String: MLXArray] {
+        let fm = FileManager.default
+        let files = try fm.contentsOfDirectory(at: modelPath, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "safetensors" && $0.lastPathComponent.contains(".jang.") }
+
+        guard !files.isEmpty else {
+            throw JangLoaderError.loadFailed("No .jang.safetensors files found at \(modelPath.path)")
+        }
+
+        var allWeights: [String: MLXArray] = [:]
+        for file in files {
+            let weights = try loadArrays(url: file)
+            for (key, array) in weights {
+                if array.dtype == .uint8 {
+                    // Repack uint8 -> uint32: every 4 uint8 values become 1 uint32
+                    // This is the legacy JANG v1 packing format
+                    allWeights[key] = _repackUint8ToUint32(array)
+                } else {
+                    allWeights[key] = array
+                }
+            }
+        }
+        return allWeights
+    }
+
+    /// Repack a uint8 array to uint32 by packing groups of 4 bytes (little-endian).
+    ///
+    /// Each group of 4 consecutive uint8 values along the last dimension is packed into
+    /// a single uint32: `byte0 | (byte1 << 8) | (byte2 << 16) | (byte3 << 24)`.
+    private static func _repackUint8ToUint32(_ array: MLXArray) -> MLXArray {
+        let shape = array.shape
+        let lastDim = shape.last ?? 0
+        guard lastDim % 4 == 0 else { return array.asType(.uint32) }
+
+        var newShape = shape
+        newShape[newShape.count - 1] = lastDim / 4
+        newShape.append(4)
+
+        let reshaped = array.reshaped(newShape)
+        // Pack: byte0 | (byte1 << 8) | (byte2 << 16) | (byte3 << 24)
+        let b0 = reshaped[0..., 0].asType(.uint32)
+        let b1 = reshaped[0..., 1].asType(.uint32) << 8
+        let b2 = reshaped[0..., 2].asType(.uint32) << 16
+        let b3 = reshaped[0..., 3].asType(.uint32) << 24
+        return b0 | b1 | b2 | b3
+    }
+
+    /// Check if a model directory contains v1 format JANG weights.
+    public static func hasV1Weights(at modelPath: URL) -> Bool {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: modelPath, includingPropertiesForKeys: nil
+        ) else { return false }
+        return files.contains { $0.pathExtension == "safetensors" && $0.lastPathComponent.contains(".jang.") }
     }
 
     // MARK: - TurboQuant Integration

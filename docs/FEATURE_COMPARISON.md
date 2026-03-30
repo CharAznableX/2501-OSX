@@ -19,7 +19,7 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 | Parse jang_config.json (real format) | jang_loader.py | JangLoader.loadConfig() | DONE | Quantization/JangLoader.swift |
 | All 7 JANG profiles (1L/2L/2S/3M/4K/4M/4S) | jang_loader.py | JangQuantization.profile | DONE | Quantization/JangLoader.swift |
 | v2 format (MLX-native safetensors) | jang_loader.py | ModelLoader.load() | DONE | Core/ModelLoader.swift |
-| v1 format (legacy uint8 repacking) | jang_loader.py | -- | TODO | Needs uint8->uint32 conversion |
+| v1 format (legacy uint8 repacking) | jang_loader.py | JangLoader.loadV1Weights() | DONE | Quantization/JangLoader.swift |
 | Sharded weight loading | jang_loader.py | ModelLoader._loadShardedWeights() | DONE | Core/ModelLoader.swift |
 | model.safetensors.index.json parsing | jang_loader.py | ModelLoader._loadShardedWeights() | DONE | Core/ModelLoader.swift |
 | HuggingFace Hub download | huggingface-cli | ModelLoader.loadFromHub() | DONE | Core/ModelLoader.swift |
@@ -53,8 +53,8 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 | Cache load/export (HybridCache) | -- | loadCache()/exportCache() | DONE | Models/TransformerModel.swift |
 | Mamba/SSM layers | utils/mamba_cache.py | MambaBlock + MambaState | DONE | Models/MambaLayer.swift |
 | Hybrid transformer | -- | HybridTransformerModel | DONE | Models/HybridTransformerModel.swift |
-| MoE routing | mlx-lm | -- | TODO | Needs MoE layer implementation |
-| MLA (multi-head latent attention) | mlx-lm | -- | TODO | Needs MLA variant |
+| MoE routing | mlx-lm | MoELayer | DONE | Models/MoELayer.swift |
+| MLA (multi-head latent attention) | mlx-lm | MLAAttention | DONE | Models/MLAAttention.swift |
 
 ## 3. Cache Stack
 
@@ -135,7 +135,7 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 | Common prefix detection | scheduler.py | GenerationEngine.commonPrefixLength() | DONE | Generation/GenerationEngine.swift |
 | Two-phase prefill (hybrid) | mllm_batch_generator.py | documented in GenerationEngine | DONE | Generation/GenerationEngine.swift |
 | Mid-prefill SSM checkpoint | -- (NEW!) | SSMCheckpoint at stable boundary | DONE | Generation/GenerationEngine.swift |
-| Think block stop skip | scheduler.py | -- | TODO | Don't match stops inside unclosed think |
+| Think block stop skip | scheduler.py | StopSequenceDetector (think-aware) | DONE | Generation/StopSequenceDetector.swift |
 
 ## 7. Power Management
 
@@ -202,8 +202,8 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 | Parser protocol | base.py | ReasoningParser protocol | DONE | Parsers/ReasoningParser.swift |
 | Auto-detect from model | base.py | autoDetectReasoningParser() | DONE | Parsers/ReasoningParser.swift |
 | Think tag (Qwen3/DeepSeek) | qwen3_parser.py | ThinkTagReasoningParser | DONE | Parsers/ReasoningParsers/ThinkTagReasoningParser.swift |
-| GPT-OSS parser | gptoss_parser.py | -- | TODO | |
-| Mistral parser | mistral_parser.py | -- | TODO | |
+| GPT-OSS parser | gptoss_parser.py | GPTOSSReasoningParser | DONE | Parsers/ReasoningParsers/GPTOSSReasoningParser.swift |
+| Mistral parser | mistral_parser.py | MistralReasoningParser | DONE | Parsers/ReasoningParsers/MistralReasoningParser.swift |
 
 ## 12. API Compatibility (via Osaurus Server)
 
@@ -211,9 +211,9 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 |---------|-------------|-------------------|--------|-------|
 | OpenAI Chat Completions | POST /v1/chat/completions | Osaurus HTTPHandler | N/A | Osaurus already has this |
 | OpenAI Completions | POST /v1/completions | -- | TODO | |
-| Anthropic Messages | POST /v1/messages | -- | TODO | |
-| Ollama Chat | POST /api/chat | -- | TODO | |
-| Ollama Generate | POST /api/generate | -- | TODO | |
+| Anthropic Messages | POST /v1/messages | AnthropicAdapter | DONE | API/AnthropicAdapter.swift (adapter, needs route in Osaurus) |
+| Ollama Chat | POST /api/chat | OllamaAdapter | DONE | API/OllamaAdapter.swift (adapter, needs routes in Osaurus) |
+| Ollama Generate | POST /api/generate | OllamaAdapter | DONE | API/OllamaAdapter.swift (adapter, needs routes in Osaurus) |
 | Health endpoint | GET /health | Osaurus has this | N/A | |
 | Model list | GET /v1/models | Osaurus has this | N/A | |
 | Image generation | POST /v1/images/generations | -- | TODO | |
@@ -253,19 +253,19 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 
 | Category | Total Features | DONE | STUB | TODO |
 |----------|---------------|------|------|------|
-| Model Loading | 17 | 15 | 0 | 2 |
-| Transformer | 17 | 15 | 0 | 2 |
+| Model Loading | 17 | 16 | 0 | 1 |
+| Transformer | 17 | 17 | 0 | 0 |
 | Cache Stack | 17 | 16 | 0 | 1 |
 | TurboQuant | 14 | 9 | 5 | 0 |
 | Scheduler | 14 | 13 | 0 | 1 |
-| Generation | 16 | 14 | 0 | 2 |
+| Generation | 16 | 16 | 0 | 0 |
 | Power Mgmt | 6 | 6 | 0 | 0 |
 | Multi-Model | 6 | 6 | 0 | 0 |
 | Vision | 10 | 9 | 0 | 1 |
 | Tool Parsers | 16 | 16 | 0 | 0 |
 | Reasoning Parsers | 5 | 5 | 0 | 0 |
-| API Compat | 18 | 0 | 0 | 8 (10 N/A) |
+| API Compat | 19 | 5 | 0 | 7 (7 N/A) |
 | Integration | 12 | 12 | 0 | 0 |
-| **TOTAL** | **168** | **138 (82%)** | **5 (3%)** | **15 (9%)** |
+| **TOTAL** | **169** | **146 (86%)** | **5 (3%)** | **11 (7%)** |
 
-(10 features marked N/A = handled by Osaurus natively)
+(7 features marked N/A = handled by Osaurus natively)
