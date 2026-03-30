@@ -433,12 +433,10 @@ public actor VMLXRuntimeActor {
                             cache: cache
                         )
 
-                        // Force MLX lazy evaluation to materialize the logits tensor.
-                        // Without this, the computation graph grows unbounded across decode steps.
-                        // Note: MLX.eval() triggers Metal GPU computation, not code evaluation.
-                        MLX.eval(logits)
-
                         // Sample next token from last position's logits
+                        // (MLX lazy eval — .item() triggers computation naturally,
+                        // no explicit eval needed. Removing MLX.eval(logits) here
+                        // allows Metal to pipeline compute + sampling without sync stalls.)
                         var nextLogits = logits[0, -1]
 
                         // Apply repetition penalty
