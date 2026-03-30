@@ -424,37 +424,40 @@ public actor VMLXRuntimeActor {
                     var thinkTagInjected = false
                     let thinkingBudget = maxTokens / 2  // Cap thinking at half of maxTokens
 
+                    // Pipelined generation: keep token as MLXArray on GPU,
+                    // only call .item() after the NEXT forward pass is submitted.
+                    // This overlaps GPU compute with CPU readback.
+
+                    // First step: prefill/first token
+                    var logits = container.forward(
+                        inputTokens.expandedDimensions(axis: 0), cache: cache)
+                    var y: MLXArray
+                    if temperature == 0 {
+                        y = logits[0, -1].argMax()
+                    } else {
+                        y = MLXRandom.categorical(
+                            (logits[0, -1] / temperature).expandedDimensions(axis: 0))
+                    }
+                    asyncEval([y])
+
                     for _ in 0 ..< maxTokens {
                         try Task.checkCancellation()
 
-                        // Forward pass
-                        let logits = container.forward(
-                            inputTokens.expandedDimensions(axis: 0),
-                            cache: cache
-                        )
-
-                        // Sample next token from last position's logits
-                        // (MLX lazy eval — .item() triggers computation naturally,
-                        // no explicit eval needed. Removing MLX.eval(logits) here
-                        // allows Metal to pipeline compute + sampling without sync stalls.)
-                        var nextLogits = logits[0, -1]
-
-                        // Apply repetition penalty
-                        // (simplified -- full implementation would track context window)
-
-                        // Temperature and sampling
-                        let nextToken: Int
+                        // Start NEXT forward pass with current token (still on GPU)
+                        let nextLogits = container.forward(
+                            y.reshaped(1, 1), cache: cache)
+                        var nextY: MLXArray
                         if temperature == 0 {
-                            // Greedy
-                            nextToken = nextLogits.argMax().item(Int.self)
+                            nextY = nextLogits[0, -1].argMax()
                         } else {
-                            // Temperature scaling + categorical sampling
-                            // MLXRandom.categorical takes unnormalized logits directly
-                            let scaledLogits = nextLogits / temperature
-                            let sampled = MLXRandom.categorical(
-                                scaledLogits.expandedDimensions(axis: 0))
-                            nextToken = sampled.item(Int.self)
+                            nextY = MLXRandom.categorical(
+                                (nextLogits[0, -1] / temperature).expandedDimensions(axis: 0))
                         }
+                        asyncEval([nextY])
+
+                        // NOW read current token (GPU already computing next)
+                        let nextToken = y.item(Int.self)
+                        y = nextY
 
                         generatedTokenCount += 1
 
