@@ -110,7 +110,7 @@ public func vmlxLoadWeights(
             }
             return nil
         }
-        print("[WeightLoader] Quantized \(quantizedCount) modules, bits=\(defaultBits), gs=\(defaultGroupSize)")
+        NSLog("[WeightLoader] Quantized \(quantizedCount) modules, bits=\(defaultBits), gs=\(defaultGroupSize)")
     }
 
     // Load weights (no strict verification for JANG mixed-precision compatibility)

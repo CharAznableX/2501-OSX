@@ -3,6 +3,19 @@ import MLX
 import MLXRandom
 import MLXNN
 
+private func _vmlxLog2(_ msg: String) {
+    let line = "[\(Date())] \(msg)\n"
+    let path = "/tmp/vmlx_debug.log"
+    if !FileManager.default.fileExists(atPath: path) {
+        FileManager.default.createFile(atPath: path, contents: nil)
+    }
+    if let fh = FileHandle(forWritingAtPath: path) {
+        fh.seekToEndOfFile()
+        fh.write(line.data(using: .utf8)!)
+        fh.closeFile()
+    }
+}
+
 /// Events emitted during generation.
 public enum VMLXEvent: Sendable {
     case tokens(String)
@@ -384,7 +397,7 @@ public actor VMLXRuntimeActor {
                     switch fetchResult {
                     case .hit(let cachedHybrid, let remaining, let detail)
                         where cachedHybrid.layerCount == cache.count:
-                        print("[Gen] Cache HIT: \(cachedHybrid.layerCount) layers, \(remaining.count) remaining tokens, detail=\(detail)")
+                        NSLog("[Gen] Cache HIT: \(cachedHybrid.layerCount) layers, \(remaining.count) remaining tokens, detail=\(detail)")
                         // Restore cached KV state into the VMLXKVCache objects
                         for (i, entry) in cachedHybrid.layers.enumerated() {
                             guard i < cache.count else { break }
@@ -416,7 +429,7 @@ public actor VMLXRuntimeActor {
                         }
                     case .partialHit(_, _, _), .miss, .hit(_, _, _):
                         // No usable cache hit — prefill all tokens
-                        print("[Gen] Cache MISS: prefilling \(tokens.count) tokens")
+                        NSLog("[Gen] Cache MISS: prefilling \(tokens.count) tokens")
                         inputTokens = MLXArray(tokens.map { Int32($0) })
                     }
 
@@ -432,22 +445,28 @@ public actor VMLXRuntimeActor {
                     var y = logits[0, -1].argMax()
                     MLX.eval(y)
 
-                    for _ in 0 ..< maxTokens {
+                    var _genStart = CFAbsoluteTimeGetCurrent()
+                    for _step in 0 ..< maxTokens {
                         try Task.checkCancellation()
 
-                        // Forward pass + sample
-                        let nextLogits = container.forward(y.reshaped(1, 1), cache: cache)
-                        let nextY: MLXArray
+                        // Read PREVIOUS token (already evaluated)
+                        let nextToken = y.item(Int.self)
+
+                        // Forward pass + sample for NEXT token
+                        let nextLogits = container.forward(
+                            MLXArray([Int32(nextToken)]).reshaped(1, 1), cache: cache)
                         if temperature == 0 {
-                            nextY = nextLogits[0, -1].argMax()
+                            y = nextLogits[0, -1].argMax()
                         } else {
-                            nextY = MLXRandom.categorical(
+                            y = MLXRandom.categorical(
                                 (nextLogits[0, -1] / temperature).expandedDimensions(axis: 0))
                         }
-                        MLX.eval(nextY)
+                        MLX.eval(y)
 
-                        let nextToken = y.item(Int.self)
-                        y = nextY
+                        if _step == 10 {
+                            let _elapsed = CFAbsoluteTimeGetCurrent() - _genStart
+                            _vmlxLog2("[Gen] 10 tokens in \(String(format: "%.2f", _elapsed))s = \(String(format: "%.1f", 10/_elapsed)) tok/s (includes prefill)")
+                        }
 
                         generatedTokenCount += 1
 
@@ -528,7 +547,7 @@ public actor VMLXRuntimeActor {
                     }
 
                     // Store cache for future turn reuse
-                    print("[Gen] Storing cache: \(tokens.count) prompt + \(accumulator.generatedTokenIds.count) generated = \(tokens.count + accumulator.generatedTokenIds.count) total tokens")
+                    NSLog("[Gen] Storing cache: \(tokens.count) prompt + \(accumulator.generatedTokenIds.count) generated = \(tokens.count + accumulator.generatedTokenIds.count) total tokens")
                     let allTokens = tokens + accumulator.generatedTokenIds
                     if !allTokens.isEmpty {
                         var layers: [LayerCacheEntry] = []

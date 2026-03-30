@@ -252,6 +252,10 @@ public actor VMLXService: VMLXToolCapableService {
         await runtime.unloadModel()
     }
 
+    public var currentModelName: String? {
+        get async { await runtime.currentModelName }
+    }
+
     public var isModelLoaded: Bool {
         get async { await runtime.isModelLoaded }
     }

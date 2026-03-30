@@ -10,6 +10,19 @@
 import Foundation
 import VMLXRuntime
 
+private func _vmlxLog(_ msg: String) {
+    let line = "[\(Date())] \(msg)\n"
+    let path = "/tmp/vmlx_debug.log"
+    if !FileManager.default.fileExists(atPath: path) {
+        FileManager.default.createFile(atPath: path, contents: nil)
+    }
+    if let fh = FileHandle(forWritingAtPath: path) {
+        fh.seekToEndOfFile()
+        fh.write(line.data(using: .utf8)!)
+        fh.closeFile()
+    }
+}
+
 // MARK: - Bridge Actor
 
 /// Adapts VMLXService (from VMLXRuntime) to Osaurus's ToolCapableService protocol,
@@ -77,21 +90,31 @@ actor VMLXServiceBridge: ToolCapableService {
 
     private func ensureModelLoaded(requestedModel: String?) async throws {
         let modelName = requestedModel ?? ""
+        let isLoaded = await service.isModelLoaded
+        _vmlxLog("[Bridge] ensureModelLoaded: requested='\(modelName)' currentLoaded='\(currentLoadedModel ?? "nil")' isLoaded=\(isLoaded)")
         guard !modelName.isEmpty else {
             throw NSError(domain: "VMLXServiceBridge", code: 1,
                          userInfo: [NSLocalizedDescriptionKey: "No model specified"])
         }
 
-        // Check if the CORRECT model is already loaded (not just any model)
+        // Check if the CORRECT model is already loaded on the shared runtime.
+        // Note: each ChatEngine creates a new VMLXServiceBridge, but the runtime
+        // (VMLXRuntimeActor.shared) is a singleton that persists across instances.
         let modelLoaded = await service.isModelLoaded
-        if modelLoaded, let current = currentLoadedModel,
-           modelName.lowercased() == current.lowercased() {
-            return
-        }
-
-        // Different model requested or no model loaded — unload first
         if modelLoaded {
+            // Check the runtime's model name, not our instance variable
+            let runtimeModelName = await service.currentModelName
+            if let runtimeName = runtimeModelName,
+               modelName.lowercased().contains(runtimeName.lowercased())
+                || runtimeName.lowercased().contains(modelName.lowercased()) {
+                _vmlxLog("[Bridge] Model already loaded on runtime, skipping: \(modelName) (runtime: \(runtimeName))")
+                currentLoadedModel = modelName
+                return
+            }
+            _vmlxLog("[Bridge] UNLOADING current model to load different one: \(modelName) (runtime: \(runtimeModelName ?? "nil"))")
             await service.unloadModel()
+        } else {
+            _vmlxLog("[Bridge] No model loaded, loading fresh: \(modelName)")
         }
 
         // Load the requested model
@@ -226,8 +249,8 @@ actor VMLXServiceBridge: ToolCapableService {
     /// Use this from UI buttons — it unloads from the actual runtime
     /// regardless of which bridge instance loaded it.
     static func forceUnload() async {
+        _vmlxLog("[Bridge] forceUnload() called!")
         await VMLXService.shared.unloadModel()
-        // Also reset the shared bridge's tracking
         await VMLXServiceBridge.shared.resetLoadedModel()
     }
 

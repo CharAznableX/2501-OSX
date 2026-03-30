@@ -113,13 +113,9 @@ final class ChatSession: ObservableObject {
                     self.activeModelOptions = ModelProfileRegistry.defaults(for: model)
                 }
 
-                Task { @MainActor in
-                    let active = ChatWindowManager.shared.activeLocalModelNames()
-                    await ModelRuntime.shared.unloadModelsNotIn(active)
-                    // VMLXRuntime handles model switching internally in ensureModelLoaded —
-                    // it only unloads when the requested model differs from the loaded one.
-                    // Do NOT force-unload here as it causes reload on every message.
-                }
+                // Model switching is handled by VMLXServiceBridge.ensureModelLoaded —
+                // it only unloads when the requested model DIFFERS from the loaded one.
+                // Do NOT call unload/clearAll here as it causes model reload between messages.
             }
 
         if !cache.isLoaded {
