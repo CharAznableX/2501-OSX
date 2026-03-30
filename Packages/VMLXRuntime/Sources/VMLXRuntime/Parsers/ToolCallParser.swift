@@ -47,9 +47,13 @@ public func autoDetectToolParser(modelName: String) -> (any ToolCallParser)? {
     // (patterns, factory) pairs, ordered by specificity.
     // More specific model families should appear before generic fallbacks.
     let registry: [(patterns: [String], factory: () -> any ToolCallParser)] = [
-        // Future: add model-specific parsers here first
-        // (["qwen"], { QwenToolParser() }),
-        // (["llama"], { LlamaToolParser() }),
+        (["qwen", "qwq"], { QwenToolParser() }),
+        (["hermes", "nous"], { HermesToolParser() }),
+        (["nemotron"], { NemotronToolParser() }),
+        (["functionary", "meetkai"], { FunctionaryToolParser() }),
+        (["llama"], { LlamaToolParser() }),
+        (["mistral", "mixtral", "codestral", "pixtral"], { MistralToolParser() }),
+        (["deepseek"], { DeepSeekToolParser() }),
         (["generic", "default"], { GenericToolParser() }),
     ]
 
