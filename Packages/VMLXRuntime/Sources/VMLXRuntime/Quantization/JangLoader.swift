@@ -430,6 +430,31 @@ public struct JangLoader: Sendable {
         return tqConfig
     }
 
+    // MARK: - Nemotron Transforms
+
+    /// Apply Nemotron-specific weight transformations.
+    /// - Gate weights: dequantize from quantized format
+    /// - fc1/fc2 → gate_proj/up_proj renaming for consistency
+    public static func applyNemotronTransforms(weights: inout [String: MLXArray], config: JangConfig) {
+        var renames: [(old: String, new: String)] = []
+
+        for key in weights.keys {
+            // Rename fc1 → gate_proj, fc2 → up_proj for consistency
+            if key.contains(".fc1.") {
+                renames.append((key, key.replacingOccurrences(of: ".fc1.", with: ".gate_proj.")))
+            }
+            if key.contains(".fc2.") {
+                renames.append((key, key.replacingOccurrences(of: ".fc2.", with: ".up_proj.")))
+            }
+        }
+
+        for (old, new) in renames {
+            if let val = weights.removeValue(forKey: old) {
+                weights[new] = val
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     /// Extract a Float from JSON values that may be Int, Double, or Float.

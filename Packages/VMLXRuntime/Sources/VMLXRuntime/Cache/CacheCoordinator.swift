@@ -214,6 +214,25 @@ public final class CacheCoordinator: @unchecked Sendable {
         ssmStateCache?.store(checkpoint: checkpoint)
     }
 
+    // MARK: - Cache Warming
+
+    /// Pre-warm cache with a list of prompts.
+    /// Useful for pre-populating system prompts that will be reused.
+    public func warmCache(tokenSequences: [[Int]], caches: [HybridCache]) {
+        for (tokens, cache) in zip(tokenSequences, caches) {
+            store(tokens: tokens, cache: cache)
+        }
+    }
+
+    /// Returns the total number of entries across all active cache layers.
+    public func warmCacheCount() -> Int {
+        var count = 0
+        if let mc = memoryCache { count += mc.count }
+        if let pc = prefixCache { count += pc.count }
+        if let dc = diskCache { count += dc.entryCount }
+        return count
+    }
+
     // MARK: - Cache Management
 
     /// Clear all caches.
