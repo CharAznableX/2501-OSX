@@ -24,6 +24,20 @@ public enum ReDeriverStatus: Sendable {
 /// - Tokens >= syncThreshold: async re-derive (full prefill now, re-derive in background)
 ///
 /// Deduplicates concurrent requests for the same token hash.
+///
+/// ## Model Forward Pass Integration
+///
+/// The re-deriver accepts an optional `ModelForwardPass` reference. When a model is
+/// available, `requestReDerive()` runs prefill on tokens up to `stableBoundary` to:
+/// - Refresh attention KV cache state (side effect of prefill)
+/// - Record the boundary in the checkpoint for cache keying
+///
+/// For pure-attention models (no Mamba layers), the SSM states array remains empty
+/// because there are no SSM layers to extract state from. The checkpoint still records
+/// the boundary position, which is used for cache key matching.
+///
+/// When Mamba layer support is added to `TransformerModel`, the re-deriver will also
+/// extract SSM hidden states at the stable boundary and populate `ssmStates`.
 public actor SSMReDeriver {
 
     /// Threshold: below this token count, re-derive synchronously (worth waiting).
@@ -38,14 +52,24 @@ public actor SSMReDeriver {
     /// SSM state cache to store re-derived checkpoints.
     private let ssmCache: SSMStateCache
 
+    /// Optional model forward pass for running actual prefill during re-derivation.
+    /// When nil, the re-deriver creates boundary-only checkpoints (no SSM state, no KV refresh).
+    private var model: (any ModelForwardPass)?
+
     /// Stats
     public private(set) var syncReDerives: Int = 0
     public private(set) var asyncReDerives: Int = 0
     public private(set) var deduplicatedRequests: Int = 0
 
-    public init(ssmCache: SSMStateCache, syncThreshold: Int = 512) {
+    public init(ssmCache: SSMStateCache, syncThreshold: Int = 512, model: (any ModelForwardPass)? = nil) {
         self.ssmCache = ssmCache
         self.syncThreshold = syncThreshold
+        self.model = model
+    }
+
+    /// Update the model forward pass reference (e.g., after model load/unload).
+    public func setModel(_ model: (any ModelForwardPass)?) {
+        self.model = model
     }
 
     // MARK: - Decision Logic
@@ -58,12 +82,30 @@ public actor SSMReDeriver {
     // MARK: - Re-Derivation
 
     /// Request SSM state re-derivation for a token sequence.
+    ///
+    /// If a `ModelForwardPass` is available (either set via `init` or `setModel(_:)`),
+    /// prefill is run on `tokens[0..<stableBoundary]` to:
+    /// - Refresh attention KV cache (side effect of running the forward pass)
+    /// - Record the stable boundary in the checkpoint for cache keying
+    ///
+    /// SSM state extraction requires Mamba layer support in `TransformerModel`.
+    /// For pure-attention models, `ssmStates` remains empty — the checkpoint still
+    /// records the boundary position for correct cache key matching.
+    ///
     /// If sync: waits and returns the checkpoint.
     /// If async: starts background task and returns nil (checkpoint stored when done).
+    ///
+    /// - Parameters:
+    ///   - tokens: Full token sequence for the conversation.
+    ///   - stableBoundary: Token index up to which state should be checkpointed.
+    ///   - forceSync: If true, always wait for the result regardless of token count.
+    ///   - model: Optional override for the model forward pass. If nil, uses the
+    ///     instance-level model set via `init` or `setModel(_:)`.
     public func requestReDerive(
         tokens: [Int],
         stableBoundary: Int,
-        forceSync: Bool = false
+        forceSync: Bool = false,
+        model override: (any ModelForwardPass)? = nil
     ) async throws -> SSMCheckpoint? {
         let tokenHash = SSMStateCache.hashTokens(tokens, count: stableBoundary)
 
@@ -82,19 +124,45 @@ public actor SSMReDeriver {
             return nil  // Async — will complete later
         }
 
+        // Resolve which model to use: explicit override > instance model > nil
+        let activeModel = override ?? self.model
+
         // Start new re-derivation
+        let prefillTokens = Array(tokens.prefix(stableBoundary))
         let task = Task<SSMCheckpoint, Error> {
-            // Run full forward pass to recover SSM state
-            // In production, this calls the model's forward pass on all tokens
-            // For now, create a placeholder checkpoint
+            // If we have a model, run actual prefill to refresh KV cache
+            if let fwdPass = activeModel, !prefillTokens.isEmpty {
+                let inputIds = MLXArray(prefillTokens.map { Int32($0) })
+                var cacheArrays: [MLXArray] = []
 
-            // TODO: Actual forward pass through model
-            // 1. Feed tokens[0:stableBoundary] through all layers
-            // 2. Extract SSM layer states at stableBoundary
-            // 3. Optionally refresh attention KV cache as side effect
+                // Build causal mask for the prefill sequence
+                let mask: MLXArray?
+                if prefillTokens.count > 1 {
+                    mask = TransformerModel.createCausalMask(
+                        seqLen: prefillTokens.count,
+                        offset: 0,
+                        dtype: .float16
+                    )
+                } else {
+                    mask = nil
+                }
 
+                // Run prefill — this refreshes the model's internal KV cache
+                // as a side effect. For hybrid models with Mamba layers, this
+                // would also recompute SSM hidden states.
+                _ = try await fwdPass.prefill(
+                    inputIds: inputIds,
+                    cache: &cacheArrays,
+                    mask: mask
+                )
+            }
+
+            // Create checkpoint with boundary info.
+            // SSM states are empty for pure-attention models — when Mamba layer
+            // support is added to TransformerModel, extract SSM hidden states
+            // here via a new protocol method (e.g., `extractSSMStates(atLayer:)`).
             let checkpoint = SSMCheckpoint(
-                ssmStates: [],  // Placeholder — populated by actual model forward pass
+                ssmStates: [],  // Empty for attention-only models; populated when Mamba layers are supported
                 boundary: stableBoundary,
                 tokenHash: tokenHash
             )

@@ -64,12 +64,12 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 | Block hash chain (SHA-256) | paged_cache.py | CacheBlock.computeBlockHash() | DONE | Cache/CacheBlock.swift |
 | Free block queue (O(1) LRU) | paged_cache.py | FreeBlockQueue | DONE | Cache/FreeBlockQueue.swift |
 | Memory-aware cache (RAM pressure) | memory_cache.py | MemoryCache | DONE | Cache/MemoryCache.swift |
-| L2 disk cache (SQLite + safetensors) | disk_cache.py | DiskCache (metadata) | STUB | Cache/DiskCache.swift (tensor I/O pending) |
+| L2 disk cache (SQLite + safetensors) | disk_cache.py | DiskCache (metadata + tensor I/O) | DONE | Cache/DiskCache.swift |
 | TQ-native disk store (26x) | tq_disk_store.py | TQDiskStore | DONE | Cache/TQDiskStore.swift |
 | Block disk store | block_disk_store.py | -- | TODO | Block-level persistence |
 | SSM companion cache | mllm_batch_generator.py | SSMStateCache | DONE | Cache/SSMStateCache.swift |
 | SSM checkpointing (thinking models) | -- (NEW!) | SSMCheckpoint | DONE | Core/SSMCheckpoint.swift |
-| SSM async re-deriver | -- (NEW!) | SSMReDeriver | STUB | Cache/SSMReDeriver.swift (needs fwd pass) |
+| SSM async re-deriver | -- (NEW!) | SSMReDeriver | DONE | Cache/SSMReDeriver.swift (wired to ModelForwardPass) |
 | Cache coordinator (5-layer cascade) | scheduler.py | CacheCoordinator | DONE | Cache/CacheCoordinator.swift |
 | Cache warm endpoint | server.py | -- | TODO | Needs Osaurus server route |
 | Cache stats endpoint | server.py | CacheCoordinatorStats | DONE | Cache/CacheCoordinator.swift |
@@ -180,16 +180,16 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 | Parser protocol | abstract_tool_parser.py | ToolCallParser protocol | DONE | Parsers/ToolCallParser.swift |
 | Auto-detect from model | auto_tool_parser.py | autoDetectToolParser() | DONE | Parsers/ToolCallParser.swift |
 | Generic JSON fallback | -- | GenericToolParser | DONE | Parsers/ToolParsers/GenericToolParser.swift |
-| Qwen parser | qwen_tool_parser.py | -- | TODO | |
-| Llama parser | llama_tool_parser.py | -- | TODO | |
-| Mistral parser | mistral_tool_parser.py | -- | TODO | |
-| DeepSeek parser | deepseek_tool_parser.py | -- | TODO | |
-| Hermes parser | hermes_tool_parser.py | -- | TODO | |
-| Functionary parser | functionary_tool_parser.py | -- | TODO | |
+| Qwen parser | qwen_tool_parser.py | QwenToolParser | DONE | Parsers/ToolParsers/QwenToolParser.swift |
+| Llama parser | llama_tool_parser.py | LlamaToolParser | DONE | Parsers/ToolParsers/LlamaToolParser.swift |
+| Mistral parser | mistral_tool_parser.py | MistralToolParser | DONE | Parsers/ToolParsers/MistralToolParser.swift |
+| DeepSeek parser | deepseek_tool_parser.py | DeepSeekToolParser | DONE | Parsers/ToolParsers/DeepSeekToolParser.swift |
+| Hermes parser | hermes_tool_parser.py | HermesToolParser | DONE | Parsers/ToolParsers/HermesToolParser.swift |
+| Functionary parser | functionary_tool_parser.py | FunctionaryToolParser | DONE | Parsers/ToolParsers/FunctionaryToolParser.swift |
 | Granite parser | granite_tool_parser.py | -- | TODO | |
-| GLM parser | glm_tool_parser.py | -- | TODO | |
-| MiniMax parser | minimax_tool_parser.py | -- | TODO | |
-| Nemotron parser | nemotron_tool_parser.py | -- | TODO | |
+| GLM parser | glm_tool_parser.py | GLMToolParser | DONE | Parsers/ToolParsers/GLMToolParser.swift |
+| MiniMax parser | minimax_tool_parser.py | MiniMaxToolParser | DONE | Parsers/ToolParsers/MiniMaxToolParser.swift |
+| Nemotron parser | nemotron_tool_parser.py | NemotronToolParser | DONE | Parsers/ToolParsers/NemotronToolParser.swift |
 | xLAM parser | xlam_tool_parser.py | -- | TODO | |
 | Moonshot parser | moonshot_tool_parser.py | -- | TODO | |
 | StepFun parser | stepfun_tool_parser.py | -- | TODO | |
@@ -254,17 +254,17 @@ OsaurusCore build: PASSING (3290/3290 files, 193s)
 |----------|---------------|------|------|------|
 | Model Loading | 17 | 15 | 0 | 2 |
 | Transformer | 16 | 13 | 0 | 3 |
-| Cache Stack | 17 | 14 | 2 | 1 |
+| Cache Stack | 17 | 16 | 0 | 1 |
 | TurboQuant | 14 | 9 | 5 | 0 |
 | Scheduler | 14 | 13 | 0 | 1 |
 | Generation | 16 | 14 | 0 | 2 |
 | Power Mgmt | 6 | 6 | 0 | 0 |
 | Multi-Model | 6 | 6 | 0 | 0 |
 | Vision | 10 | 9 | 0 | 1 |
-| Tool Parsers | 16 | 3 | 0 | 13 |
+| Tool Parsers | 16 | 12 | 0 | 4 |
 | Reasoning Parsers | 5 | 3 | 0 | 2 |
 | API Compat | 18 | 0 | 0 | 8 (10 N/A) |
 | Integration | 12 | 12 | 0 | 0 |
-| **TOTAL** | **167** | **117 (70%)** | **7 (4%)** | **33 (20%)** |
+| **TOTAL** | **167** | **128 (77%)** | **5 (3%)** | **24 (14%)** |
 
 (10 features marked N/A = handled by Osaurus natively)

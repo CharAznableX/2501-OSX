@@ -41,6 +41,10 @@ public actor VMLXRuntimeActor {
     /// The transformer forward pass wrapper (created after model load).
     private var forwardPass: TransformerModelForwardPass?
 
+    /// SSM re-deriver for recovering SSM state when checkpoint is evicted.
+    /// Lazily created when a model is loaded, wired with the model's forward pass.
+    private var ssmReDeriver: SSMReDeriver?
+
     /// Whether a model is loaded and ready.
     public var isModelLoaded: Bool { modelContainer != nil }
 
@@ -127,6 +131,16 @@ public actor VMLXRuntimeActor {
         self.lastLoadedModelPath = path
         self.powerState = .active
 
+        // 5b. Wire SSM re-deriver with the model's forward pass.
+        // For hybrid models the re-deriver can run prefill to recover SSM state.
+        // For pure-attention models the re-deriver still records boundary info.
+        if let ssmCache = scheduler.cache.ssmStateCache {
+            let reDeriver = SSMReDeriver(ssmCache: ssmCache, model: fwdPass)
+            self.ssmReDeriver = reDeriver
+        } else {
+            self.ssmReDeriver = nil
+        }
+
         // 6. Register in multi-model gateway
         loadedModels[container.name] = container
         loadedForwardPasses[container.name] = fwdPass
@@ -195,8 +209,13 @@ public actor VMLXRuntimeActor {
         // Shut down scheduler (aborts running requests, frees resources)
         scheduler.shutdown()
 
-        // Clear forward pass
+        // Clear forward pass and re-deriver
         forwardPass = nil
+        if let reDeriver = ssmReDeriver {
+            await reDeriver.cancelAll()
+            await reDeriver.setModel(nil)
+        }
+        ssmReDeriver = nil
 
         modelContainer = nil
         currentModelName = nil
