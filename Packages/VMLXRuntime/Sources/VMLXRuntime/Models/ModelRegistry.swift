@@ -54,7 +54,14 @@ public struct VMLXModelRegistry {
         "olmo",             // OLMo
         "olmo2",            // OLMo 2
         "stablelm",         // StableLM
-        "gpt_oss",          // GPT-OSS (MoE, mlp.experts+router key convention)
+    ]
+
+    /// Model types that need dedicated implementations (NOT StandardTransformerModel).
+    /// These are handled by mlx-swift-lm (MLXService) which has correct model classes.
+    /// VMLXRuntime will add native support for these in future phases.
+    public static let mlxServiceOnlyTypes: Set<String> = [
+        "gpt_oss",          // GPT-OSS: softmax MoE routing, sliding window, custom SwiGLU clipping
+        "mistral_small",    // Mistral Small 4: FP8 + MLA attention
     ]
 
     /// Model types that use FP8 quantization or other unsupported weight formats.

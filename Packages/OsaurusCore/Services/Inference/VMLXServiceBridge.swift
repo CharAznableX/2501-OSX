@@ -130,6 +130,13 @@ actor VMLXServiceBridge: ToolCapableService {
             let modelsDir = DirectoryPickerService.effectiveModelsDirectory()
             let modelPath = modelsDir.appendingPathComponent(found.id)
             let resolved = modelPath.resolvingSymlinksInPath()
+
+            // Check if this model type needs MLXService instead of VMLX
+            if _isMLXServiceOnlyModel(at: resolved) {
+                throw NSError(domain: "VMLXServiceBridge", code: 2,
+                             userInfo: [NSLocalizedDescriptionKey: "Model requires MLXService (unsupported architecture for VMLXRuntime)"])
+            }
+
             try await service.loadModel(from: resolved)
         } else {
             try await service.loadModel(name: modelName)
@@ -250,6 +257,18 @@ actor VMLXServiceBridge: ToolCapableService {
     }
 
     // MARK: - Static Model Discovery
+
+    /// Check if a model at the given path needs MLXService (not VMLXRuntime).
+    /// Reads config.json to check model_type against VMLXModelRegistry.mlxServiceOnlyTypes.
+    private func _isMLXServiceOnlyModel(at path: URL) -> Bool {
+        let configURL = path.appendingPathComponent("config.json")
+        guard let data = try? Data(contentsOf: configURL),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let modelType = json["model_type"] as? String else {
+            return false
+        }
+        return VMLXModelRegistry.mlxServiceOnlyTypes.contains(modelType)
+    }
 
     /// Return available VMLX model names by scanning well-known directories.
     /// Called from ChatEngine's installedModelsProvider to merge with MLXService models.

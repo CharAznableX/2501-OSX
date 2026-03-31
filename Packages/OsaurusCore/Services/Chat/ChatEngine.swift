@@ -89,60 +89,69 @@ actor ChatEngine: Sendable, ChatEngineProtocol {
         let remoteServices = await MainActor.run { RemoteProviderManager.shared.connectedServices() }
         debugLog("[ChatEngine] streamChat: remoteServices=\(remoteServices.count), routing model=\(request.model)")
 
-        let route = ModelServiceRouter.resolve(
-            requestedModel: request.model,
-            services: services,
-            remoteServices: remoteServices
-        )
-        debugLog("[ChatEngine] streamChat: route=\(route)")
+        // Try services in priority order. If one fails (e.g., VMLX can't load
+        // a model that needs MLXService), fall back to the next service.
+        var lastError: Error?
+        for service in services {
+            guard service.isAvailable(), service.handles(requestedModel: request.model) else { continue }
 
-        switch route {
-        case .service(let service, let effectiveModel):
-            let innerStream: AsyncThrowingStream<String, Error>
+            do {
+                let innerStream: AsyncThrowingStream<String, Error>
 
-            // If tools were provided and supported, use message-based tool streaming
-            if let tools = request.tools, !tools.isEmpty, let toolSvc = service as? ToolCapableService {
-                let stopSequences = request.stop ?? []
-                debugLog("[ChatEngine] streamChat: calling streamWithTools tools=\(tools.count)")
-                innerStream = try await toolSvc.streamWithTools(
-                    messages: messages,
-                    parameters: params,
-                    stopSequences: stopSequences,
-                    tools: tools,
-                    toolChoice: request.tool_choice,
-                    requestedModel: request.model
+                if let tools = request.tools, !tools.isEmpty, let toolSvc = service as? ToolCapableService {
+                    let stopSequences = request.stop ?? []
+                    debugLog("[ChatEngine] streamChat: trying \(service.id) with tools=\(tools.count)")
+                    innerStream = try await toolSvc.streamWithTools(
+                        messages: messages,
+                        parameters: params,
+                        stopSequences: stopSequences,
+                        tools: tools,
+                        toolChoice: request.tool_choice,
+                        requestedModel: request.model
+                    )
+                } else {
+                    debugLog("[ChatEngine] streamChat: trying \(service.id) streamDeltas")
+                    innerStream = try await service.streamDeltas(
+                        messages: messages,
+                        parameters: params,
+                        requestedModel: request.model,
+                        stopSequences: request.stop ?? []
+                    )
+                }
+
+                let source = self.inferenceSource
+                let inputTokens = estimateInputTokens(messages)
+                let model = request.model ?? "default"
+
+                return wrapStreamWithLogging(
+                    innerStream,
+                    source: source,
+                    model: model,
+                    inputTokens: inputTokens,
+                    temperature: temperature,
+                    maxTokens: maxTokens
                 )
-                debugLog("[ChatEngine] streamChat: streamWithTools returned")
-            } else {
-                debugLog("[ChatEngine] streamChat: calling streamDeltas")
-                innerStream = try await service.streamDeltas(
-                    messages: messages,
-                    parameters: params,
-                    requestedModel: request.model,
-                    stopSequences: request.stop ?? []
-                )
-                debugLog("[ChatEngine] streamChat: streamDeltas returned")
+            } catch {
+                debugLog("[ChatEngine] streamChat: \(service.id) failed: \(error.localizedDescription), trying next service")
+                lastError = error
+                continue
             }
-
-            // Wrap stream to count tokens and log when complete
-            let source = self.inferenceSource
-            let inputTokens = estimateInputTokens(messages)
-            let model = effectiveModel
-            let temp = temperature
-            let maxTok = maxTokens
-
-            return wrapStreamWithLogging(
-                innerStream,
-                source: source,
-                model: model,
-                inputTokens: inputTokens,
-                temperature: temp,
-                maxTokens: maxTok
-            )
-
-        case .none:
-            throw EngineError()
         }
+
+        // Also try remote services
+        for service in remoteServices {
+            guard service.isAvailable(), service.handles(requestedModel: request.model) else { continue }
+            // Remote services don't need fallback — just try once
+            let innerStream = try await service.streamDeltas(
+                messages: messages, parameters: params,
+                requestedModel: request.model, stopSequences: request.stop ?? [])
+            let source = self.inferenceSource
+            return wrapStreamWithLogging(innerStream, source: source, model: request.model ?? "default",
+                                         inputTokens: estimateInputTokens(messages), temperature: temperature, maxTokens: maxTokens)
+        }
+
+        if let err = lastError { throw err }
+        throw EngineError()
     }
 
     /// Wraps an async stream to count output tokens and log on completion.
