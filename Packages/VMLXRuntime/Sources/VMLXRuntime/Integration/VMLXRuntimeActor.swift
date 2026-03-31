@@ -16,6 +16,30 @@ private func _vmlxLog2(_ msg: String) {
     }
 }
 
+// MARK: - String Helpers
+
+private extension String {
+    /// Strip junk characters that cause visual artifacts in the UI:
+    /// replacement chars (U+FFFD), zero-width spaces/joiners, byte order marks,
+    /// and C0 control chars (except newline, tab, carriage return).
+    var vmlxStripped: String {
+        // Fast path: most tokens have no junk
+        let hasJunk = self.unicodeScalars.contains { s in
+            s.value == 0xFFFD || s.value == 0xFEFF  // replacement, BOM
+                || s.value == 0x200B || s.value == 0x200C || s.value == 0x200D  // zero-width
+                || s.value == 0x2060 || s.value == 0xFFF9  // word joiner, interlinear
+                || (s.value < 0x20 && s.value != 0x0A && s.value != 0x0D && s.value != 0x09)
+        }
+        guard hasJunk else { return self }
+        return String(self.unicodeScalars.filter { s in
+            !(s.value == 0xFFFD || s.value == 0xFEFF
+              || s.value == 0x200B || s.value == 0x200C || s.value == 0x200D
+              || s.value == 0x2060 || s.value == 0xFFF9
+              || (s.value < 0x20 && s.value != 0x0A && s.value != 0x0D && s.value != 0x09))
+        })
+    }
+}
+
 /// Events emitted during generation.
 public enum VMLXEvent: Sendable {
     case tokens(String)
@@ -97,6 +121,11 @@ public actor VMLXRuntimeActor {
 
     // MARK: - Runtime Configuration
 
+    /// Fingerprint of the last applied cache-related config.
+    /// Used to avoid rebuilding CacheCoordinator (which clears all cached KV data)
+    /// when nothing changed. Without this, every request would wipe the cache.
+    private var lastCacheConfigFingerprint: String = ""
+
     /// Apply user-facing runtime settings.
     /// Called by the host app (Osaurus) to forward UI settings to the scheduler.
     ///
@@ -119,11 +148,34 @@ public actor VMLXRuntimeActor {
         cacheMemoryPercent: Float? = nil,
         usePagedCache: Bool? = nil
     ) {
+        let kvQuantStr: String
         if let bits = kvBits, bits < 16 {
-            scheduler.config.kvCacheQuantization = "q\(bits)"
+            kvQuantStr = "q\(bits)"
         } else {
-            scheduler.config.kvCacheQuantization = "none"
+            kvQuantStr = "none"
         }
+
+        // Build fingerprint of cache-affecting settings BEFORE applying.
+        // Only rebuild CacheCoordinator if these actually changed.
+        let resolvedDiskDir: URL?
+        if let dir = diskCacheDir {
+            resolvedDiskDir = dir
+        } else if enableDiskCache && scheduler.config.diskCacheDir == nil {
+            let modelHash = currentModelName?.replacingOccurrences(of: "/", with: "_") ?? "default"
+            let cacheBase = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+                ?? URL(fileURLWithPath: NSTemporaryDirectory())
+            resolvedDiskDir = cacheBase
+                .appendingPathComponent("osaurus")
+                .appendingPathComponent("kv-cache")
+                .appendingPathComponent(modelHash)
+        } else {
+            resolvedDiskDir = scheduler.config.diskCacheDir
+        }
+
+        let fingerprint = "\(enableDiskCache)|\(resolvedDiskDir?.path ?? "nil")|\(enableTurboQuant)|\(cacheMemoryPercent ?? scheduler.config.cacheMemoryPercent)|\(usePagedCache ?? scheduler.config.usePagedCache)"
+
+        // Apply all settings to scheduler config
+        scheduler.config.kvCacheQuantization = kvQuantStr
         scheduler.config.kvCacheGroupSize = kvGroupSize
         if let maxKV = maxContextLength {
             scheduler.config.maxNumBatchedTokens = maxKV
@@ -132,17 +184,8 @@ public actor VMLXRuntimeActor {
             scheduler.config.prefillStepSize = step
         }
         scheduler.config.enableDiskCache = enableDiskCache
-        if let dir = diskCacheDir {
+        if let dir = resolvedDiskDir {
             scheduler.config.diskCacheDir = dir
-        } else if enableDiskCache && scheduler.config.diskCacheDir == nil {
-            // Auto-configure disk cache directory based on model name
-            let modelHash = currentModelName?.replacingOccurrences(of: "/", with: "_") ?? "default"
-            let cacheBase = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
-                ?? URL(fileURLWithPath: NSTemporaryDirectory())
-            scheduler.config.diskCacheDir = cacheBase
-                .appendingPathComponent("osaurus")
-                .appendingPathComponent("kv-cache")
-                .appendingPathComponent(modelHash)
         }
         scheduler.config.enableTurboQuant = enableTurboQuant
         if let memPercent = cacheMemoryPercent {
@@ -152,10 +195,14 @@ public actor VMLXRuntimeActor {
             scheduler.config.usePagedCache = paged
         }
 
-        // Rebuild CacheCoordinator so changed settings (disk cache, memory budget, etc.)
-        // take effect. The coordinator is built from config at Scheduler.init; without
-        // rebuilding, runtime config changes would be ignored.
-        scheduler.rebuildCacheCoordinator()
+        // Only rebuild CacheCoordinator when cache-affecting settings actually changed.
+        // Rebuilding creates a new coordinator which CLEARS all cached KV data —
+        // doing this on every request would make multi-turn cache hits impossible.
+        if fingerprint != lastCacheConfigFingerprint {
+            scheduler.rebuildCacheCoordinator()
+            lastCacheConfigFingerprint = fingerprint
+            NSLog("[VMLX] CacheCoordinator rebuilt (config changed)")
+        }
     }
 
     // MARK: - Model Management
@@ -437,42 +484,65 @@ public actor VMLXRuntimeActor {
                     let kvBitsStr = self.scheduler.config.kvCacheQuantization
                     let kvBits: Int? = kvBitsStr.hasPrefix("q") ? Int(kvBitsStr.dropFirst()) : nil
                     let kvGroupSize = self.scheduler.config.kvCacheGroupSize
+                    let tqEnabled = self.scheduler.config.enableTurboQuant
+                    _vmlxLog2("[Gen] Config: kvQuant=\(kvBitsStr) tq=\(tqEnabled) hybrid=\(container.isHybrid)")
                     let cache = container.newCache(kvBits: kvBits, kvGroupSize: kvGroupSize)
                     var inputTokens: MLXArray
                     var cachedTokenCount = 0
 
+                    _vmlxLog2("[Gen] Fetch cache: \(cacheKeyTokens.count) cacheKeyTokens, \(tokens.count) total tokens, genPromptLen=\(genPromptLen)")
                     let fetchResult = self.scheduler.cache.fetch(tokens: cacheKeyTokens)
                     switch fetchResult {
                     case .hit(let cachedHybrid, let remaining, let detail, let ssmCheckpoint)
                         where cachedHybrid.layerCount == cache.count:
                         cacheDetailStr = "\(detail)"
-                        NSLog("[Gen] Cache HIT: \(cachedHybrid.layerCount) layers, \(remaining.count) remaining tokens, detail=\(detail)")
-                        // Restore cached KV state into the VMLXKVCache objects
+                        _vmlxLog2("[Gen] Cache HIT: \(cachedHybrid.layerCount) layers, \(remaining.count) remaining tokens, detail=\(detail)")
+                        // Restore cached KV state into the VMLXKVCache objects.
+                        // Uses protocol-based .state setter — works with both VMLXKVCacheSimple
+                        // AND VMLXQuantizedKVCache (which re-quantizes on assignment).
+                        var restoredLayers = 0
                         for (i, entry) in cachedHybrid.layers.enumerated() {
                             guard i < cache.count else { break }
                             switch entry {
                             case .attention(let kv):
-                                if let kvSimple = cache[i] as? VMLXKVCacheSimple {
-                                    kvSimple.state = [kv.keys, kv.values]
+                                // Works with VMLXKVCacheSimple AND VMLXQuantizedKVCache
+                                // (both extend VMLXBaseKVCache, dynamic dispatch to correct setter)
+                                if let kvBase = cache[i] as? VMLXBaseKVCache,
+                                   !(cache[i] is VMLXMambaCache) {
+                                    kvBase.state = [kv.keys, kv.values]
+                                    restoredLayers += 1
                                 }
                             case .compressedAttention(let ek, let ev, _):
-                                // Decompress TurboQuant to float16 and load into KV cache
-                                if let kvSimple = cache[i] as? VMLXKVCacheSimple {
+                                // Decompress TurboQuant (per-coordinate scalar quantization)
+                                if let kvBase = cache[i] as? VMLXBaseKVCache,
+                                   !(cache[i] is VMLXMambaCache) {
                                     let decodedKeys = TurboQuantEncoder.decodeKeys(ek, seed: ek.seed)
                                     let decodedValues = TurboQuantEncoder.decodeValues(ev, seed: ev.seed)
-                                    kvSimple.state = [decodedKeys, decodedValues]
+                                    kvBase.state = [decodedKeys, decodedValues]
+                                    restoredLayers += 1
                                 }
                             case .ssm(let ssm):
                                 if let mambaCache = cache[i] as? VMLXMambaCache {
                                     mambaCache.state = ssm.state
+                                    restoredLayers += 1
                                 }
                             }
                         }
+                        // Log cache state after restore for debugging
+                        let cacheType = cache.first.map { String(describing: type(of: $0)) } ?? "unknown"
+                        let restoredOffset = (cache.first as? VMLXBaseKVCache)?.offset ?? -1
+                        let firstEntryType: String = cachedHybrid.layers.first.map {
+                            switch $0 {
+                            case .attention: return "attention"
+                            case .compressedAttention: return "compressedAttention(TQ)"
+                            case .ssm: return "ssm"
+                            }
+                        } ?? "empty"
+                        _vmlxLog2("[Gen] Restored \(restoredLayers)/\(cachedHybrid.layerCount) layers, type=\(cacheType), offset=\(restoredOffset), entryType=\(firstEntryType)")
 
-                        // For hybrid models: inject SSM companion state from checkpoint.
-                        // The HybridCache from memory/prefix may only contain KV layers.
-                        // SSM states come separately via SSMStateCache → ssmCheckpoint.
-                        if let checkpoint = ssmCheckpoint, !checkpoint.ssmStates.isEmpty {
+                        // For hybrid models only: inject SSM companion state from checkpoint.
+                        // Non-hybrid models have no VMLXMambaCache entries, so this is a no-op.
+                        if container.isHybrid, let checkpoint = ssmCheckpoint, !checkpoint.ssmStates.isEmpty {
                             var ssmIdx = 0
                             for c in cache {
                                 if let mambaCache = c as? VMLXMambaCache,
@@ -481,7 +551,7 @@ public actor VMLXRuntimeActor {
                                     ssmIdx += 1
                                 }
                             }
-                            NSLog("[Gen] Injected \(ssmIdx) SSM companion states from checkpoint")
+                            _vmlxLog2("[Gen] Injected \(ssmIdx) SSM companion states from checkpoint")
                         }
 
                         // remaining = uncached portion of cacheKeyTokens (not full tokens).
@@ -493,8 +563,8 @@ public actor VMLXRuntimeActor {
                         if remaining.isEmpty {
                             // Full cache hit on cacheKeyTokens. Re-feed last cached token
                             // to get fresh logits, plus gen_prompt_len suffix.
-                            for c in cache {
-                                if let kvc = c as? VMLXKVCacheSimple { kvc.trim(1) }
+                            for c in cache where c.isTrimmable && !(c is VMLXMambaCache) {
+                                c.trim(1)
                             }
                             cachedTokenCount -= 1
                             let refeedTokens = [cacheKeyTokens.last!] + genSuffix
@@ -505,6 +575,7 @@ public actor VMLXRuntimeActor {
                             inputTokens = MLXArray(allRemaining.map { Int32($0) })
                         }
                     case .partialHit(let attentionCache, let remaining, let detail):
+                        cacheDetailStr = "partial/\(detail)"
                         if container.isHybrid {
                             // Hybrid model: SSM companion missing. SSM state is path-dependent —
                             // can't use KV cache without matching SSM state.
@@ -516,24 +587,26 @@ public actor VMLXRuntimeActor {
                             // Future optimization (SSMReDeriver): background re-derivation to
                             // avoid redundant attention recomputation. Requires ModelForwardPass
                             // protocol update to accept [VMLXKVCache] instead of [MLXArray].
-                            NSLog("[Gen] Cache PARTIAL HIT (hybrid, SSM missing): full prefill \(tokens.count) tokens (SSM will be stored after)")
+                            _vmlxLog2("[Gen] Cache PARTIAL HIT (hybrid, SSM missing): full prefill \(tokens.count) tokens (SSM will be stored after)")
                             inputTokens = MLXArray(tokens.map { Int32($0) })
                         } else {
                             // Non-hybrid: no SSM layers, so partial hit = prefix hit.
                             // Restore attention KV and prefill only remaining + gen_prompt_len.
-                            NSLog("[Gen] Cache PARTIAL HIT (non-hybrid): \(attentionCache.layerCount) layers, \(remaining.count) remaining, detail=\(detail)")
+                            _vmlxLog2("[Gen] Cache PARTIAL HIT (non-hybrid): \(attentionCache.layerCount) layers, \(remaining.count) remaining, detail=\(detail)")
                             for (i, entry) in attentionCache.layers.enumerated() {
                                 guard i < cache.count else { break }
                                 switch entry {
                                 case .attention(let kv):
-                                    if let kvSimple = cache[i] as? VMLXKVCacheSimple {
-                                        kvSimple.state = [kv.keys, kv.values]
+                                    if let kvBase = cache[i] as? VMLXBaseKVCache,
+                                       !(cache[i] is VMLXMambaCache) {
+                                        kvBase.state = [kv.keys, kv.values]
                                     }
                                 case .compressedAttention(let ek, let ev, _):
-                                    if let kvSimple = cache[i] as? VMLXKVCacheSimple {
+                                    if let kvBase = cache[i] as? VMLXBaseKVCache,
+                                       !(cache[i] is VMLXMambaCache) {
                                         let decodedKeys = TurboQuantEncoder.decodeKeys(ek, seed: ek.seed)
                                         let decodedValues = TurboQuantEncoder.decodeValues(ev, seed: ev.seed)
-                                        kvSimple.state = [decodedKeys, decodedValues]
+                                        kvBase.state = [decodedKeys, decodedValues]
                                     }
                                 default:
                                     break  // SSM layers handled separately
@@ -543,8 +616,8 @@ public actor VMLXRuntimeActor {
                                 ? Array(tokens.suffix(genPromptLen)) : [Int]()
                             cachedTokenCount = cacheKeyTokens.count - remaining.count
                             if remaining.isEmpty {
-                                for c in cache {
-                                    if let kvc = c as? VMLXKVCacheSimple { kvc.trim(1) }
+                                for c in cache where c.isTrimmable && !(c is VMLXMambaCache) {
+                                    c.trim(1)
                                 }
                                 cachedTokenCount -= 1
                                 let refeed = [cacheKeyTokens.last!] + genSuffix
@@ -557,61 +630,84 @@ public actor VMLXRuntimeActor {
 
                     case .miss, .hit(_, _, _, _):
                         // Complete miss or layer count mismatch — full prefill
-                        NSLog("[Gen] Cache MISS: prefilling \(tokens.count) tokens")
+                        _vmlxLog2("[Gen] Cache MISS: prefilling \(tokens.count) tokens")
                         inputTokens = MLXArray(tokens.map { Int32($0) })
                     }
 
                     var generatedTokenCount = 0
                     var thinkingTokenCount = 0
-                    var insideThinking = enableThinking
-                    let thinkingBudget = maxTokens / 2  // Cap thinking at half of maxTokens
+                    // Track thinking state regardless of enableThinking.
+                    // When thinking is disabled, we still need to detect and suppress
+                    // thinking content between <think> and </think> tags.
+                    let thinkInTemplate = container.familyConfig.thinkInTemplate
+                    // Only start inside thinking when thinking is ENABLED and the template
+                    // injects <think>. When thinking is disabled, the template doesn't inject
+                    // <think>, so the model outputs regular text — don't suppress it.
+                    var insideThinking = enableThinking && thinkInTemplate
+                    let thinkingBudget = maxTokens / 2
 
-                    // Prefill: process input tokens in chunks (matches Python mlx-lm).
-                    // Chunked prefill prevents OOM on long prompts and allows cache eval between chunks.
+                    // Prefill with two-phase SSM snapshot for hybrid models.
+                    // Split at storeTokens boundary so SSM state matches stored KV.
                     let prefillStep = self.scheduler.config.prefillStepSize
                     let totalPrefillTokens = inputTokens.dim(0)
+                    let storeTokensCount = max(0, cacheKeyTokens.count - 1)
+                    var prefillSSMSnapshot: [[MLXArray]]? = nil
 
-                    // Process all-but-last tokens in chunks, then last token for logits
-                    if totalPrefillTokens > prefillStep + 1 {
-                        var processed = 0
-                        let prefillEnd = totalPrefillTokens - 1
-                        while processed < prefillEnd {
-                            let chunkEnd = min(processed + prefillStep, prefillEnd)
-                            let chunk = inputTokens[processed ..< chunkEnd]
-                            _ = container.forward(chunk.expandedDimensions(axis: 0), cache: cache)
+                    let needSSMSnapshot = container.isHybrid && cachedTokenCount == 0
+                        && storeTokensCount > 0 && storeTokensCount < totalPrefillTokens
+
+                    // Chunked prefill helper
+                    func _chunkedPrefill(_ start: Int, _ end: Int) {
+                        var pos = start
+                        while pos < end {
+                            let chunkEnd = min(pos + prefillStep, end)
+                            _ = container.forward(
+                                inputTokens[pos ..< chunkEnd].expandedDimensions(axis: 0),
+                                cache: cache)
                             eval(cache)
                             Memory.clearCache()
-                            processed = chunkEnd
+                            pos = chunkEnd
                         }
-                        inputTokens = inputTokens[(totalPrefillTokens - 1)...]
                     }
 
-                    let prefillLogits = container.forward(
-                        inputTokens.expandedDimensions(axis: 0), cache: cache)
+                    if needSSMSnapshot {
+                        // Phase 1: prefill tokens[0..<storeTokensCount]
+                        _chunkedPrefill(0, storeTokensCount)
 
-                    // Sample first token using Sampler (supports top-p, top-k, min-p,
-                    // repetition penalty — not just temperature).
-                    // Decode loop uses simple temperature+categorical for speed.
+                        // Capture SSM state at EXACT storeTokens boundary
+                        prefillSSMSnapshot = cache.compactMap { c -> [MLXArray]? in
+                            guard let mamba = c as? VMLXMambaCache else { return nil }
+                            return mamba.state.map { $0[.ellipsis] }
+                        }
+                        _vmlxLog2("[Gen] SSM snapshot: \(prefillSSMSnapshot!.count) layers at offset \(storeTokensCount)/\(totalPrefillTokens)")
+
+                        // Phase 2: prefill remaining tokens (last cacheKey + genPrompt suffix)
+                        if storeTokensCount < totalPrefillTokens - 1 {
+                            _chunkedPrefill(storeTokensCount, totalPrefillTokens - 1)
+                        }
+                    } else {
+                        // Standard single-phase prefill
+                        if totalPrefillTokens > 1 {
+                            _chunkedPrefill(0, totalPrefillTokens - 1)
+                        }
+                    }
+
+                    // Final token → logits for first generated token
+                    let lastToken = inputTokens[(totalPrefillTokens - 1)...]
+                    let prefillLogits = container.forward(
+                        lastToken.expandedDimensions(axis: 0), cache: cache)
                     let firstTokenId = Sampler.sample(
                         logits: prefillLogits[0, -1], params: samplingParams)
                     var y = MLXArray(Int32(firstTokenId))
-
-                    // SSM companion extraction happens in the post-generation store block below
-                    // (CacheCoordinator.store automatically extracts and stores SSM layers
-                    // with the correct boundary matching the KV store key).
 
                     // Double-buffered generation loop (matches mlx-lm Python pattern):
                     // Pipeline: build graph for NEXT token while GPU evaluates CURRENT token.
                     // asyncEval starts GPU work, then CPU does decode/yield concurrently.
                     // For MiniMax 122B: ~30ms GPU, ~10ms CPU → effective max(30,10) = 30ms vs 40ms sequential.
 
-                    // For models where the chat template injects <think> natively
-                    // (thinkInTemplate=true), the model's output starts INSIDE the think
-                    // block — no <think> tag in the generated tokens. Inject it into
-                    // the output stream so the UI's StreamingDeltaProcessor enters
-                    // thinking mode. Models that output <think> themselves (thinkInTemplate=false)
-                    // don't need this — the tag arrives naturally in the token stream.
-                    let thinkInTemplate = container.familyConfig.thinkInTemplate
+                    // For thinkInTemplate models, inject <think> into the output stream
+                    // so the UI's StreamingDeltaProcessor enters thinking mode.
+                    // Only when thinking is enabled (otherwise we suppress all thinking).
                     if enableThinking && insideThinking && thinkInTemplate {
                         continuation.yield(.tokens("<think>\n"))
                     }
@@ -620,35 +716,62 @@ public actor VMLXRuntimeActor {
                     var nextY: MLXArray? = nil
                     asyncEval([y])
 
+                    // Repetition penalty state: track generated tokens to penalize repeats.
+                    // Without this, models degenerate into repetition loops on long generations.
+                    // The penalty is cheap (element-wise ops on logits, O(vocab_size)) — unlike
+                    // top-p which requires sorting (removed from hot loop for being 2.5x slower).
+                    let repPenalty = samplingParams.repetitionPenalty
+                    let applyRepPenalty = repPenalty != 1.0
+                    var generatedTokenIds: [Int] = []
+
+                    // Decode parameters for the hot loop
+                    let isGreedy = samplingParams.isGreedy
+                    let temp = samplingParams.temperature
+
                     let _genStart = CFAbsoluteTimeGetCurrent()
+                    var _steadyStart: Double = 0
+                    let _warmupTokens = 3  // First N tokens are slow (Metal pipeline warmup)
                     for _step in 0 ..< maxTokens {
                         try Task.checkCancellation()
 
-                        // Start computing NEXT token (GPU works on this while we process current)
+                        // Double-buffered: build graph for NEXT token while GPU evaluates CURRENT.
+                        // Forward pass + repetition penalty + sampling.
                         if _step < maxTokens - 1 {
-                            // Double-buffered: build graph for NEXT token while GPU evaluates CURRENT.
-                            // CRITICAL: keep this minimal — no sort/softmax/cumsum here.
-                            // Top-p and repetition penalty are too expensive for the hot loop
-                            // (sort on 248K vocab = ~10ms overhead per token).
-                            // Temperature + categorical is sufficient for decode quality.
                             let stepLogits = container.forward(y.reshaped(1, 1), cache: cache)
-                            if samplingParams.isGreedy {
-                                nextY = stepLogits[0, -1].argMax()
+                            var logits = stepLogits[0, -1]
+
+                            // Apply repetition penalty to previously generated tokens.
+                            // Element-wise ops only — no sorting, no softmax, no cumsum.
+                            if applyRepPenalty && !generatedTokenIds.isEmpty {
+                                logits = Sampler.applyRepetitionPenalty(
+                                    logits: logits, tokens: generatedTokenIds, penalty: repPenalty)
+                            }
+
+                            if isGreedy {
+                                nextY = logits.argMax()
                             } else {
-                                let scaled = samplingParams.temperature > 0
-                                    ? stepLogits[0, -1] / samplingParams.temperature
-                                    : stepLogits[0, -1]
+                                let scaled = temp > 0 ? logits / temp : logits
                                 nextY = MLXRandom.categorical(scaled.expandedDimensions(axis: 0))
                             }
                             asyncEval([nextY!])
                         }
 
-                        // Now materialize CURRENT token (blocks until GPU done with y)
+                        // Materialize CURRENT token (blocks until GPU done with y)
                         let currentToken = y.item(Int.self)
+                        generatedTokenIds.append(currentToken)
 
-                        if _step == 10 {
+                        // Track steady-state start (after Metal pipeline warmup)
+                        if _step == _warmupTokens {
+                            _steadyStart = CFAbsoluteTimeGetCurrent()
+                        }
+
+                        // Log speed at multiple checkpoints for profiling
+                        if _step == 5 || _step == 20 || _step == 100 {
                             let _elapsed = CFAbsoluteTimeGetCurrent() - _genStart
-                            _vmlxLog2("[Gen] 10 tokens in \(String(format: "%.2f", _elapsed))s = \(String(format: "%.1f", 10/_elapsed)) tok/s (includes prefill)")
+                            let _steadyToks = _step - _warmupTokens
+                            let _steadyElapsed = _steadyStart > 0 ? CFAbsoluteTimeGetCurrent() - _steadyStart : 0
+                            let _steadyTPS = _steadyElapsed > 0 ? Double(_steadyToks) / _steadyElapsed : 0
+                            _vmlxLog2("[Gen] \(_step) tok: \(String(format: "%.1f", Double(_step)/_elapsed)) avg | \(String(format: "%.1f", _steadyTPS)) steady tok/s")
                         }
 
                         generatedTokenCount += 1
@@ -659,39 +782,51 @@ public actor VMLXRuntimeActor {
                         }
 
                         // Decode token to text (CPU work overlaps with GPU computing nextY)
-                        var text = container.decode([currentToken])
+                        let text = container.decode([currentToken])
 
-                        // Handle thinking state
-                        if enableThinking {
-                            if insideThinking {
-                                thinkingTokenCount += 1
-                                if text.contains("</think>") {
-                                    insideThinking = false
-                                } else if thinkingTokenCount >= thinkingBudget {
-                                    insideThinking = false
+                        // Track thinking state transitions ALWAYS (even when thinking
+                        // is disabled) so we can suppress thinking content properly.
+                        if insideThinking {
+                            thinkingTokenCount += 1
+                            if text.contains("</think>") {
+                                insideThinking = false
+                                if !enableThinking {
+                                    // Thinking disabled: suppress the </think> tag and
+                                    // all content before it. Continue to next token.
+                                    y = nextY ?? y
+                                    continue
+                                }
+                            } else if thinkingTokenCount >= thinkingBudget {
+                                insideThinking = false
+                                if enableThinking {
                                     continuation.yield(.tokens("\n</think>\n"))
                                 }
                             }
-                        } else {
-                            text = text.replacingOccurrences(of: "<think>", with: "")
-                            text = text.replacingOccurrences(of: "</think>", with: "")
-                            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+
+                            if !enableThinking {
+                                // Thinking disabled: suppress ALL thinking content
+                                y = nextY ?? y
+                                continue
+                            }
+                        } else if !insideThinking && text.contains("<think>") {
+                            // Entering a new think block (model outputs <think> tag)
+                            insideThinking = true
+                            thinkingTokenCount = 0
+                            if !enableThinking {
                                 y = nextY ?? y
                                 continue
                             }
                         }
 
-                        text = text.replacingOccurrences(of: "\u{FFFD}", with: "")
+                        let emitText = text.vmlxStripped
 
-                        // Think tag injection is handled by:
-                        // 1. The model's chat template (outputs <think> natively)
-                        // 2. Osaurus's StreamingMiddleware (PrependThinkTagMiddleware
-                        //    for models that need it, e.g., Qwen3.5 4B/9B/27B)
-                        // Do NOT inject here — causes triple <think> tags.
+                        if emitText.isEmpty {
+                            y = nextY ?? y
+                            continue
+                        }
 
-                        let events = accumulator.process(text: text, tokenIds: [currentToken])
+                        let events = accumulator.process(text: emitText, tokenIds: [currentToken])
                         for event in events {
-                            // Capture TTFT on first token/thinking output
                             if !firstTokenEmitted {
                                 ttftTime = CFAbsoluteTimeGetCurrent() - requestStart
                                 firstTokenEmitted = true
@@ -732,78 +867,25 @@ public actor VMLXRuntimeActor {
                         }
                     }
 
-                    // Store cache for future turn reuse.
-                    // Key: cacheKeyTokens (stripped of gen_prompt_len), truncated to len-1.
-                    // Why len-1: on cache hit, we re-feed the last token to get fresh logits.
-                    // This matches Python VMLX's _truncate_cache_to_prompt_length().
-                    let storeTokens: [Int]
-                    if cacheKeyTokens.count > 1 {
-                        storeTokens = Array(cacheKeyTokens.dropLast(1))
-                    } else {
-                        storeTokens = cacheKeyTokens
-                    }
-
-                    if !storeTokens.isEmpty {
-                        // Trim KV cache to match storeTokens length.
-                        // Current cache offset = promptTokenCount + generatedTokenCount.
-                        // We want offset = storeTokens.count = cacheKeyTokens.count - 1.
-                        let targetOffset = storeTokens.count
-                        for c in cache {
-                            if let kvc = c as? VMLXKVCacheSimple, kvc.offset > targetOffset {
-                                kvc.trim(kvc.offset - targetOffset)
-                            }
-                            // SSM (Mamba) state is cumulative — store as-is.
-                            // SSM state at the end of prefill contains info from all prompt tokens.
-                        }
-
-                        // Build layer entries. When TurboQuant is enabled, compress
-                        // attention layers to 3-bit format for ~5x memory savings.
-                        // Critical layers get higher precision (4-bit) via TurboQuantConfig.
-                        // SSM layers are never compressed (no KV data).
-                        let tqEnabled = self.scheduler.config.enableTurboQuant
-                        let tqConfig = container.turboQuantConfig
-                        let totalLayers = cache.count
-
-                        var layers: [LayerCacheEntry] = []
-                        for (layerIdx, c) in cache.enumerated() {
-                            if let mc = c as? VMLXMambaCache {
-                                layers.append(.ssm(SSMStateLayer(state: mc.state)))
-                            } else if let kvc = c as? VMLXKVCacheSimple {
-                                let s = kvc.state
-                                guard s.count == 2 else { continue }
-
-                                if tqEnabled, let tq = tqConfig,
-                                   let kBits = tq.keyBits(forLayer: layerIdx, totalLayers: totalLayers),
-                                   let vBits = tq.valueBits(forLayer: layerIdx, totalLayers: totalLayers) {
-                                    // Compress this attention layer via TurboQuant
-                                    let ek = TurboQuantEncoder.encodeKeys(
-                                        keys: s[0], bits: kBits, seed: tq.seed)
-                                    let ev = TurboQuantEncoder.encodeValues(
-                                        values: s[1], bits: vBits, seed: tq.seed)
-                                    layers.append(.compressedAttention(ek, ev, kvc.offset))
-                                } else {
-                                    // No TurboQuant for this layer — store as float
-                                    layers.append(.attention(KVCacheLayer(
-                                        keys: s[0], values: s[1], offset: kvc.offset)))
-                                }
-                            }
-                        }
-                        if !layers.isEmpty {
-                            let hybridCache = HybridCache(layers: layers)
-                            hybridCache.materialized()
-                            self.scheduler.cache.store(tokens: storeTokens, cache: hybridCache)
-                            NSLog("[Gen] Stored cache: \(storeTokens.count) tokens (stripped \(genPromptLen) gen_prompt + \(generatedTokenCount) generated + 1 last)")
-                        }
-                    }
-
-                    // Compute timing stats
-                    let totalElapsed = CFAbsoluteTimeGetCurrent() - requestStart
-                    let decodeElapsed = CFAbsoluteTimeGetCurrent() - _genStart
+                    // Compute timing stats BEFORE cache store (TQ encode can take
+                    // hundreds of ms and shouldn't be included in decode speed).
+                    let decodeEndTime = CFAbsoluteTimeGetCurrent()
+                    let totalElapsed = decodeEndTime - requestStart
+                    let decodeElapsed = decodeEndTime - _genStart
                     let prefillElapsed = max(0.001, totalElapsed - decodeElapsed)
                     let prefillTokenCount = max(1, promptTokenCount - cachedTokenCount)
                     let prefillTPS = Double(prefillTokenCount) / prefillElapsed
-                    let decodeTPS = generatedTokenCount > 0
-                        ? Double(generatedTokenCount) / decodeElapsed : 0
+
+                    // Use steady-state speed if we generated enough tokens
+                    let steadyTokens = generatedTokenCount - _warmupTokens
+                    let steadyElapsed = _steadyStart > 0 ? decodeEndTime - _steadyStart : decodeElapsed
+                    let decodeTPS: Double
+                    if steadyTokens > 5 && _steadyStart > 0 {
+                        decodeTPS = Double(steadyTokens) / steadyElapsed
+                    } else {
+                        decodeTPS = generatedTokenCount > 0
+                            ? Double(generatedTokenCount) / decodeElapsed : 0
+                    }
 
                     // Emit usage with timing
                     _vmlxLog2("[Gen] Stats: ttft=\(String(format:"%.3f",ttftTime))s pp=\(String(format:"%.1f",prefillTPS))t/s tg=\(String(format:"%.1f",decodeTPS))t/s prompt=\(promptTokenCount) gen=\(generatedTokenCount) cached=\(cachedTokenCount)")
@@ -818,6 +900,63 @@ public actor VMLXRuntimeActor {
                     ))
 
                     continuation.finish()
+
+                    // Store cache AFTER stream is finished — TQ encode can take
+                    // hundreds of ms and must not block the UI stream.
+                    let storeTokens: [Int]
+                    if cacheKeyTokens.count > 1 {
+                        storeTokens = Array(cacheKeyTokens.dropLast(1))
+                    } else {
+                        storeTokens = cacheKeyTokens
+                    }
+
+                    if !storeTokens.isEmpty {
+                        let targetOffset = storeTokens.count
+                        for c in cache {
+                            if !(c is VMLXMambaCache) && c.isTrimmable && c.offset > targetOffset {
+                                c.trim(c.offset - targetOffset)
+                            }
+                        }
+
+                        let tqEnabled = self.scheduler.config.enableTurboQuant
+                        let tqConfig = container.turboQuantConfig
+                        let totalLayers = cache.count
+
+                        var ssmSnapshotIdx = 0
+                        var layers: [LayerCacheEntry] = []
+                        for (layerIdx, c) in cache.enumerated() {
+                            if c is VMLXMambaCache {
+                                if let snapshots = prefillSSMSnapshot,
+                                   ssmSnapshotIdx < snapshots.count {
+                                    layers.append(.ssm(SSMStateLayer(
+                                        state: snapshots[ssmSnapshotIdx])))
+                                    ssmSnapshotIdx += 1
+                                }
+                            } else if let kvBase = c as? VMLXBaseKVCache {
+                                let s = kvBase.state
+                                guard s.count == 2 else { continue }
+
+                                if tqEnabled, let tq = tqConfig,
+                                   let kBits = tq.keyBits(forLayer: layerIdx, totalLayers: totalLayers),
+                                   let vBits = tq.valueBits(forLayer: layerIdx, totalLayers: totalLayers) {
+                                    let ek = TurboQuantEncoder.encodeKeys(
+                                        keys: s[0], bits: kBits, seed: tq.seed)
+                                    let ev = TurboQuantEncoder.encodeValues(
+                                        values: s[1], bits: vBits, seed: tq.seed)
+                                    layers.append(.compressedAttention(ek, ev, kvBase.offset))
+                                } else {
+                                    layers.append(.attention(KVCacheLayer(
+                                        keys: s[0], values: s[1], offset: kvBase.offset)))
+                                }
+                            }
+                        }
+                        if !layers.isEmpty {
+                            let hybridCache = HybridCache(layers: layers)
+                            hybridCache.materialized()
+                            self.scheduler.cache.store(tokens: storeTokens, cache: hybridCache)
+                            _vmlxLog2("[Gen] Stored cache: \(storeTokens.count) tokens (stripped \(genPromptLen) gen_prompt + \(generatedTokenCount) generated + 1 last)")
+                        }
+                    }
 
                 } catch is CancellationError {
                     // Generation was stopped — don't store partial cache

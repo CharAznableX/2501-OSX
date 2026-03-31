@@ -496,11 +496,11 @@ struct ConfigurationView: View {
 
                                             SettingsSliderField(
                                                 label: "Memory Cache Budget",
-                                                help: "Fraction of RAM for KV cache (0.1–0.6)",
+                                                help: "Percent of RAM for KV cache (10–60%)",
                                                 text: $tempCacheMemoryPercent,
-                                                range: 0.1 ... 0.6,
-                                                step: 0.05,
-                                                defaultValue: 0.30,
+                                                range: 10 ... 60,
+                                                step: 5,
+                                                defaultValue: 30,
                                                 formatString: "%.0f%%"
                                             )
 

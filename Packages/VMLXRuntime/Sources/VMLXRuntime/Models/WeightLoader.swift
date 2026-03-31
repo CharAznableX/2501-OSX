@@ -90,27 +90,32 @@ public func vmlxLoadWeights(
         let defaultBits = quantization?.bits ?? 4
         let mode = quantization?.mode ?? .affine
 
-        // Check if the config-level bits is unsupported by MLX (e.g. JANG_4K uses 3-bit)
+        // For JANG mixed-precision: config may specify bits that MLX's quantize()
+        // doesn't support (e.g., 3-bit in JANG_4K). Use nearest valid bit width
+        // as initial default — vmlxFixQuantizedBits() corrects each layer's actual
+        // bits after weights are loaded (inferred from weight/scales shapes).
         let mlxValidBits = [2, 4, 6, 8]
-        if !mlxValidBits.contains(defaultBits) {
-            throw ModelLoaderError.unsupportedArchitecture(
-                "Model uses \(defaultBits)-bit quantization which MLX does not support. "
-                + "Supported: 2, 4, 6, 8-bit. JANG_4K (3-bit) requires a custom dequantization kernel."
-            )
+        let effectiveBits: Int
+        if mlxValidBits.contains(defaultBits) {
+            effectiveBits = defaultBits
+        } else {
+            // Round up to nearest valid: 3→4, 5→6, 7→8
+            effectiveBits = mlxValidBits.first(where: { $0 >= defaultBits }) ?? 4
+            NSLog("[WeightLoader] Config bits=\(defaultBits) unsupported by MLX, using \(effectiveBits) as initial default (will be corrected per-layer)")
         }
 
-        // Quantize all layers with config-level bits/group_size.
+        // Quantize all layers with initial bits/group_size.
         // The actual per-layer bits will be fixed by vmlxFixQuantizedBits() after
         // model.update() loads the packed weights.
         var quantizedCount = 0
         quantize(model: model) { path, module in
             if weights["\(path).scales"] != nil {
                 quantizedCount += 1
-                return (defaultGroupSize, defaultBits, mode)
+                return (defaultGroupSize, effectiveBits, mode)
             }
             return nil
         }
-        NSLog("[WeightLoader] Quantized \(quantizedCount) modules, bits=\(defaultBits), gs=\(defaultGroupSize)")
+        NSLog("[WeightLoader] Quantized \(quantizedCount) modules, bits=\(effectiveBits), gs=\(defaultGroupSize)")
     }
 
     // Load weights (no strict verification for JANG mixed-precision compatibility)

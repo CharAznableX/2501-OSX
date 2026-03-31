@@ -14,7 +14,8 @@ import MLXNN
 // MARK: - KVCache Protocol
 
 /// Interface for Key/Value cache for LLMs.
-public protocol VMLXKVCache: Evaluatable {
+/// Conforms to both Evaluatable (for MLX eval) and Updatable (for compile state tracking).
+public protocol VMLXKVCache: Evaluatable, Updatable {
     var offset: Int { get }
     func update(keys: MLXArray, values: MLXArray) -> (MLXArray, MLXArray)
     var state: [MLXArray] { get set }

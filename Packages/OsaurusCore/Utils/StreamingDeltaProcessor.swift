@@ -186,15 +186,14 @@ final class StreamingDeltaProcessor {
 
     private func syncIfNeeded(now: Date) {
         let totalChars = contentLength + thinkingLength
-        // Sync intervals tuned for smooth local inference streaming.
-        // Shorter intervals = smoother token-by-token appearance.
-        // At 70 tok/s, 30ms = ~2 tokens per UI update (smooth).
+        // Sync to UI on every flush for per-token smoothness.
+        // At high tok/s, each sync triggers a SwiftUI layout pass.
+        // Back off on very long outputs to prevent layout thrash.
         let syncIntervalMs: Double =
             switch totalChars {
-            case 0 ..< 2_000: 30
-            case 2_000 ..< 5_000: 50
-            case 5_000 ..< 10_000: 75
-            default: 100
+            case 0 ..< 5_000: 0    // Every token
+            case 5_000 ..< 15_000: 16  // ~60fps
+            default: 33               // ~30fps
             }
 
         let timeSinceSync = now.timeIntervalSince(lastSyncTime) * 1000
@@ -208,22 +207,21 @@ final class StreamingDeltaProcessor {
     private func recomputeFlushTuning() {
         let totalChars = contentLength + thinkingLength
 
-        // Flush tuning for local inference: prioritize responsiveness.
-        // Smaller buffers + shorter intervals = smoother streaming.
+        // Flush every token for smooth per-token streaming on local inference.
+        // At 80 tok/s = 12ms/token, we flush on every delta arrival.
+        // Only back off for very long outputs where layout becomes expensive.
         switch totalChars {
-        case 0 ..< 2_000:
-            flushIntervalMs = 20; maxBufferSize = 64
-        case 2_000 ..< 8_000:
-            flushIntervalMs = 30; maxBufferSize = 128
-        case 8_000 ..< 20_000:
-            flushIntervalMs = 50; maxBufferSize = 256
+        case 0 ..< 5_000:
+            flushIntervalMs = 0; maxBufferSize = 1  // Every token
+        case 5_000 ..< 15_000:
+            flushIntervalMs = 16; maxBufferSize = 32  // ~60fps
         default:
-            flushIntervalMs = 75; maxBufferSize = 512
+            flushIntervalMs = 33; maxBufferSize = 64  // ~30fps
         }
 
-        // Only back off if flushes are genuinely slow (>30ms means layout is heavy)
-        if longestFlushMs > 30 {
-            flushIntervalMs = min(150, flushIntervalMs * 1.5)
+        // Back off only if layout is genuinely slow (>50ms)
+        if longestFlushMs > 50 {
+            flushIntervalMs = min(100, max(flushIntervalMs, longestFlushMs * 1.2))
         }
     }
 

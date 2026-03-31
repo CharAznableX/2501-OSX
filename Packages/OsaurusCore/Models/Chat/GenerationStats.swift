@@ -45,9 +45,11 @@ public struct GenerationStats: Sendable {
             parts.append(String(format: "TG %.1f t/s", decodeTokensPerSecond))
         }
 
-        // Token counts
+        // Token counts + cache hit type
         let tokenInfo = "\(completionTokens) tok"
-        if cachedTokens > 0 {
+        if cachedTokens > 0, let detail = cacheDetail, detail != "miss" {
+            parts.append("\(tokenInfo) (\(cachedTokens) cached/\(detail))")
+        } else if cachedTokens > 0 {
             parts.append("\(tokenInfo) (\(cachedTokens) cached)")
         } else {
             parts.append(tokenInfo)
