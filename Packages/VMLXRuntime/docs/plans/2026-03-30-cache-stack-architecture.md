@@ -349,10 +349,10 @@ Each item builds on the previous. Do not skip ahead.
 19. [x] Prefix cache disabled when paged cache is active (store: pagedCache == nil check)
 20. [ ] Test: verify block sharing across conversations with same system prompt
 
-### Phase 4: Disk Cache L2 (persistence across sessions)
-15. [ ] Fix pre-materialize on calling thread (Metal thread safety)
-16. [ ] Add file existence check in fetch
-17. [ ] Implement L2 to L1 promotion
+### Phase 4: Disk Cache L2 (persistence across sessions) -- DONE 2026-03-30
+15. [x] Pre-materialize on calling thread: ALREADY DONE (DiskCache.swift:172 calls MLX.eval)
+16. [x] File existence check: ALREADY DONE (DiskCache.swift:219 checks fileExists)
+17. [x] L2 to L1 promotion: DONE (CacheCoordinator.swift, disk fetch promotes to memory cache)
 18. [ ] Test: verify cold start loads from disk, second turn hits L1
 
 ### Phase 5: TurboQuant (5x memory compression)
@@ -488,9 +488,9 @@ Each item builds on the previous. Do not skip ahead.
 | Block reconstruction (concat KV slices) | 3 | DONE | _reconstructFromBlocks: concat per-layer across blocks |
 | Cumulative SSM in last block | 3 | DONE | .ssm in last block, nil in non-last + Bug 2 guard |
 | _fix_hybrid_cache expansion | 3 | DEFERRED | Not needed when paged store writes ALL layers (KV + SSM) |
-| DiskCache pre-materialize | 4 | NOT DONE | Metal thread safety (Bug 1) |
-| DiskCache file verification | 4 | NOT DONE | check file exists before hit |
-| DiskCache L2-to-L1 promotion | 4 | NOT DONE | load from disk into memory |
+| DiskCache pre-materialize | 4 | DONE | MLX.eval() at line 172 before background Task.detached |
+| DiskCache file verification | 4 | DONE | FileManager.fileExists at line 219 |
+| DiskCache L2-to-L1 promotion | 4 | DONE | CacheCoordinator promotes to memory cache on disk hit |
 | TurboQuantKVCache wrapping | 5 | NOT WIRED | built, never instantiated |
 | TurboQuant compress() after prefill | 5 | NOT DONE | encoder exists, never called |
 | TurboQuant decoded buffer cache | 5 | NOT DONE | post-compress speed fix |

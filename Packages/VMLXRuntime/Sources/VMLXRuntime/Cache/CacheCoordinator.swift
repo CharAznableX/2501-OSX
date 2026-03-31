@@ -175,6 +175,10 @@ public final class CacheCoordinator: @unchecked Sendable {
         // Layer 3: Disk cache (L2 SSD) — load tensors from safetensors
         if let diskCache = diskCache {
             if let cache = diskCache.fetchCache(tokens: tokens) {
+                // L2→L1 promotion: load from disk into memory cache for faster future hits
+                if let memoryCache = memoryCache {
+                    _ = memoryCache.store(tokens: tokens, cache: cache)
+                }
                 if isHybrid {
                     return _resolveHybridFetch(
                         cache: cache, remaining: [],
