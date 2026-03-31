@@ -139,10 +139,14 @@ struct QwenThinkingProfile: ModelProfile {
 
     static func matches(modelId: String) -> Bool {
         let lower = modelId.lowercased()
-        // Models that use <think> tags in their chat template
+        // Models that support reasoning (via <think> tags or <|channel|> tags)
         return (lower.contains("qwen3") && !lower.contains("coder"))
             || lower.contains("minimax")
             || lower.contains("deepseek")
+            || lower.contains("gpt-oss") || lower.contains("gpt_oss")
+            || lower.contains("glm")
+            || lower.contains("phi-4")
+            || lower.contains("qwq")
     }
 
     static let options: [ModelOptionDefinition] = [
