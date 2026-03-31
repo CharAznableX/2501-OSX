@@ -68,51 +68,56 @@ final class PrependThinkTagMiddleware: StreamingMiddleware {
 
 /// Transforms GPT-OSS `<|channel|>analysis<|message|>` / `<|channel|>reply<|message|>`
 /// into standard `<think>` / `</think>` tags that StreamingDeltaProcessor handles.
-/// Buffers token-by-token input to detect multi-token channel tags.
+/// Accumulates tokens until complete tags can be detected and replaced.
 @MainActor
 final class ChannelTagMiddleware: StreamingMiddleware {
     private var buffer = ""
 
     private static let analysisTag = "<|channel|>analysis<|message|>"
     private static let replyTag = "<|channel|>reply<|message|>"
-    private static let tagPrefix = "<|"
 
     func process(_ delta: String) -> String {
         buffer += delta
 
-        // Check for complete channel tags and replace with think tags
         var output = ""
         while !buffer.isEmpty {
+            // Try to match complete tags
             if let range = buffer.range(of: Self.analysisTag) {
-                // Emit everything before the tag, then emit <think>
                 output += buffer[..<range.lowerBound]
                 output += "<think>"
                 buffer = String(buffer[range.upperBound...])
-            } else if let range = buffer.range(of: Self.replyTag) {
-                // Emit everything before the tag, then emit </think>
+                continue
+            }
+            if let range = buffer.range(of: Self.replyTag) {
                 output += buffer[..<range.lowerBound]
                 output += "</think>"
                 buffer = String(buffer[range.upperBound...])
-            } else if buffer.contains(Self.tagPrefix) {
-                // Might be a partial channel tag — check if it could complete
-                if let prefixRange = buffer.range(of: Self.tagPrefix, options: .backwards) {
-                    let suffix = String(buffer[prefixRange.lowerBound...])
-                    // Check if either full tag starts with this suffix
-                    if Self.analysisTag.hasPrefix(suffix) || Self.replyTag.hasPrefix(suffix) {
-                        // Partial tag — emit everything before it, keep suffix buffered
-                        output += buffer[..<prefixRange.lowerBound]
-                        buffer = suffix
-                        break
-                    }
-                }
-                // Not a channel tag prefix — emit all
-                output += buffer
-                buffer = ""
-            } else {
-                // No channel tag markers — emit all
-                output += buffer
-                buffer = ""
+                continue
             }
+
+            // Check if the buffer ENDS with a partial that could become either tag.
+            // Test progressively shorter suffixes of the buffer against tag prefixes.
+            var partialLen = 0
+            let maxCheck = min(buffer.count, max(Self.analysisTag.count, Self.replyTag.count) - 1)
+            for len in stride(from: maxCheck, through: 1, by: -1) {
+                let suffix = String(buffer.suffix(len))
+                if Self.analysisTag.hasPrefix(suffix) || Self.replyTag.hasPrefix(suffix) {
+                    partialLen = len
+                    break
+                }
+            }
+
+            if partialLen > 0 {
+                // Emit everything before the partial, keep partial buffered
+                let emitEnd = buffer.index(buffer.endIndex, offsetBy: -partialLen)
+                output += buffer[..<emitEnd]
+                buffer = String(buffer[emitEnd...])
+                break
+            }
+
+            // No tag or partial — emit everything
+            output += buffer
+            buffer = ""
         }
 
         return output

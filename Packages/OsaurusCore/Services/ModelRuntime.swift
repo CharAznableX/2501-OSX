@@ -515,9 +515,8 @@ actor ModelRuntime {
             "generateEventStream: prepareAndGenerate existingCache=\(existingCache != nil, privacy: .public) cachedTokens=\(cachedTokens?.count ?? 0, privacy: .public)"
         )
 
-        // Signal that a prefill is starting (count unknown until prepareAndGenerate returns).
-        // The UI shows a spinner; once the first generated token arrives prefillDidFinish() clears it.
-        InferenceProgressManager.shared.prefillWillStartAsync(tokenCount: 0)
+        // Prefill progress indicator disabled — inconsistent UX between VMLX and MLX paths.
+        // VMLX shows first token quickly; MLX waits longer. Removing for both.
 
         do {
             let genResult = try await MLXGenerationEngine.prepareAndGenerate(
@@ -547,8 +546,7 @@ actor ModelRuntime {
             }
             genLog.warning("Cache incompatible, retrying: \(error.localizedDescription, privacy: .public)")
             invalidateCaches(sessionId: sessionId, modelName: modelName, prefixHash: prefixHash)
-            // Re-signal for the retry prefill (still unknown count).
-            InferenceProgressManager.shared.prefillWillStartAsync(tokenCount: 0)
+            // Retry without cache (prefill indicator disabled)
             do {
                 let retryResult = try await MLXGenerationEngine.prepareAndGenerate(
                     container: holder.container,
@@ -572,9 +570,7 @@ actor ModelRuntime {
             }
         }
         genLog.info("generateEventStream: stream created tokenCount=\(newTokens.count, privacy: .public)")
-        // Prefill is now complete; update the display with the actual token count while
-        // generation is warming up (the first token clears the indicator).
-        InferenceProgressManager.shared.prefillWillStartAsync(tokenCount: newTokens.count)
+        // Prefill complete (indicator disabled — tokens start streaming immediately)
 
         activeGenerationTask = genTask
 
