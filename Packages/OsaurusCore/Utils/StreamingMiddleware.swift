@@ -16,16 +16,51 @@ protocol StreamingMiddleware: AnyObject {
 
 // MARK: - Middleware Implementations
 
-/// Prepends `<think>` to the first non-empty delta for models that only
-/// emit `</think>` without the opening tag (e.g. GLM-4.7-flash).
+/// Buffers early deltas for models that emit `</think>` without `<think>`.
+/// Only prepends `<think>` if a `</think>` is detected in the first N tokens,
+/// confirming the model is actually reasoning. Otherwise, flushes buffered
+/// content as-is (no false thinking box).
 @MainActor
 final class PrependThinkTagMiddleware: StreamingMiddleware {
-    private var hasFired = false
+    private var state: State = .buffering
+    private var buffer: String = ""
+    private var deltaCount = 0
+    private static let maxBufferDeltas = 20  // Check first ~20 tokens
+
+    private enum State {
+        case buffering   // Accumulating early deltas to check for </think>
+        case confirmed   // </think> found — already prepended <think>
+        case passthrough // No </think> detected — no thinking, pass through
+    }
 
     func process(_ delta: String) -> String {
-        guard !hasFired else { return delta }
-        hasFired = true
-        return "<think>" + delta
+        switch state {
+        case .confirmed, .passthrough:
+            return delta
+
+        case .buffering:
+            deltaCount += 1
+            buffer += delta
+
+            // Check if </think> appeared — confirms model is reasoning
+            if buffer.contains("</think>") {
+                state = .confirmed
+                let result = "<think>" + buffer
+                buffer = ""
+                return result
+            }
+
+            // If we've buffered enough without seeing </think>, give up
+            if deltaCount >= Self.maxBufferDeltas {
+                state = .passthrough
+                let result = buffer
+                buffer = ""
+                return result
+            }
+
+            // Still buffering — suppress output for now
+            return ""
+        }
     }
 }
 

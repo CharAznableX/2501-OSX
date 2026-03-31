@@ -234,6 +234,10 @@ public class VMLXQuantizedKVCache: VMLXBaseKVCache {
                   let sk = keyScales, let sv = valueScales else { return [] }
             let dk = dequantized(qk, scales: sk, biases: keyBiases, groupSize: groupSize, bits: bits)
             let dv = dequantized(qv, scales: sv, biases: valueBiases, groupSize: groupSize, bits: bits)
+            // Slice to offset (trim may have reduced it below the full quantized length)
+            if offset < dk.dim(2) {
+                return [dk[.ellipsis, ..<offset, 0...], dv[.ellipsis, ..<offset, 0...]]
+            }
             return [dk, dv]
         }
         set {

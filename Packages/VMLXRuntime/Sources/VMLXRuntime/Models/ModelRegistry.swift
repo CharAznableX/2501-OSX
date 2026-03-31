@@ -54,6 +54,7 @@ public struct VMLXModelRegistry {
         "olmo",             // OLMo
         "olmo2",            // OLMo 2
         "stablelm",         // StableLM
+        "gpt_oss",          // GPT-OSS (MoE, mlp.experts+router key convention)
     ]
 
     /// Model types that use FP8 quantization or other unsupported weight formats.

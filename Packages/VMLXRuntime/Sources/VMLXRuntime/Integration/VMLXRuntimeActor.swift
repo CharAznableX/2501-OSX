@@ -500,25 +500,50 @@ public actor VMLXRuntimeActor {
                         // Restore cached KV state into the VMLXKVCache objects.
                         // Uses protocol-based .state setter — works with both VMLXKVCacheSimple
                         // AND VMLXQuantizedKVCache (which re-quantizes on assignment).
+                        // Create TQ encoder state ONCE for all layers (avoid recreating
+                        // 128×128 QJL matrix + codebook per layer — was 124× overhead).
+                        let hasTQ = cachedHybrid.layers.contains {
+                            if case .compressedAttention = $0 { return true }
+                            return false
+                        }
+                        let tqState: TurboQuantEncoder.EncoderState?
+                        if hasTQ, let firstTQ = cachedHybrid.layers.first(where: {
+                            if case .compressedAttention = $0 { return true }
+                            return false
+                        }), case .compressedAttention(let ek, _, _) = firstTQ {
+                            let dim = ek.shape.last ?? 128
+                            let keyBits = ek.indexBits + 1
+                            tqState = TurboQuantEncoder.EncoderState(
+                                dim: dim, keyBits: keyBits,
+                                valueBits: ek.indexBits, seed: ek.seed)
+                        } else {
+                            tqState = nil
+                        }
+
                         var restoredLayers = 0
                         for (i, entry) in cachedHybrid.layers.enumerated() {
                             guard i < cache.count else { break }
                             switch entry {
                             case .attention(let kv):
-                                // Works with VMLXKVCacheSimple AND VMLXQuantizedKVCache
-                                // (both extend VMLXBaseKVCache, dynamic dispatch to correct setter)
                                 if let kvBase = cache[i] as? VMLXBaseKVCache,
                                    !(cache[i] is VMLXMambaCache) {
                                     kvBase.state = [kv.keys, kv.values]
                                     restoredLayers += 1
                                 }
                             case .compressedAttention(let ek, let ev, _):
-                                // Decompress TurboQuant (per-coordinate scalar quantization)
                                 if let kvBase = cache[i] as? VMLXBaseKVCache,
                                    !(cache[i] is VMLXMambaCache) {
-                                    let decodedKeys = TurboQuantEncoder.decodeKeys(ek, seed: ek.seed)
-                                    let decodedValues = TurboQuantEncoder.decodeValues(ev, seed: ev.seed)
-                                    kvBase.state = [decodedKeys, decodedValues]
+                                    let dk: MLXArray
+                                    let dv: MLXArray
+                                    if let st = tqState {
+                                        dk = TurboQuantEncoder.decodeKeys(ek, state: st)
+                                        dv = TurboQuantEncoder.decodeValues(ev, state: st)
+                                    } else {
+                                        dk = TurboQuantEncoder.decodeKeys(ek, seed: ek.seed)
+                                        dv = TurboQuantEncoder.decodeValues(ev, seed: ev.seed)
+                                    }
+                                    eval(dk, dv)
+                                    kvBase.state = [dk, dv]
                                     restoredLayers += 1
                                 }
                             case .ssm(let ssm):
@@ -553,6 +578,13 @@ public actor VMLXRuntimeActor {
                             }
                             _vmlxLog2("[Gen] Injected \(ssmIdx) SSM companion states from checkpoint")
                         }
+
+                        // Force-evaluate restored cache to complete any lazy TQ decode
+                        // BEFORE the forward pass starts. Without this, the TQ decode
+                        // computation graph (QJL matmul × N layers) runs during inference,
+                        // causing GPU stalls and 3-10x decode slowdowns.
+                        eval(cache)
+                        Memory.clearCache()
 
                         // remaining = uncached portion of cacheKeyTokens (not full tokens).
                         // We also need to process gen_prompt_len suffix tokens.
@@ -604,9 +636,10 @@ public actor VMLXRuntimeActor {
                                 case .compressedAttention(let ek, let ev, _):
                                     if let kvBase = cache[i] as? VMLXBaseKVCache,
                                        !(cache[i] is VMLXMambaCache) {
-                                        let decodedKeys = TurboQuantEncoder.decodeKeys(ek, seed: ek.seed)
-                                        let decodedValues = TurboQuantEncoder.decodeValues(ev, seed: ev.seed)
-                                        kvBase.state = [decodedKeys, decodedValues]
+                                        kvBase.state = [
+                                            TurboQuantEncoder.decodeKeys(ek, seed: ek.seed),
+                                            TurboQuantEncoder.decodeValues(ev, seed: ev.seed)
+                                        ]
                                     }
                                 default:
                                     break  // SSM layers handled separately
@@ -693,12 +726,16 @@ public actor VMLXRuntimeActor {
                     }
 
                     // Final token → logits for first generated token
+                    let _prefillStart = CFAbsoluteTimeGetCurrent()
                     let lastToken = inputTokens[(totalPrefillTokens - 1)...]
                     let prefillLogits = container.forward(
                         lastToken.expandedDimensions(axis: 0), cache: cache)
                     let firstTokenId = Sampler.sample(
                         logits: prefillLogits[0, -1], params: samplingParams)
                     var y = MLXArray(Int32(firstTokenId))
+                    eval(y)
+                    let _prefillMs = (CFAbsoluteTimeGetCurrent() - _prefillStart) * 1000
+                    _vmlxLog2("[Gen] Final prefill token: \(String(format: "%.0f", _prefillMs))ms")
 
                     // Double-buffered generation loop (matches mlx-lm Python pattern):
                     // Pipeline: build graph for NEXT token while GPU evaluates CURRENT token.
@@ -735,7 +772,7 @@ public actor VMLXRuntimeActor {
                         try Task.checkCancellation()
 
                         // Double-buffered: build graph for NEXT token while GPU evaluates CURRENT.
-                        // Forward pass + repetition penalty + sampling.
+                        let _stepStart = CFAbsoluteTimeGetCurrent()
                         if _step < maxTokens - 1 {
                             let stepLogits = container.forward(y.reshaped(1, 1), cache: cache)
                             var logits = stepLogits[0, -1]
@@ -760,12 +797,17 @@ public actor VMLXRuntimeActor {
                         let currentToken = y.item(Int.self)
                         generatedTokenIds.append(currentToken)
 
+                        // Per-token timing for first 5 tokens (profiling TQ cache impact)
+                        if _step < 5 {
+                            let _stepMs = (CFAbsoluteTimeGetCurrent() - _stepStart) * 1000
+                            _vmlxLog2("[Gen] tok[\(_step)]: \(String(format: "%.1f", _stepMs))ms")
+                        }
+
                         // Track steady-state start (after Metal pipeline warmup)
                         if _step == _warmupTokens {
                             _steadyStart = CFAbsoluteTimeGetCurrent()
                         }
 
-                        // Log speed at multiple checkpoints for profiling
                         if _step == 5 || _step == 20 || _step == 100 {
                             let _elapsed = CFAbsoluteTimeGetCurrent() - _genStart
                             let _steadyToks = _step - _warmupTokens
@@ -918,10 +960,12 @@ public actor VMLXRuntimeActor {
                             }
                         }
 
-                        let tqEnabled = self.scheduler.config.enableTurboQuant
-                        let tqConfig = container.turboQuantConfig
-                        let totalLayers = cache.count
-
+                        // Store as plain float for multi-turn cache.
+                        // TQ compression is reserved for in-memory reduction during
+                        // a single generation (decode-once lifecycle, Task 8).
+                        // Storing TQ-compressed data across turns causes 3x decode
+                        // slowdown (MiniMax) or gibberish (Qwen3.5 hybrid) because
+                        // the lossy reconstruction compounds through model layers.
                         var ssmSnapshotIdx = 0
                         var layers: [LayerCacheEntry] = []
                         for (layerIdx, c) in cache.enumerated() {
@@ -935,19 +979,8 @@ public actor VMLXRuntimeActor {
                             } else if let kvBase = c as? VMLXBaseKVCache {
                                 let s = kvBase.state
                                 guard s.count == 2 else { continue }
-
-                                if tqEnabled, let tq = tqConfig,
-                                   let kBits = tq.keyBits(forLayer: layerIdx, totalLayers: totalLayers),
-                                   let vBits = tq.valueBits(forLayer: layerIdx, totalLayers: totalLayers) {
-                                    let ek = TurboQuantEncoder.encodeKeys(
-                                        keys: s[0], bits: kBits, seed: tq.seed)
-                                    let ev = TurboQuantEncoder.encodeValues(
-                                        values: s[1], bits: vBits, seed: tq.seed)
-                                    layers.append(.compressedAttention(ek, ev, kvBase.offset))
-                                } else {
-                                    layers.append(.attention(KVCacheLayer(
-                                        keys: s[0], values: s[1], offset: kvBase.offset)))
-                                }
+                                layers.append(.attention(KVCacheLayer(
+                                    keys: s[0], values: s[1], offset: kvBase.offset)))
                             }
                         }
                         if !layers.isEmpty {

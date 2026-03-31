@@ -248,11 +248,14 @@ final class StandardSparseMoeBlock: Module, UnaryLayer {
         self.topK = args.numExpertsPerTok
 
         _eScoreCorrectionBias.wrappedValue = MLXArray.zeros([args.numLocalExperts])
-        _gate.wrappedValue = Linear(args.hiddenSize, args.numLocalExperts, bias: false)
+        // Always create with bias=true. If weights don't have bias, the zeros
+        // are a no-op. If they do (GPT-OSS), they get loaded correctly.
+        _gate.wrappedValue = Linear(args.hiddenSize, args.numLocalExperts, bias: true)
         _switchMLP.wrappedValue = VMLXSwitchGLU(
             inputDims: args.hiddenSize,
             hiddenDims: args.intermediateSize,
-            numExperts: args.numLocalExperts
+            numExperts: args.numLocalExperts,
+            bias: true
         )
 
         super.init()
@@ -399,9 +402,9 @@ public class StandardTransformerModel: Module {
         for (key, value) in weights {
             var key = key
 
-            // Skip vision/multimodal weights (VL models like Mistral-Small-4)
+            // Skip vision/multimodal weights and unknown attention params
             if key.hasPrefix("vision_tower") || key.hasPrefix("multi_modal_projector")
-                || key.hasPrefix("model.visual") {
+                || key.hasPrefix("model.visual") || key.hasSuffix(".sinks") {
                 continue
             }
 
@@ -412,6 +415,19 @@ public class StandardTransformerModel: Module {
                 key = String(key.dropFirst("language_model.".count))
             } else if key.hasPrefix("language_model.") {
                 key = String(key.dropFirst("language_model.".count))
+            }
+
+            // Remap mlp.experts/router → block_sparse_moe.switch_mlp/gate
+            // for GPT-OSS and other models that use this MoE weight convention
+            // instead of the MiniMax block_sparse_moe convention.
+            if configuration.isMoE {
+                if let range = key.range(of: ".mlp.experts.") {
+                    key = key[..<range.lowerBound] + ".block_sparse_moe.switch_mlp."
+                        + key[range.upperBound...]
+                } else if let range = key.range(of: ".mlp.router.") {
+                    key = key[..<range.lowerBound] + ".block_sparse_moe.gate."
+                        + key[range.upperBound...]
+                }
             }
 
             sanitized[key] = value

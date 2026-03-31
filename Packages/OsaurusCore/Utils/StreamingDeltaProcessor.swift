@@ -228,17 +228,21 @@ final class StreamingDeltaProcessor {
     // MARK: - Thinking Tag Parsing
 
     /// Partial tag prefixes for `<think>` and `</think>`, longest first.
-    private static let openPartials = ["<think", "<thin", "<thi", "<th", "<t", "<"]
-    private static let closePartials = ["</think", "</thin", "</thi", "</th", "</t", "</"]
+    /// Only match 4+ char prefixes to avoid false positives on "<" or "<t" in content.
+    private static let openPartials = ["<think", "<thin", "<thi"]
+    private static let closePartials = ["</think", "</thin", "</thi"]
 
     private func parseAndRoute(_ text: inout String) {
         while !text.isEmpty {
             if isInsideThinking {
-                if let closeRange = text.range(of: "</think>", options: .caseInsensitive) {
+                // Case-sensitive: all model templates use lowercase <think>
+                if let closeRange = text.range(of: "</think>") {
                     appendThinking(String(text[..<closeRange.lowerBound]))
                     text = String(text[closeRange.upperBound...])
                     isInsideThinking = false
-                } else if let partial = Self.closePartials.first(where: { text.lowercased().hasSuffix($0) }) {
+                    // Force immediate sync on think→content transition
+                    syncToTurn()
+                } else if let partial = Self.closePartials.first(where: { text.hasSuffix($0) }) {
                     appendThinking(String(text.dropLast(partial.count)))
                     pendingTagBuffer = String(text.suffix(partial.count))
                     text = ""
@@ -247,11 +251,12 @@ final class StreamingDeltaProcessor {
                     text = ""
                 }
             } else {
-                if let openRange = text.range(of: "<think>", options: .caseInsensitive) {
+                // Case-sensitive matching to avoid false positives on <THINK>, <Think> etc.
+                if let openRange = text.range(of: "<think>") {
                     appendContent(String(text[..<openRange.lowerBound]))
                     text = String(text[openRange.upperBound...])
                     isInsideThinking = true
-                } else if let partial = Self.openPartials.first(where: { text.lowercased().hasSuffix($0) }) {
+                } else if let partial = Self.openPartials.first(where: { text.hasSuffix($0) }) {
                     appendContent(String(text.dropLast(partial.count)))
                     pendingTagBuffer = String(text.suffix(partial.count))
                     text = ""
