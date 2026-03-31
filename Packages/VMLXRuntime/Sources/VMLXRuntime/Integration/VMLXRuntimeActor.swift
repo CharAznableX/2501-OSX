@@ -424,9 +424,11 @@ public actor VMLXRuntimeActor {
         let requestId = UUID().uuidString
         let modelName = currentModelName ?? ""
 
-        // Build tool/reasoning parsers
+        // Build tool parser from the loaded model's family config (config-driven,
+        // not regex). The familyConfig.toolCallFormat is set by ModelConfigRegistry
+        // when the model is loaded, based on model family detection.
         let toolParser: (any ToolCallParser)? = request.tools != nil
-            ? autoDetectToolParser(modelName: modelName) : nil
+            ? toolParserForFormat(container.familyConfig.toolCallFormat) : nil
 
         // Don't use reasoning parser here — Osaurus's StreamingDeltaProcessor
         // handles <think> tag parsing at the UI level. If we strip tags here,

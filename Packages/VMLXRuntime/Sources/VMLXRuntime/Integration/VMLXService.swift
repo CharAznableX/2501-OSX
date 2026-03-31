@@ -66,14 +66,35 @@ public actor VMLXService: VMLXToolCapableService {
     public nonisolated func handles(requestedModel: String?) -> Bool {
         guard let model = requestedModel else { return true }
         let lower = model.lowercased()
-        // Handle local models (JANG, MLX, or explicit "vmlx" requests).
-        // VMLXRuntime supports both JANG quantized and standard MLX models.
-        return lower == "local" || lower == "default" || lower == "vmlx"
-            || lower.contains("jang") || lower.contains("mlx")
-            || lower.contains("llama") || lower.contains("qwen")
-            || lower.contains("mistral") || lower.contains("gemma")
-            || lower.contains("phi") || lower.contains("granite")
-            || lower.isEmpty
+        if lower.isEmpty || lower == "local" || lower == "default" || lower == "vmlx" {
+            return true
+        }
+        // Match all model families supported by VMLXRuntime's StandardTransformerModel
+        // and Qwen35Model. Unsupported types (gpt_oss, etc.) will fail at load time
+        // and the ChatEngine fallback router retries with MLXService.
+        let families = [
+            "jang", "mlx",      // Quantization frameworks
+            "llama", "qwen", "qwq",  // Meta, Alibaba
+            "mistral", "mixtral", "codestral", "pixtral",  // Mistral AI
+            "gemma",            // Google
+            "phi",              // Microsoft
+            "granite",          // IBM
+            "deepseek",         // DeepSeek
+            "minimax",          // MiniMax
+            "glm",              // Zhipu AI
+            "nemotron",         // NVIDIA
+            "internlm", "internvl",  // Shanghai AI Lab
+            "cohere", "command",  // Cohere
+            "exaone",           // LG
+            "olmo",             // AI2
+            "starcoder",        // BigCode
+            "stablelm",         // Stability AI
+            "hermes",           // NousResearch
+            "functionary",      // MeetKai
+            "xlam",             // Salesforce
+            "jamba",            // AI21
+        ]
+        return families.contains { lower.contains($0) }
     }
 
     public func generateOneShot(

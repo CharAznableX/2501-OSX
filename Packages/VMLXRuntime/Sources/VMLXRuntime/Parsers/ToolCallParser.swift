@@ -40,37 +40,30 @@ public protocol ToolCallParser: Sendable {
 }
 
 /// Auto-detect the appropriate tool parser for a model.
-/// Uses a factory registry so new parser types can be added without type casts.
+/// Uses ModelConfigRegistry to determine the tool call format, then creates
+/// the matching parser. This is config-driven, not regex-based.
 public func autoDetectToolParser(modelName: String) -> (any ToolCallParser)? {
-    let name = modelName.lowercased()
+    let config = ModelConfigRegistry.configFor(modelName: modelName)
+    return toolParserForFormat(config.toolCallFormat)
+}
 
-    // (patterns, factory) pairs, ordered by specificity.
-    // More specific model families should appear before generic fallbacks.
-    let registry: [(patterns: [String], factory: () -> any ToolCallParser)] = [
-        (["qwen", "qwq"], { QwenToolParser() }),
-        (["hermes", "nous"], { HermesToolParser() }),
-        (["nemotron"], { NemotronToolParser() }),
-        (["functionary", "meetkai"], { FunctionaryToolParser() }),
-        (["llama"], { LlamaToolParser() }),
-        (["mistral", "mixtral", "codestral", "pixtral"], { MistralToolParser() }),
-        (["deepseek"], { DeepSeekToolParser() }),
-        (["granite"], { GraniteToolParser() }),
-        (["glm"], { GLMToolParser() }),
-        (["minimax"], { MiniMaxToolParser() }),
-        (["xlam"], { XLAMToolParser() }),
-        (["moonshot", "kimi"], { MoonshotToolParser() }),
-        (["stepfun", "step-"], { StepFunToolParser() }),
-        (["generic", "default"], { GenericToolParser() }),
-    ]
-
-    for entry in registry {
-        for pattern in entry.patterns {
-            if name.contains(pattern) {
-                return entry.factory()
-            }
-        }
+/// Create a tool parser for a specific ToolCallFormat.
+public func toolParserForFormat(_ format: ToolCallFormat) -> (any ToolCallParser)? {
+    switch format {
+    case .qwen:        return QwenToolParser()
+    case .llama:       return LlamaToolParser()
+    case .mistral:     return MistralToolParser()
+    case .deepseek:    return DeepSeekToolParser()
+    case .hermes:      return HermesToolParser()
+    case .functionary: return FunctionaryToolParser()
+    case .granite:     return GraniteToolParser()
+    case .glm:         return GLMToolParser()
+    case .minimax:     return MiniMaxToolParser()
+    case .nemotron:    return NemotronToolParser()
+    case .xlam:        return XLAMToolParser()
+    case .moonshot:    return MoonshotToolParser()
+    case .stepfun:     return StepFunToolParser()
+    case .generic:     return GenericToolParser()
+    case .none:        return nil
     }
-
-    // Default: generic JSON parser works for most models
-    return GenericToolParser()
 }
