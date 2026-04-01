@@ -95,6 +95,9 @@ struct DirectoryPickerView: View {
             Text("Models will be organized in subfolders by repository name")
                 .font(.system(size: 11))
                 .foregroundColor(theme.tertiaryText)
+
+            // Additional scan directories
+            AdditionalDirectoriesView()
         }
         .fileImporter(
             isPresented: $showFilePicker,
@@ -121,6 +124,79 @@ struct DirectoryPickerView: View {
             // Show effective default (env override, old default if exists, else new default)
             let defaultURL = DirectoryPickerService.shared.effectiveModelsDirectory
             return defaultURL.path.replacingOccurrences(of: NSHomeDirectory(), with: "~")
+        }
+    }
+}
+
+// MARK: - Additional Directories
+
+/// Shows user-added model directories with add/remove controls.
+struct AdditionalDirectoriesView: View {
+    @ObservedObject private var userDirs = UserModelDirectories.shared
+    @Environment(\.theme) private var theme
+    @State private var showFilePicker = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Additional Model Folders")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(theme.secondaryText)
+                Spacer()
+                Button(action: { showFilePicker = true }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10))
+                        Text("Add Folder")
+                            .font(.system(size: 11))
+                    }
+                    .foregroundColor(theme.accentColor)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+
+            if userDirs.directories.isEmpty {
+                Text("No additional folders. Add folders containing MLX or JANG models.")
+                    .font(.system(size: 11))
+                    .foregroundColor(theme.tertiaryText)
+                    .padding(.vertical, 4)
+            } else {
+                ForEach(Array(userDirs.directories.enumerated()), id: \.offset) { index, dir in
+                    HStack(spacing: 8) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 11))
+                            .foregroundColor(theme.secondaryText)
+                        Text(dir.path.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundColor(theme.primaryText)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer()
+                        Button(action: { userDirs.removeDirectory(at: index) }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(theme.tertiaryText)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(theme.inputBackground)
+                    )
+                }
+            }
+        }
+        .padding(.top, 8)
+        .fileImporter(
+            isPresented: $showFilePicker,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                userDirs.addDirectory(url)
+            }
         }
     }
 }

@@ -447,6 +447,10 @@ public struct ModelDetector: Sendable {
     /// - `~/models/*/`
     /// - `~/.mlxstudio/models/*/`
     /// - `~/.osaurus/models/*/`
+    /// User-configured additional model directories.
+    /// Set from the app's settings to add custom scan paths.
+    public nonisolated(unsafe) static var additionalDirectories: [URL] = []
+
     public static func scanAvailableModels() -> [DetectedModel] {
         let fm = FileManager.default
         let home = fm.homeDirectoryForCurrentUser
@@ -472,14 +476,15 @@ public struct ModelDetector: Sendable {
             }
         }
 
-        // Custom model directories
-        let customDirs = [
+        // Custom model directories (built-in + user-configured)
+        var customDirs = [
             home.appendingPathComponent("jang/models"),
             home.appendingPathComponent("models"),
             home.appendingPathComponent("MLXModels"),
             home.appendingPathComponent(".mlxstudio/models"),
             home.appendingPathComponent(".osaurus/models"),
         ]
+        customDirs.append(contentsOf: additionalDirectories)
 
         for baseDir in customDirs {
             guard let entries = try? fm.contentsOfDirectory(atPath: baseDir.path) else { continue }
