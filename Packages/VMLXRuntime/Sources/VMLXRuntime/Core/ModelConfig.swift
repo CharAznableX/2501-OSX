@@ -33,6 +33,10 @@ public struct ModelFamilyConfig: Sendable {
     /// Model family name (e.g., "qwen3", "llama4", "nemotron").
     public let family: String
 
+    /// config.json `model_type` values that map to this family.
+    /// Primary lookup key — no model name substring matching needed.
+    public let modelTypes: [String]
+
     /// Tool call format for this model family.
     public let toolCallFormat: ToolCallFormat
 
@@ -52,9 +56,6 @@ public struct ModelFamilyConfig: Sendable {
     public let defaultContextWindow: Int
 
     /// Whether the chat template natively injects <think> when thinking is enabled.
-    /// When true, the model's output starts INSIDE the think block — no <think> tag
-    /// appears in the generated text. The engine must treat all text before </think>
-    /// as reasoning content.
     public let thinkInTemplate: Bool
 
     /// Whether TurboQuant is recommended for this model.
@@ -65,6 +66,7 @@ public struct ModelFamilyConfig: Sendable {
 
     public init(
         family: String,
+        modelTypes: [String] = [],
         toolCallFormat: ToolCallFormat = .none,
         reasoningFormat: ReasoningFormat = .none,
         supportsVision: Bool = false,
@@ -76,6 +78,7 @@ public struct ModelFamilyConfig: Sendable {
         defaultStopTokens: [String] = []
     ) {
         self.family = family
+        self.modelTypes = modelTypes
         self.toolCallFormat = toolCallFormat
         self.reasoningFormat = reasoningFormat
         self.supportsVision = supportsVision
@@ -92,151 +95,141 @@ public struct ModelFamilyConfig: Sendable {
 /// Auto-detects model family from name and returns appropriate config.
 public struct ModelConfigRegistry: Sendable {
 
-    /// All registered model families, ordered by matching priority.
+    /// All registered model families. Keyed by config.json `model_type`.
     public static let configs: [ModelFamilyConfig] = [
         // Qwen family
-        ModelFamilyConfig(family: "qwen3", toolCallFormat: .qwen, reasoningFormat: .qwen3,
-                         thinkInTemplate: true,
+        ModelFamilyConfig(family: "qwen3", modelTypes: ["qwen3", "qwen3_moe", "qwen3_5", "qwen3_5_moe", "qwen3_5_text", "qwen3_5_moe_text"],
+                         toolCallFormat: .qwen, reasoningFormat: .qwen3, thinkInTemplate: true,
                          defaultContextWindow: 32768, defaultStopTokens: ["<|endoftext|>", "<|im_end|>"]),
-        ModelFamilyConfig(family: "qwen2.5-vl", toolCallFormat: .qwen, supportsVision: true,
+        ModelFamilyConfig(family: "qwen2.5-vl", modelTypes: ["qwen2_vl", "qwen2_5_vl"],
+                         toolCallFormat: .qwen, supportsVision: true,
                          defaultContextWindow: 32768, defaultStopTokens: ["<|endoftext|>", "<|im_end|>"]),
-        ModelFamilyConfig(family: "qwen2.5", toolCallFormat: .qwen,
+        ModelFamilyConfig(family: "qwen2.5", modelTypes: ["qwen2", "qwen2_moe"],
+                         toolCallFormat: .qwen,
                          defaultContextWindow: 32768, defaultStopTokens: ["<|endoftext|>", "<|im_end|>"]),
-        ModelFamilyConfig(family: "qwq", toolCallFormat: .qwen, reasoningFormat: .qwen3,
-                         thinkInTemplate: true,
+        ModelFamilyConfig(family: "qwq", modelTypes: ["qwq"],
+                         toolCallFormat: .qwen, reasoningFormat: .qwen3, thinkInTemplate: true,
                          defaultContextWindow: 32768, defaultStopTokens: ["<|endoftext|>", "<|im_end|>"]),
 
         // Llama family
-        ModelFamilyConfig(family: "llama-4", toolCallFormat: .llama,
+        ModelFamilyConfig(family: "llama", modelTypes: ["llama", "llama4", "llama4_text"],
+                         toolCallFormat: .llama,
                          defaultContextWindow: 131072, defaultStopTokens: ["<|eot_id|>"]),
-        ModelFamilyConfig(family: "llama-3.3", toolCallFormat: .llama,
-                         defaultContextWindow: 131072, defaultStopTokens: ["<|eot_id|>"]),
-        ModelFamilyConfig(family: "llama-3.2-vision", toolCallFormat: .llama, supportsVision: true,
-                         defaultContextWindow: 131072, defaultStopTokens: ["<|eot_id|>"]),
-        ModelFamilyConfig(family: "llama-3", toolCallFormat: .llama,
-                         defaultContextWindow: 8192, defaultStopTokens: ["<|eot_id|>"]),
 
         // Mistral/Mixtral
-        ModelFamilyConfig(family: "mistral", toolCallFormat: .mistral, reasoningFormat: .mistral,
+        ModelFamilyConfig(family: "mistral", modelTypes: ["mistral", "mixtral"],
+                         toolCallFormat: .mistral, reasoningFormat: .mistral,
                          defaultContextWindow: 32768, defaultStopTokens: ["</s>"]),
-        ModelFamilyConfig(family: "mixtral", toolCallFormat: .mistral,
+        ModelFamilyConfig(family: "mistral4", modelTypes: ["mistral3", "mistral4"],
+                         toolCallFormat: .mistral, reasoningFormat: .mistral,
+                         defaultContextWindow: 131072, defaultStopTokens: ["</s>"]),
+        ModelFamilyConfig(family: "codestral", modelTypes: ["codestral"],
+                         toolCallFormat: .mistral,
                          defaultContextWindow: 32768, defaultStopTokens: ["</s>"]),
-        ModelFamilyConfig(family: "codestral", toolCallFormat: .mistral,
-                         defaultContextWindow: 32768, defaultStopTokens: ["</s>"]),
-        ModelFamilyConfig(family: "pixtral", toolCallFormat: .mistral, supportsVision: true,
+        ModelFamilyConfig(family: "pixtral", modelTypes: ["pixtral"],
+                         toolCallFormat: .mistral, supportsVision: true,
                          defaultContextWindow: 32768, defaultStopTokens: ["</s>"]),
 
         // DeepSeek
-        ModelFamilyConfig(family: "deepseek-r1", toolCallFormat: .deepseek, reasoningFormat: .deepseekR1,
+        ModelFamilyConfig(family: "deepseek", modelTypes: ["deepseek_v3", "deepseek_v2"],
+                         toolCallFormat: .deepseek,
                          defaultContextWindow: 65536, defaultStopTokens: ["<|end\u{2581}of\u{2581}sentence|>"]),
-        ModelFamilyConfig(family: "deepseek-v3", toolCallFormat: .deepseek,
-                         defaultContextWindow: 65536, defaultStopTokens: ["<|end\u{2581}of\u{2581}sentence|>"]),
-        ModelFamilyConfig(family: "deepseek-v2", toolCallFormat: .deepseek,
-                         defaultContextWindow: 32768, defaultStopTokens: ["<|end\u{2581}of\u{2581}sentence|>"]),
 
-        // Nemotron (hybrid SSM)
-        ModelFamilyConfig(family: "nemotron-h", toolCallFormat: .nemotron, isHybrid: true,
-                         defaultContextWindow: 32768, defaultStopTokens: ["<|endoftext|>"]),
-        ModelFamilyConfig(family: "nemotron", toolCallFormat: .nemotron,
+        // Nemotron
+        ModelFamilyConfig(family: "nemotron", modelTypes: ["nemotron", "nemotron_h"],
+                         toolCallFormat: .nemotron,
                          defaultContextWindow: 32768, defaultStopTokens: ["<|endoftext|>"]),
 
         // Gemma
-        ModelFamilyConfig(family: "gemma-3n", toolCallFormat: .generic, supportsVision: true, isHybrid: true,
+        ModelFamilyConfig(family: "gemma", modelTypes: ["gemma", "gemma2", "gemma3", "gemma3_text", "gemma3n"],
+                         toolCallFormat: .generic,
                          defaultContextWindow: 32768, defaultStopTokens: ["<end_of_turn>"]),
-        ModelFamilyConfig(family: "gemma", toolCallFormat: .generic,
-                         defaultContextWindow: 8192, defaultStopTokens: ["<end_of_turn>"]),
 
         // InternVL
-        ModelFamilyConfig(family: "internvl", toolCallFormat: .generic, supportsVision: true,
+        ModelFamilyConfig(family: "internvl", modelTypes: ["internvl", "internlm2"],
+                         toolCallFormat: .generic, supportsVision: true,
                          defaultContextWindow: 32768),
 
         // Phi
-        ModelFamilyConfig(family: "phi-4", toolCallFormat: .generic, reasoningFormat: .qwen3,
+        ModelFamilyConfig(family: "phi", modelTypes: ["phi3", "phi3v", "phi4", "phi4mm", "phi4_reasoning"],
+                         toolCallFormat: .generic,
                          defaultContextWindow: 16384, defaultStopTokens: ["<|endoftext|>"]),
-        ModelFamilyConfig(family: "phi-3-vision", toolCallFormat: .generic, supportsVision: true,
-                         defaultContextWindow: 4096),
 
-        // GPT-OSS — thinkInTemplate=false: model outputs </think> naturally,
-        // PrependThinkTagMiddleware handles <think> prepending at UI level.
-        ModelFamilyConfig(family: "gpt-oss", toolCallFormat: .generic, reasoningFormat: .qwen3,
-                         thinkInTemplate: false,
+        // GPT-OSS
+        ModelFamilyConfig(family: "gpt-oss", modelTypes: ["gpt_oss"],
+                         toolCallFormat: .generic, reasoningFormat: .qwen3,
                          defaultContextWindow: 131072, defaultStopTokens: ["<|return|>"]),
 
         // GLM
-        ModelFamilyConfig(family: "glm-4", toolCallFormat: .glm, reasoningFormat: .gptoss,
+        ModelFamilyConfig(family: "glm", modelTypes: ["chatglm", "glm4", "glm4_moe", "glm4_moe_lite"],
+                         toolCallFormat: .glm,
                          defaultContextWindow: 32768),
 
         // MiniMax
-        ModelFamilyConfig(family: "minimax", toolCallFormat: .minimax, reasoningFormat: .qwen3,
-                         thinkInTemplate: true,
+        ModelFamilyConfig(family: "minimax", modelTypes: ["minimax_m2", "minimax_text_01"],
+                         toolCallFormat: .minimax, reasoningFormat: .qwen3, thinkInTemplate: true,
                          defaultContextWindow: 32768),
 
         // Jamba (hybrid SSM)
-        ModelFamilyConfig(family: "jamba", toolCallFormat: .generic, isHybrid: true,
+        ModelFamilyConfig(family: "jamba", modelTypes: ["jamba"],
+                         toolCallFormat: .generic, isHybrid: true,
                          defaultContextWindow: 262144),
 
         // Hermes
-        ModelFamilyConfig(family: "hermes", toolCallFormat: .hermes,
+        ModelFamilyConfig(family: "hermes", modelTypes: ["hermes"],
+                         toolCallFormat: .hermes,
                          defaultContextWindow: 8192, defaultStopTokens: ["<|im_end|>"]),
 
-        // Functionary
-        ModelFamilyConfig(family: "functionary", toolCallFormat: .functionary,
-                         defaultContextWindow: 8192),
-
         // Granite
-        ModelFamilyConfig(family: "granite", toolCallFormat: .granite,
+        ModelFamilyConfig(family: "granite", modelTypes: ["granite"],
+                         toolCallFormat: .granite,
                          defaultContextWindow: 8192),
 
-        // xLAM
-        ModelFamilyConfig(family: "xlam", toolCallFormat: .xlam,
-                         defaultContextWindow: 32768),
+        // Cohere
+        ModelFamilyConfig(family: "cohere", modelTypes: ["cohere", "cohere2"],
+                         toolCallFormat: .generic,
+                         defaultContextWindow: 131072),
 
-        // StepFun
-        ModelFamilyConfig(family: "step", toolCallFormat: .stepfun,
-                         defaultContextWindow: 32768),
+        // Others
+        ModelFamilyConfig(family: "starcoder", modelTypes: ["starcoder2"],
+                         toolCallFormat: .generic, defaultContextWindow: 16384),
+        ModelFamilyConfig(family: "olmo", modelTypes: ["olmo", "olmo2"],
+                         toolCallFormat: .generic, defaultContextWindow: 8192),
+        ModelFamilyConfig(family: "exaone", modelTypes: ["exaone"],
+                         toolCallFormat: .generic, defaultContextWindow: 32768),
+        ModelFamilyConfig(family: "stablelm", modelTypes: ["stablelm"],
+                         toolCallFormat: .generic, defaultContextWindow: 8192),
     ]
 
-    /// Auto-detect model family from model name.
-    /// Returns nil if no matching family found (use generic defaults).
-    public static func detect(modelName: String) -> ModelFamilyConfig? {
-        let name = modelName.lowercased()
-            .replacingOccurrences(of: "_", with: "-")
-            .replacingOccurrences(of: " ", with: "-")
-
+    /// Lookup table built from configs: model_type → config.
+    /// Built once at app start, used for O(1) lookups.
+    private static let modelTypeMap: [String: ModelFamilyConfig] = {
+        var map = [String: ModelFamilyConfig]()
         for config in configs {
-            if name.contains(config.family.lowercased()) {
-                return config
+            for mt in config.modelTypes {
+                map[mt] = config
             }
         }
-        return nil
+        return map
+    }()
+
+    /// Detect model family from config.json `model_type` field.
+    /// This is the PRIMARY lookup — no model name matching.
+    public static func configForModelType(_ modelType: String) -> ModelFamilyConfig? {
+        modelTypeMap[modelType]
     }
 
-    /// Get config or return a generic default.
+    /// Get config for a model name (LEGACY — prefer configForModelType).
+    /// Used only when model_type is not available (e.g., display name contexts).
     public static func configFor(modelName: String) -> ModelFamilyConfig {
-        detect(modelName: modelName) ?? ModelFamilyConfig(
-            family: "generic",
-            toolCallFormat: .generic,
-            defaultContextWindow: 8192
-        )
-    }
-
-    /// Get the tool call format for a model.
-    public static func toolFormat(for modelName: String) -> ToolCallFormat {
-        configFor(modelName: modelName).toolCallFormat
-    }
-
-    /// Get the reasoning format for a model.
-    public static func reasoningFormat(for modelName: String) -> ReasoningFormat {
-        configFor(modelName: modelName).reasoningFormat
-    }
-
-    /// Check if a model supports vision.
-    public static func supportsVision(_ modelName: String) -> Bool {
-        configFor(modelName: modelName).supportsVision
-    }
-
-    /// Check if a model is hybrid (SSM + attention).
-    public static func isHybrid(_ modelName: String) -> Bool {
-        configFor(modelName: modelName).isHybrid
+        // First try exact model_type lookup
+        let normalized = modelName.lowercased()
+            .replacingOccurrences(of: "_", with: "-")
+            .replacingOccurrences(of: " ", with: "-")
+        if let config = modelTypeMap[modelName] ?? modelTypeMap[normalized] {
+            return config
+        }
+        // Fallback: generic config
+        return ModelFamilyConfig(family: "generic", toolCallFormat: .generic, defaultContextWindow: 8192)
     }
 }

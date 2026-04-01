@@ -139,8 +139,12 @@ struct GPTOSSReasoningProfile: ModelProfile {
     static let displayName = "Reasoning"
 
     static func matches(modelId: String) -> Bool {
+        // UI profile matching — uses display name until model_type is exposed to UI layer.
+        // The engine layer (VMLXRuntimeActor) uses config.json model_type via ModelConfigRegistry.
         let lower = modelId.lowercased()
-        return lower.contains("gpt-oss") || lower.contains("gpt_oss")
+            .replacingOccurrences(of: "_", with: "-")
+            .replacingOccurrences(of: " ", with: "-")
+        return lower.contains("gpt-oss")
     }
 
     static let options: [ModelOptionDefinition] = [

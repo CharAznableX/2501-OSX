@@ -137,21 +137,13 @@ enum StreamingMiddlewareResolver {
         let thinkingDisabled = modelOptions["disableThinking"]?.boolValue == true
         let id = modelId.lowercased()
 
-        // PrependThinkTagMiddleware: only for models NOT going through VMLXRuntime.
-        // VMLX models handle <think> injection via VMLXRuntimeActor's thinkInTemplate.
-        // MLXService models (fallback path) need the middleware to prepend <think>
-        // for thinkInTemplate models that output </think> without <think>.
-        //
-        // Detection: VMLX-handled models contain known family names. If the model
-        // doesn't match any VMLX family, it's likely on MLXService and needs middleware.
-        let vmlxFamilies = [
-            "qwen", "llama", "mistral", "gemma", "phi", "granite", "deepseek",
-            "minimax", "glm", "nemotron", "jang", "internlm", "cohere",
-            "gpt-oss", "gpt_oss",
-        ]
-        let isVMLX = vmlxFamilies.contains { id.contains($0) }
-
-        if !thinkingDisabled && !isVMLX {
+        // PrependThinkTagMiddleware: for MLXService fallback models that output
+        // </think> without <think>. VMLX models handle thinking at the engine level
+        // via VMLXRuntimeActor's text buffer. Since all local models now try VMLX
+        // first, this middleware only activates for the few that fall through to MLX.
+        // No model name matching — the middleware is safe for any model (it only
+        // prepends <think> on the first non-empty delta if thinking is enabled).
+        if !thinkingDisabled {
             return PrependThinkTagMiddleware()
         }
 

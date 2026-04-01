@@ -64,38 +64,11 @@ public actor VMLXService: VMLXToolCapableService {
     }
 
     public nonisolated func handles(requestedModel: String?) -> Bool {
-        guard let model = requestedModel else { return true }
-        let lower = model.lowercased()
-        if lower.isEmpty || lower == "local" || lower == "default" || lower == "vmlx" {
-            return true
-        }
-        // Match all model families supported by VMLXRuntime's StandardTransformerModel,
-        // Qwen35Model, and GPTOSSModel. Unsupported types will fail at load time
-        // and the ChatEngine fallback router retries with MLXService.
-        let families = [
-            "jang", "mlx",      // Quantization frameworks
-            "llama", "qwen", "qwq",  // Meta, Alibaba
-            "mistral", "mixtral", "codestral", "pixtral",  // Mistral AI
-            "gemma",            // Google
-            "phi",              // Microsoft
-            "granite",          // IBM
-            "deepseek",         // DeepSeek
-            "minimax",          // MiniMax
-            "gpt-oss", "gpt_oss",  // GPT-OSS (OpenAI)
-            "glm",              // Zhipu AI
-            "nemotron",         // NVIDIA
-            "internlm", "internvl",  // Shanghai AI Lab
-            "cohere", "command",  // Cohere
-            "exaone",           // LG
-            "olmo",             // AI2
-            "starcoder",        // BigCode
-            "stablelm",         // Stability AI
-            "hermes",           // NousResearch
-            "functionary",      // MeetKai
-            "xlam",             // Salesforce
-            "jamba",            // AI21
-        ]
-        return families.contains { lower.contains($0) }
+        // Accept ALL local models. VMLXRuntime attempts to load any model;
+        // if the architecture is unsupported, ModelLoader throws and the
+        // ChatEngine fallback router retries with MLXService.
+        // No model name matching — model_type from config.json determines support.
+        true
     }
 
     public func generateOneShot(

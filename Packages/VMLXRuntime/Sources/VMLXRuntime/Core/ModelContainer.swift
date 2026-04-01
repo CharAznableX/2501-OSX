@@ -64,7 +64,14 @@ public final class VMLXModelContainer: @unchecked Sendable {
         self.tokenizer = model.tokenizer
         self.name = model.detected.name
         self.eosTokenIds = model.eosTokenIds
-        self.familyConfig = ModelConfigRegistry.configFor(modelName: model.detected.name)
+        // Use config.json model_type for family detection — no name matching
+        if let modelType = model.detected.modelType,
+           let config = ModelConfigRegistry.configForModelType(modelType) {
+            self.familyConfig = config
+        } else {
+            // Fallback: generic config (unknown model type)
+            self.familyConfig = ModelFamilyConfig(family: "generic", toolCallFormat: .generic, defaultContextWindow: 8192)
+        }
         self.turboQuantConfig = turboQuantConfig
         self.layerPattern = layerPattern
     }
