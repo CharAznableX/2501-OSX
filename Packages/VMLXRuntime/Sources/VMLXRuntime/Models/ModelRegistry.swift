@@ -27,6 +27,7 @@ public protocol VMLXNativeModel: AnyObject {
 // Make our model types conform
 extension Qwen35TopLevelModel: VMLXNativeModel, VMLXSanitizable {}
 extension Qwen35TextModel: VMLXNativeModel, VMLXSanitizable {}
+extension NemotronHModel: VMLXNativeModel {}
 // GPTOSSTransformerModel conforms via extension in GPTOSSModel.swift
 
 /// Registry of supported model architectures.
@@ -66,7 +67,6 @@ public struct VMLXModelRegistry {
     /// Model types that use FP8 quantization or other unsupported weight formats.
     /// These cannot be loaded by VMLXRuntime and get a clear error message.
     private static let unsupportedTypes: Set<String> = [
-        "nemotron_h",       // Nemotron-H — Mamba2 SSM (different from GatedDeltaNet, needs dedicated model class)
     ]
 
     /// Load a native model from a directory.
@@ -89,20 +89,17 @@ public struct VMLXModelRegistry {
 
         // Reject unsupported models with a clear error
         if unsupportedTypes.contains(modelType) {
-            let reason: String
-            switch modelType {
-            case "nemotron_h":
-                reason = "Mamba2 SSM architecture requires a dedicated model implementation (different from GatedDeltaNet)"
-            default:
-                reason = "architecture not yet supported"
-            }
             throw ModelLoaderError.unsupportedArchitecture(
-                "\(modelType): \(reason). "
-                + "Supported: Qwen3.5 (hybrid SSM), standard transformers (Llama/Qwen2/Qwen3/Gemma/etc.), MoE (MiniMax), Mistral4 (MLA+MoE)."
+                "\(modelType): architecture not yet supported. "
+                + "Supported: Qwen3.5 (hybrid SSM), Nemotron-H (Mamba2+MoE), standard transformers, Mistral4 (MLA+MoE)."
             )
         }
 
         switch modelType {
+        // Nemotron-H hybrid (Mamba2 SSM + GQA attention + MoE-MLP)
+        case "nemotron_h":
+            let config = try JSONDecoder().decode(NemotronHConfiguration.self, from: configData)
+            model = NemotronHModel(config)
         // Qwen3.5 hybrid (GatedDeltaNet + GQA + optional MoE)
         case "qwen3_5":
             let config = try JSONDecoder().decode(Qwen35Configuration.self, from: configData)
