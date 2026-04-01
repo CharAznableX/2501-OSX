@@ -827,17 +827,43 @@ public actor VMLXRuntimeActor {
                         }
 
                         // Decode token to text (CPU work overlaps with GPU computing nextY)
-                        let text = container.decode([currentToken])
+                        var text = container.decode([currentToken])
 
-                        // Track thinking state transitions ALWAYS (even when thinking
-                        // is disabled) so we can suppress thinking content properly.
+                        // GPT-OSS Harmony protocol: detect channel tokens by text content
+                        // and transform to <think>/</ think> for the UI parser.
+                        // These are single-token special tokens that form multi-token patterns.
+                        // Suppress internal protocol tokens entirely.
+                        let isChannelToken = text == "<|channel|>" || text == "<|message|>"
+                            || text == "<|end|>" || text == "<|start|>"
+                        if isChannelToken {
+                            // Buffer channel protocol tokens — they're internal framing
+                            y = nextY ?? y
+                            continue
+                        }
+                        // After <|channel|>, the next token is the channel name
+                        // After <|message|>, content starts
+                        // Detect channel transitions from decoded text
+                        if text == "analysis" && _step > 0 {
+                            let prevText = container.decode([generatedTokenIds.last ?? 0])
+                            if prevText == "<|message|>" {
+                                // analysis channel → inject <think>
+                                text = "<think>"
+                            }
+                        } else if (text == "final" || text == "reply" || text == "assistant")
+                                    && _step > 0 {
+                            let prevText = container.decode([generatedTokenIds.last ?? 0])
+                            if prevText == "<|channel|>" {
+                                // response channel → inject </think>
+                                text = "</think>"
+                            }
+                        }
+
+                        // Track thinking state transitions
                         if insideThinking {
                             thinkingTokenCount += 1
                             if text.contains("</think>") {
                                 insideThinking = false
                                 if !enableThinking {
-                                    // Thinking disabled: suppress the </think> tag and
-                                    // all content before it. Continue to next token.
                                     y = nextY ?? y
                                     continue
                                 }
@@ -849,12 +875,10 @@ public actor VMLXRuntimeActor {
                             }
 
                             if !enableThinking {
-                                // Thinking disabled: suppress ALL thinking content
                                 y = nextY ?? y
                                 continue
                             }
                         } else if !insideThinking && text.contains("<think>") {
-                            // Entering a new think block (model outputs <think> tag)
                             insideThinking = true
                             thinkingTokenCount = 0
                             if !enableThinking {

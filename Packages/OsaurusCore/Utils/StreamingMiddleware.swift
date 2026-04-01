@@ -165,8 +165,9 @@ enum StreamingMiddlewareResolver {
         let thinkingDisabled = modelOptions["disableThinking"]?.boolValue == true
         let id = modelId.lowercased()
 
-        // GPT-OSS: transform <|channel|>analysis/reply tags to <think>/</ think>
-        if !thinkingDisabled && (id.contains("gpt-oss") || id.contains("gpt_oss")) {
+        // GPT-OSS: transform <|channel|>analysis/final tags to <think>/</ think>
+        if !thinkingDisabled && (id.contains("gpt-oss") || id.contains("gpt_oss") || id.contains("gptoss")) {
+            print("[Middleware] ChannelTagMiddleware created for model: \(modelId)")
             return ChannelTagMiddleware()
         }
 
