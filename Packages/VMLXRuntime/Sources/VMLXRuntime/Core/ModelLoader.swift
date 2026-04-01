@@ -100,40 +100,10 @@ public struct ModelLoader: Sendable {
     /// 2. Runs `ModelDetector.detect(at:)` for JANG/hybrid/family metadata
     /// 3. Loads tokenizer via swift-transformers
     public static func load(from path: URL) async throws -> LoadedModel {
-        func _log(_ msg: String) {
-            let line = "[\(Date())] \(msg)\n"
-            if let fh = FileHandle(forWritingAtPath: "/tmp/vmlx_debug.log") {
-                fh.seekToEndOfFile(); fh.write(line.data(using: .utf8)!); fh.closeFile()
-            }
-        }
-        Self._vmlxLog("[ModelLoader] Step 1: detect at \(path.lastPathComponent)")
         let detected = try ModelDetector.detect(at: path)
-        Self._vmlxLog("[ModelLoader] Step 1 done: \(detected.name) hybrid=\(detected.isHybrid)")
-
-        Self._vmlxLog("[ModelLoader] Step 2: load config")
         let config = try _loadConfig(at: path)
-        Self._vmlxLog("[ModelLoader] Step 2 done: model_type=\(config["model_type"] ?? "?")")
-
-        Self._vmlxLog("[ModelLoader] Step 3: load model + weights")
-        let nativeModel: any VMLXNativeModel & Module
-        do {
-            let (m, _) = try VMLXModelRegistry.loadModel(from: path)
-            nativeModel = m
-            Self._vmlxLog("[ModelLoader] Step 3 done: vocab=\(nativeModel.vocabularySize)")
-        } catch {
-            Self._vmlxLog("[ModelLoader] Step 3 FAILED: \(error)")
-            throw error
-        }
-
-        Self._vmlxLog("[ModelLoader] Step 4: load tokenizer")
-        let tokenizer: any Tokenizer
-        do {
-            tokenizer = try await _loadTokenizer(at: path)
-            Self._vmlxLog("[ModelLoader] Step 4 done")
-        } catch {
-            Self._vmlxLog("[ModelLoader] Step 4 FAILED: \(error)")
-            throw error
-        }
+        let (nativeModel, _) = try VMLXModelRegistry.loadModel(from: path)
+        let tokenizer = try await _loadTokenizer(at: path)
 
         return LoadedModel(
             nativeModel: nativeModel,
