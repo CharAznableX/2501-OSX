@@ -450,6 +450,11 @@ public actor VMLXRuntimeActor {
             throw VMLXRuntimeError.tokenizationFailed
         }
 
+        // Look up <think> and </think> token IDs for reliable detection.
+        // Text-based detection fails when tokenizers split tags across tokens.
+        let thinkOpenIds = Set(container.encode("<think>"))
+        let thinkCloseIds = Set(container.encode("</think>"))
+
         // Compute gen_prompt_len: number of assistant header tokens appended by chat template.
         // Strip these from cache key so multi-turn conversations hit the same prefix.
         // e.g., "<|im_start|>assistant\n" or "<think>\n" — these change per turn.
@@ -862,47 +867,41 @@ public actor VMLXRuntimeActor {
                             lastDecodedText = text
                         }
 
-                        // Rolling buffer for multi-token tag detection.
-                        // Tags like </think> may be split across tokens: </ + think + >
-                        recentTextBuffer += text
-                        if recentTextBuffer.count > 30 {
-                            recentTextBuffer = String(recentTextBuffer.suffix(30))
+                        // Token ID-based thinking detection — reliable even when
+                        // tokenizers split <think>/</ think> across multiple tokens.
+                        // Check if current token is part of the think open/close sequence.
+                        let isThinkOpen = thinkOpenIds.contains(currentToken)
+                        let isThinkClose = thinkCloseIds.contains(currentToken)
+
+                        if isThinkOpen || isThinkClose {
+                            // This token is part of <think> or </think> — suppress it
+                            // and emit synthetic single-string tags for the UI parser.
+                            if isThinkOpen && !insideThinking {
+                                insideThinking = true
+                                thinkingTokenCount = 0
+                                if enableThinking {
+                                    continuation.yield(.tokens("<think>"))
+                                }
+                            } else if isThinkClose && insideThinking {
+                                insideThinking = false
+                                if enableThinking {
+                                    continuation.yield(.tokens("</think>"))
+                                }
+                            }
+                            // Suppress the raw token text (it's a tag fragment)
+                            y = nextY ?? y
+                            continue
                         }
 
-                        // Track thinking state transitions using rolling buffer
+                        // Thinking budget enforcement
                         if insideThinking {
                             thinkingTokenCount += 1
-                            if recentTextBuffer.contains("</think>") {
-                                insideThinking = false
-                                recentTextBuffer = ""
-                                // Replace the text with just </think> so the UI parser can split
-                                // the thinking content from the response content properly
-                                if let thinkRange = text.range(of: "</think>") {
-                                    // This token contains </think> directly
-                                    _ = thinkRange  // handled below by emitText
-                                } else {
-                                    // </think> was across tokens — inject it now
-                                    text = "</think>"
-                                }
-                                if !enableThinking {
-                                    y = nextY ?? y
-                                    continue
-                                }
-                            } else if thinkingTokenCount >= thinkingBudget {
+                            if thinkingTokenCount >= thinkingBudget {
                                 insideThinking = false
                                 if enableThinking {
                                     continuation.yield(.tokens("\n</think>\n"))
                                 }
                             }
-
-                            if !enableThinking {
-                                y = nextY ?? y
-                                continue
-                            }
-                        } else if !insideThinking && recentTextBuffer.contains("<think>") {
-                            insideThinking = true
-                            thinkingTokenCount = 0
-                            recentTextBuffer = ""
                             if !enableThinking {
                                 y = nextY ?? y
                                 continue
