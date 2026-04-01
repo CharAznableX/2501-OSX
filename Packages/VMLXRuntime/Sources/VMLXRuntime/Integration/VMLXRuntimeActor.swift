@@ -753,6 +753,7 @@ public actor VMLXRuntimeActor {
                     let repPenalty = samplingParams.repetitionPenalty
                     let applyRepPenalty = repPenalty != 1.0
                     var generatedTokenIds: [Int] = []
+                    var channelState: String = ""  // GPT-OSS channel protocol state
 
                     // Decode parameters for the hot loop
                     let isGreedy = samplingParams.isGreedy
@@ -817,7 +818,30 @@ public actor VMLXRuntimeActor {
                         }
 
                         // Decode token to text (CPU work overlaps with GPU computing nextY)
-                        let text = container.decode([currentToken])
+                        var text = container.decode([currentToken])
+
+                        // GPT-OSS channel protocol: suppress internal framing tokens
+                        // and transform channel names to <think>/</ think>.
+                        if text == "<|channel|>" || text == "<|message|>"
+                            || text == "<|end|>" || text == "<|start|>"
+                            || text == "<|endoftext|>" {
+                            channelState = text
+                            y = nextY ?? y
+                            continue
+                        }
+                        if channelState == "<|channel|>" {
+                            // Channel name token — transform to think tags
+                            if text == "analysis" || text.hasPrefix("analysis") {
+                                text = "<think>"
+                            } else if text == "final" || text == "reply" || text == "assistant" {
+                                text = "</think>"
+                            }
+                            channelState = ""
+                        } else if channelState == "<|message|>" || channelState == "<|end|>"
+                                    || channelState == "<|start|>" {
+                            channelState = ""
+                            // First content token after <|message|> — pass through
+                        }
 
                         let emitText = text.vmlxStripped
 
