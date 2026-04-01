@@ -157,10 +157,13 @@ struct GPTOSSReasoningProfile: ModelProfile {
     ]
 
     static let defaults: [String: ModelOptionValue] = [
-        "reasoningEffort": .string("medium")
+        "reasoningEffort": .string("medium"),
+        "disableThinking": .bool(false),  // Always thinking — UI checks this for thinking box
     ]
 
-    static let thinkingOption: (id: String, inverted: Bool)? = nil  // Always thinks
+    // No thinking toggle (GPT-OSS always thinks), but disableThinking=false
+    // is needed for the thinking box to render in ChatView.
+    static let thinkingOption: (id: String, inverted: Bool)? = nil
 }
 
 // MARK: - Qwen Thinking Profile
