@@ -134,7 +134,6 @@ struct DirectoryPickerView: View {
 struct AdditionalDirectoriesView: View {
     @ObservedObject private var userDirs = UserModelDirectories.shared
     @Environment(\.theme) private var theme
-    @State private var showFilePicker = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -143,7 +142,7 @@ struct AdditionalDirectoriesView: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(theme.secondaryText)
                 Spacer()
-                Button(action: { showFilePicker = true }) {
+                Button(action: { userDirs.pickAndAddDirectory() }) {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
                             .font(.system(size: 10))
@@ -189,15 +188,6 @@ struct AdditionalDirectoriesView: View {
             }
         }
         .padding(.top, 8)
-        .fileImporter(
-            isPresented: $showFilePicker,
-            allowedContentTypes: [.folder],
-            allowsMultipleSelection: false
-        ) { result in
-            if case .success(let urls) = result, let url = urls.first {
-                userDirs.addDirectory(url)
-            }
-        }
     }
 }
 
