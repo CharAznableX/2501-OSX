@@ -450,10 +450,8 @@ public actor VMLXRuntimeActor {
             throw VMLXRuntimeError.tokenizationFailed
         }
 
-        // Look up <think> and </think> token IDs for reliable detection.
-        // Text-based detection fails when tokenizers split tags across tokens.
-        let thinkOpenIds = Set(container.encode("<think>"))
-        let thinkCloseIds = Set(container.encode("</think>"))
+        // Think tag detection buffer length (must be >= "</think>".count = 8)
+        let thinkTagMaxLen = 8
 
         // Compute gen_prompt_len: number of assistant header tokens appended by chat template.
         // Strip these from cache key so multi-turn conversations hit the same prefix.
@@ -867,30 +865,54 @@ public actor VMLXRuntimeActor {
                             lastDecodedText = text
                         }
 
-                        // Token ID-based thinking detection — reliable even when
-                        // tokenizers split <think>/</ think> across multiple tokens.
-                        // Check if current token is part of the think open/close sequence.
-                        let isThinkOpen = thinkOpenIds.contains(currentToken)
-                        let isThinkClose = thinkCloseIds.contains(currentToken)
+                        // Text-level think tag detection with buffering.
+                        // Matches Python VMLX approach: detect <think>/</ think> as
+                        // text strings, NOT token IDs. Buffer decoded text to handle
+                        // tags split across tokens (e.g., < + think + >).
+                        recentTextBuffer += text
 
-                        if isThinkOpen || isThinkClose {
-                            // This token is part of <think> or </think> — suppress it
-                            // and emit synthetic single-string tags for the UI parser.
-                            if isThinkOpen && !insideThinking {
-                                insideThinking = true
-                                thinkingTokenCount = 0
-                                if enableThinking {
-                                    continuation.yield(.tokens("<think>"))
+                        // Try to flush safe content from the buffer while keeping
+                        // potential partial tags buffered.
+                        var safeToEmit = ""
+                        while !recentTextBuffer.isEmpty {
+                            if let thinkRange = recentTextBuffer.range(of: "<think>") {
+                                // Found <think> — emit content before it, enter thinking
+                                safeToEmit += recentTextBuffer[..<thinkRange.lowerBound]
+                                recentTextBuffer = String(recentTextBuffer[thinkRange.upperBound...])
+                                if !insideThinking {
+                                    insideThinking = true
+                                    thinkingTokenCount = 0
+                                    if enableThinking {
+                                        safeToEmit += "<think>"
+                                    }
                                 }
-                            } else if isThinkClose && insideThinking {
-                                insideThinking = false
-                                if enableThinking {
-                                    continuation.yield(.tokens("</think>"))
-                                }
+                                continue
                             }
-                            // Suppress the raw token text (it's a tag fragment)
-                            y = nextY ?? y
-                            continue
+                            if let closeRange = recentTextBuffer.range(of: "</think>") {
+                                // Found </think> — emit thinking before it, exit thinking
+                                safeToEmit += recentTextBuffer[..<closeRange.lowerBound]
+                                recentTextBuffer = String(recentTextBuffer[closeRange.upperBound...])
+                                if insideThinking {
+                                    insideThinking = false
+                                    if enableThinking {
+                                        safeToEmit += "</think>"
+                                    }
+                                }
+                                continue
+                            }
+                            // No complete tag found. Check if buffer ends with a partial.
+                            let possiblePartials = ["<", "<t", "<th", "<thi", "<thin", "<think",
+                                                     "</", "</t", "</th", "</thi", "</thin", "</think"]
+                            if let partial = possiblePartials.last(where: { recentTextBuffer.hasSuffix($0) }) {
+                                // Keep partial buffered, emit everything before it
+                                safeToEmit += recentTextBuffer.dropLast(partial.count)
+                                recentTextBuffer = String(recentTextBuffer.suffix(partial.count))
+                            } else {
+                                // No partial — emit everything
+                                safeToEmit += recentTextBuffer
+                                recentTextBuffer = ""
+                            }
+                            break
                         }
 
                         // Thinking budget enforcement
@@ -899,7 +921,7 @@ public actor VMLXRuntimeActor {
                             if thinkingTokenCount >= thinkingBudget {
                                 insideThinking = false
                                 if enableThinking {
-                                    continuation.yield(.tokens("\n</think>\n"))
+                                    safeToEmit += "\n</think>\n"
                                 }
                             }
                             if !enableThinking {
@@ -907,6 +929,9 @@ public actor VMLXRuntimeActor {
                                 continue
                             }
                         }
+
+                        // Replace text with the safely processed content
+                        text = safeToEmit
 
                         let emitText = text.vmlxStripped
 
