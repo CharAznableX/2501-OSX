@@ -544,20 +544,13 @@ public class NemotronHModel: Module {
         let hop = config.hybridOverridePattern
         for (i, layer) in layers.enumerated() {
             let lt = i < hop.count ? String(hop[hop.index(hop.startIndex, offsetBy: i)]) : "?"
-            if i < 5 {
-                let line = "[NemotronH] Layer \(i)/\(layers.count) type=\(lt) h=\(h.shape)\n"
-                if let fh = FileHandle(forWritingAtPath: "/tmp/vmlx_debug.log") {
-                    fh.seekToEndOfFile(); fh.write(line.data(using: .utf8)!); fh.closeFile()
-                }
+            let line = "[NemotronH] Layer \(i)/\(layers.count) type=\(lt)\n"
+            if let fh = FileHandle(forWritingAtPath: "/tmp/vmlx_debug.log") {
+                fh.seekToEndOfFile(); fh.write(line.data(using: .utf8)!); fh.closeFile()
             }
             h = layer(h, mask: mask, cache: cache?[i])
             MLX.eval(h)
-            if i < 5 {
-                let line = "[NemotronH] Layer \(i) DONE h=\(h.shape)\n"
-                if let fh = FileHandle(forWritingAtPath: "/tmp/vmlx_debug.log") {
-                    fh.seekToEndOfFile(); fh.write(line.data(using: .utf8)!); fh.closeFile()
-                }
-            }
+            Memory.clearCache()
         }
 
         h = normF(h)
