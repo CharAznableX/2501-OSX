@@ -187,10 +187,21 @@ public func vmlxSSMAttn(
 
         if let state {
             let expDtACumsum = MLX.exp(MLX.cumsum(dtA, axis: -2))
+            // Propagate state: decay previous state and add to new state
             nextState = nextState + expDtACumsum[0..., -1, 0..., .newAxis, .newAxis] * state
-            let stateR = state.reshaped(b, 1, g, repeats, dh, d)
-            let Cr = C.reshaped(b, s, g, 1, d, 1)
-            let yPrev = stateR.matmul(Cr).squeezed(axis: -1).flattened(start: 2, end: 3)
+
+            // Add contribution of previous state to current output via C projection.
+            // state: [b, h, dh, d], C: [b, s, g, d]
+            // Use matmul on reshaped tensors: state[b,g,repeats,dh,d] @ C[b,s,g,d,1] → [b,s,h,dh]
+            let s = dtA.dim(1)
+            let stateR = state.reshaped(b, g, repeats, dh, d)  // [b, g, repeats, dh, d]
+            // For each group, matmul state[dh,d] @ C[d,1] across seq positions
+            // Reshape to 4D for efficient matmul: [b*g, repeats*dh, d] @ [b*g, d, s] → [b*g, repeats*dh, s]
+            let stateFlat = stateR.reshaped(b * g, repeats * dh, d)  // [b*g, repeats*dh, d]
+            let Ct = C.transposed(0, 2, 3, 1).reshaped(b * g, d, s)  // [b*g, d, s]
+            let yPrevFlat = stateFlat.matmul(Ct)  // [b*g, repeats*dh, s]
+            let yPrev = yPrevFlat.reshaped(b, g * repeats, dh, s)  // [b, h, dh, s]
+                .transposed(0, 3, 1, 2)  // [b, s, h, dh]
             y = y + expDtACumsum[.ellipsis, .newAxis] * yPrev
         }
 
