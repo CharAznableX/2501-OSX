@@ -1232,6 +1232,23 @@ extension ModelManager {
             }
         }
 
+        // Also scan VMLX well-known directories (JANG models, HF cache, etc.)
+        // These are scanned by ModelDetector but not by the primary directory scan above.
+        let vmlxNames = VMLXServiceBridge.getAvailableModels()
+        let existingIds = Set(models.map { $0.id.lowercased() })
+        for name in vmlxNames {
+            let normalized = name.lowercased()
+            if !existingIds.contains(normalized) {
+                let model = MLXModel(
+                    id: name,
+                    name: friendlyName(from: name),
+                    description: "Local model (detected)",
+                    downloadURL: ""
+                )
+                models.append(model)
+            }
+        }
+
         // De-duplicate by lowercase id
         var seen: Set<String> = []
         var unique: [MLXModel] = []
