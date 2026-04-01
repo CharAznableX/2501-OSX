@@ -156,9 +156,10 @@ public struct ModelConfigRegistry: Sendable {
         ModelFamilyConfig(family: "phi-3-vision", toolCallFormat: .generic, supportsVision: true,
                          defaultContextWindow: 4096),
 
-        // GPT-OSS
+        // GPT-OSS — thinkInTemplate=false: model outputs </think> naturally,
+        // PrependThinkTagMiddleware handles <think> prepending at UI level.
         ModelFamilyConfig(family: "gpt-oss", toolCallFormat: .generic, reasoningFormat: .qwen3,
-                         thinkInTemplate: true,
+                         thinkInTemplate: false,
                          defaultContextWindow: 131072, defaultStopTokens: ["<|return|>"]),
 
         // GLM
