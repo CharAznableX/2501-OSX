@@ -51,6 +51,11 @@ struct ModelDetailView: View, Identifiable {
     /// Whether the required files section is expanded
     @State private var isFilesExpanded = false
 
+    /// Per-model parser selections (saved via ModelOptionsStore)
+    @State private var selectedToolParser: String = "auto"
+    @State private var selectedReasoningParser: String = "auto"
+    @State private var parserOptionsLoaded = false
+
     /// Normalized model ID for API usage
     private var apiModelId: String {
         let last = model.id.split(separator: "/").last.map(String.init) ?? model.name
@@ -70,6 +75,11 @@ struct ModelDetailView: View, Identifiable {
             // Scrollable Content
             ScrollView {
                 VStack(spacing: 20) {
+                    // Parser Settings Card (only for downloaded/local models)
+                    if model.isDownloaded {
+                        parserSettingsCard
+                    }
+
                     // Stats Grid
                     statsGrid
 
@@ -88,13 +98,20 @@ struct ModelDetailView: View, Identifiable {
             // Action Footer
             actionFooter
         }
-        .frame(width: 560, height: 580)
+        .frame(width: 560, height: 660)
         .background(theme.primaryBackground)
         .environment(\.theme, themeManager.currentTheme)
         .onAppear {
             withAnimation(.easeOut(duration: 0.2)) {
                 hasAppeared = true
             }
+
+            // Load saved per-model parser settings
+            if let saved = ModelOptionsStore.shared.loadOptions(for: model.id) {
+                selectedToolParser = saved["toolParser"]?.stringValue ?? "auto"
+                selectedReasoningParser = saved["reasoningParser"]?.stringValue ?? "auto"
+            }
+            parserOptionsLoaded = true
 
             Task {
                 await estimateIfNeeded()
@@ -329,6 +346,93 @@ struct ModelDetailView: View, Identifiable {
                         .stroke(theme.cardBorder, lineWidth: 1)
                 )
         )
+    }
+
+    // MARK: - Parser Settings Card
+
+    private var parserSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Parser Settings")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(theme.primaryText)
+
+            Text("Per-model overrides. \"Auto\" falls back to global Server Settings.")
+                .font(.system(size: 11))
+                .foregroundColor(theme.tertiaryText)
+
+            // Tool Parser
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "wrench")
+                        .font(.system(size: 11))
+                        .foregroundColor(theme.secondaryText)
+                    Text("Tool Parser")
+                        .font(.system(size: 13))
+                        .foregroundColor(theme.secondaryText)
+                }
+
+                Spacer()
+
+                Picker("", selection: $selectedToolParser) {
+                    Text("Auto").tag("auto")
+                    Text("None").tag("none")
+                    Divider()
+                    Text("Qwen").tag("qwen")
+                    Text("Llama").tag("llama")
+                    Text("Mistral").tag("mistral")
+                    Text("DeepSeek").tag("deepseek")
+                    Text("Hermes").tag("hermes")
+                    Text("Functionary").tag("functionary")
+                    Text("Generic").tag("generic")
+                }
+                .pickerStyle(.menu)
+                .frame(width: 140)
+                .onChange(of: selectedToolParser) { _ in if parserOptionsLoaded { saveParserSettings() } }
+            }
+
+            // Reasoning Parser
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "brain")
+                        .font(.system(size: 11))
+                        .foregroundColor(theme.secondaryText)
+                    Text("Reasoning Parser")
+                        .font(.system(size: 13))
+                        .foregroundColor(theme.secondaryText)
+                }
+
+                Spacer()
+
+                Picker("", selection: $selectedReasoningParser) {
+                    Text("Auto").tag("auto")
+                    Text("None").tag("none")
+                    Divider()
+                    Text("<think> tags").tag("think")
+                    Text("[THINK] tags").tag("mistral")
+                    Text("GPT-OSS").tag("gptoss")
+                }
+                .pickerStyle(.menu)
+                .frame(width: 140)
+                .onChange(of: selectedReasoningParser) { _ in if parserOptionsLoaded { saveParserSettings() } }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(theme.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(theme.cardBorder, lineWidth: 1)
+                )
+        )
+    }
+
+    /// Save parser settings to ModelOptionsStore, merging with existing options.
+    private func saveParserSettings() {
+        var options = ModelOptionsStore.shared.loadOptions(for: model.id) ?? [:]
+        options["toolParser"] = .string(selectedToolParser)
+        options["reasoningParser"] = .string(selectedReasoningParser)
+        ModelOptionsStore.shared.saveOptions(options, for: model.id)
     }
 
     // MARK: - Download Info Card

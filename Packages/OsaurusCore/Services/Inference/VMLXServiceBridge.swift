@@ -41,6 +41,11 @@ actor VMLXServiceBridge: ToolCapableService {
     /// Used as fallback when no per-request topP override is set.
     private var globalTopP: Float = 0.9
 
+    /// Global parser overrides from Server Settings → Local Inference → Parsers.
+    /// Per-model overrides (from ModelOptionsStore) take priority over these.
+    private var globalToolParser: String?
+    private var globalReasoningParser: String?
+
     init(service: VMLXService = .shared) {
         self.service = service
     }
@@ -77,8 +82,10 @@ actor VMLXServiceBridge: ToolCapableService {
         let cfg = await RuntimeConfig.snapshot()
         let serverCfg = await ServerController.sharedConfiguration()
 
-        // Store global topP for use in toSamplingParams() fallback
+        // Store global settings for use in toSamplingParams() fallback
         self.globalTopP = cfg.topP
+        self.globalToolParser = serverCfg?.toolParserOverride
+        self.globalReasoningParser = serverCfg?.reasoningParserOverride
 
         await service.applyUserConfig(
             kvBits: cfg.kvBits,
@@ -113,8 +120,7 @@ actor VMLXServiceBridge: ToolCapableService {
             // Check the runtime's model name, not our instance variable
             let runtimeModelName = await service.currentModelName
             if let runtimeName = runtimeModelName,
-               modelName.lowercased().contains(runtimeName.lowercased())
-                || runtimeName.lowercased().contains(modelName.lowercased()) {
+               modelName.lowercased() == runtimeName.lowercased() {
                 _vmlxLog("[Bridge] Model already loaded on runtime, skipping: \(modelName) (runtime: \(runtimeName))")
                 currentLoadedModel = modelName
                 return
@@ -127,9 +133,10 @@ actor VMLXServiceBridge: ToolCapableService {
 
         // Load the requested model
         if let found = ModelManager.findInstalledModel(named: modelName) {
-            let modelsDir = DirectoryPickerService.effectiveModelsDirectory()
-            let modelPath = modelsDir.appendingPathComponent(found.id)
-            let resolved = modelPath.resolvingSymlinksInPath()
+            // Use the resolved path from MLXModel.localDirectory which handles
+            // both standard org/repo models and VMLX-detected models (JANG, HF cache)
+            // that live outside the effective models directory.
+            let resolved = found.path.resolvingSymlinksInPath()
 
             // Check if this model type needs MLXService instead of VMLX
             if _isMLXServiceOnlyModel(at: resolved) {
@@ -156,7 +163,7 @@ actor VMLXServiceBridge: ToolCapableService {
         try await ensureModelLoaded(requestedModel: requestedModel)
         await applyRuntimeConfig()  // Refresh settings on every request
         let vmlxMessages = messages.map { $0.toVMLX() }
-        let params = parameters.toSamplingParams(globalTopP: self.globalTopP)
+        let params = parameters.toSamplingParams(globalTopP: self.globalTopP, globalToolParser: self.globalToolParser, globalReasoningParser: self.globalReasoningParser)
         return try await service.generateOneShot(
             messages: vmlxMessages,
             params: params,
@@ -173,7 +180,7 @@ actor VMLXServiceBridge: ToolCapableService {
         try await ensureModelLoaded(requestedModel: requestedModel)
         await applyRuntimeConfig()
         let vmlxMessages = messages.map { $0.toVMLX() }
-        var params = parameters.toSamplingParams(globalTopP: self.globalTopP)
+        var params = parameters.toSamplingParams(globalTopP: self.globalTopP, globalToolParser: self.globalToolParser, globalReasoningParser: self.globalReasoningParser)
         params.stop = stopSequences
 
         return try await service.streamDeltas(
@@ -197,7 +204,7 @@ actor VMLXServiceBridge: ToolCapableService {
         try await ensureModelLoaded(requestedModel: requestedModel)
         await applyRuntimeConfig()
         let vmlxMessages = messages.map { $0.toVMLX() }
-        var params = parameters.toSamplingParams(globalTopP: self.globalTopP)
+        var params = parameters.toSamplingParams(globalTopP: self.globalTopP, globalToolParser: self.globalToolParser, globalReasoningParser: self.globalReasoningParser)
         params.stop = stopSequences
         let vmlxTools = tools.map { $0.toVMLX() }
         let vmlxChoice = toolChoice?.toVMLXString()
@@ -222,7 +229,7 @@ actor VMLXServiceBridge: ToolCapableService {
         try await ensureModelLoaded(requestedModel: requestedModel)
         await applyRuntimeConfig()
         let vmlxMessages = messages.map { $0.toVMLX() }
-        var params = parameters.toSamplingParams(globalTopP: self.globalTopP)
+        var params = parameters.toSamplingParams(globalTopP: self.globalTopP, globalToolParser: self.globalToolParser, globalReasoningParser: self.globalReasoningParser)
         params.stop = stopSequences
         let vmlxTools = tools.map { $0.toVMLX() }
         let vmlxChoice = toolChoice?.toVMLXString()
@@ -275,6 +282,12 @@ actor VMLXServiceBridge: ToolCapableService {
     /// Called from ChatEngine's installedModelsProvider to merge with MLXService models.
     nonisolated static func getAvailableModels() -> [String] {
         ModelDetector.scanAvailableModels().map(\.name)
+    }
+
+    /// Return available VMLX models with their actual filesystem paths.
+    /// Used by ModelManager.scanLocalModels() to create MLXModel with correct rootDirectory.
+    nonisolated static func getAvailableModelsWithPaths() -> [(name: String, path: URL)] {
+        ModelDetector.scanAvailableModels().map { ($0.name, $0.modelPath) }
     }
 
     /// Force-unload the model from the shared VMLXService singleton.
@@ -357,15 +370,34 @@ extension VMLXChatMessage {
 extension GenerationParameters {
     /// Convert Osaurus GenerationParameters to VMLXRuntime's SamplingParams.
     /// topP: uses per-request override if set, otherwise falls back to globalTopP.
-    func toSamplingParams(globalTopP: Float = 0.9) -> SamplingParams {
-        SamplingParams(
+    /// Parser overrides: per-model (from modelOptions) → global (from ServerConfiguration) → auto.
+    func toSamplingParams(globalTopP: Float = 0.9, globalToolParser: String? = nil, globalReasoningParser: String? = nil) -> SamplingParams {
+        // Per-model parser override from ModelOptionsStore (via modelOptions dict)
+        let perModelToolParser = modelOptions["toolParser"]?.stringValue
+        let perModelReasoningParser = modelOptions["reasoningParser"]?.stringValue
+
+        // Priority: per-model → global ServerConfiguration → nil (auto-detect)
+        let effectiveToolParser = Self.resolveParserOverride(perModel: perModelToolParser, global: globalToolParser)
+        let effectiveReasoningParser = Self.resolveParserOverride(perModel: perModelReasoningParser, global: globalReasoningParser)
+
+        return SamplingParams(
             maxTokens: maxTokens,
             temperature: temperature ?? 0.7,
             topP: topPOverride ?? globalTopP,
             repetitionPenalty: repetitionPenalty ?? 1.1,
             enableThinking: !isThinkingDisabled,
-            reasoningEffort: reasoningEffort
+            reasoningEffort: reasoningEffort,
+            toolParserOverride: effectiveToolParser,
+            reasoningParserOverride: effectiveReasoningParser
         )
+    }
+
+    /// Resolve parser override with priority: per-model → global → nil.
+    /// "auto" is treated as nil (fall through to auto-detection).
+    private static func resolveParserOverride(perModel: String?, global: String?) -> String? {
+        if let pm = perModel, pm != "auto", !pm.isEmpty { return pm }
+        if let g = global, g != "auto", !g.isEmpty { return g }
+        return nil
     }
 
     /// Extract reasoning effort from model options ("low", "medium", "high").

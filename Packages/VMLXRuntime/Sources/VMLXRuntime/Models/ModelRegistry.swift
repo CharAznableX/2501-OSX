@@ -137,6 +137,7 @@ public struct VMLXModelRegistry {
                 // Last resort: try loading as standard transformer anyway.
                 // Many custom/fine-tuned models use the standard architecture
                 // but have non-standard model_type strings.
+                print("[VMLXModelRegistry] WARNING: Unknown model_type '\(modelType)' — loading as StandardTransformerModel. Output may be incorrect if architecture differs.")
                 let config = try JSONDecoder().decode(
                     StandardModelConfiguration.self, from: configData)
                 model = StandardTransformerModel(config)

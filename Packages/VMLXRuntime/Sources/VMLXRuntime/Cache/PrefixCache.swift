@@ -45,6 +45,14 @@ public final class PrefixCache: @unchecked Sendable {
         self.maxEntries = maxEntries
     }
 
+    /// Clear all cached entries.
+    public func clear() {
+        root.children.removeAll()
+        root.cache = nil
+        lruOrder.removeAll()
+        entryCount = 0
+    }
+
     // MARK: - Public API
 
     /// Fetch a cached entry for the given token sequence.

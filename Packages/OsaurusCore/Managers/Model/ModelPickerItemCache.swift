@@ -53,22 +53,9 @@ final class ModelPickerItemCache: ObservableObject {
             options.append(.fromMLXModel(model))
         }
 
-        // Add VMLX-detected models not already in the list (JANG, well-known dirs, HF cache)
-        // Normalize IDs for dedup: lowercase, strip org prefix, replace separators
-        func normalizeForDedup(_ id: String) -> String {
-            let base = id.split(separator: "/").last.map(String.init) ?? id
-            return base.lowercased()
-                .replacingOccurrences(of: "-", with: "")
-                .replacingOccurrences(of: "_", with: "")
-                .replacingOccurrences(of: " ", with: "")
-        }
-        let existingNormalized = Set(options.map { normalizeForDedup($0.id) })
-        let vmlxModels = VMLXServiceBridge.getAvailableModels()
-        for name in vmlxModels {
-            if !existingNormalized.contains(normalizeForDedup(name)) {
-                options.append(.localDetected(name: name))
-            }
-        }
+        // VMLX-detected models (JANG, HF cache, well-known dirs) are already included
+        // via discoverLocalModels() above — no separate scan needed. This ensures the
+        // picker only shows models that are actually usable (have config + tokenizer + weights).
 
         let remoteModels = RemoteProviderManager.shared.cachedAvailableModels()
 
@@ -107,21 +94,7 @@ final class ModelPickerItemCache: ObservableObject {
                 options.append(.fromMLXModel(model))
             }
 
-            // Add VMLX-detected models (JANG, well-known dirs, HF cache)
-            func normalizeForDedup(_ id: String) -> String {
-                let base = id.split(separator: "/").last.map(String.init) ?? id
-                return base.lowercased()
-                    .replacingOccurrences(of: "-", with: "")
-                    .replacingOccurrences(of: "_", with: "")
-                    .replacingOccurrences(of: " ", with: "")
-            }
-            let existingNormalized = Set(options.map { normalizeForDedup($0.id) })
-            let vmlxModels = VMLXServiceBridge.getAvailableModels()
-            for name in vmlxModels {
-                if !existingNormalized.contains(normalizeForDedup(name)) {
-                    options.append(.localDetected(name: name))
-                }
-            }
+            // VMLX-detected models already included via discoverLocalModels() above.
 
             items = options
             isLoaded = true

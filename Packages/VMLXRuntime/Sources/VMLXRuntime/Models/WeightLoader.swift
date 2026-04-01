@@ -141,7 +141,7 @@ public func vmlxFixQuantizedBits(model: Module, defaultGroupSize: Int) {
     for (name, module) in model.namedModules() {
         // Handle QuantizedLinear (including QuantizedSwitchLinear via inheritance)
         if let ql = module as? QuantizedLinear {
-            guard ql.weight.ndim >= 2 else { return }
+            guard ql.weight.ndim >= 2 else { continue }
             let wCols = ql.weight.dim(ql.weight.ndim - 1)
             let sCols = ql.scales.dim(ql.scales.ndim - 1)
 
@@ -185,19 +185,3 @@ public func vmlxFixQuantizedBits(model: Module, defaultGroupSize: Int) {
     }
 }
 
-/// Walk all modules in a model tree, calling visitor with (path, module).
-private func _walkModules(_ module: Module, path: String = "", visitor: (String, Module) -> Void) {
-    visitor(path, module)
-    let mirror = Mirror(reflecting: module)
-    for child in mirror.children {
-        if let childModule = child.value as? Module {
-            let childPath = path.isEmpty ? (child.label ?? "") : "\(path).\(child.label ?? "")"
-            _walkModules(childModule, path: childPath, visitor: visitor)
-        } else if let children = child.value as? [Module] {
-            for (i, childModule) in children.enumerated() {
-                let childPath = path.isEmpty ? "\(i)" : "\(path).\(i)"
-                _walkModules(childModule, path: childPath, visitor: visitor)
-            }
-        }
-    }
-}

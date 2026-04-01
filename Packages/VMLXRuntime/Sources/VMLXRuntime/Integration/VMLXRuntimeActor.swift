@@ -439,11 +439,18 @@ public actor VMLXRuntimeActor {
         let requestId = UUID().uuidString
         let modelName = currentModelName ?? ""
 
-        // Build tool parser from the loaded model's family config (config-driven,
-        // not regex). The familyConfig.toolCallFormat is set by ModelConfigRegistry
-        // when the model is loaded, based on model family detection.
-        let toolParser: (any ToolCallParser)? = request.tools != nil
-            ? toolParserForFormat(container.familyConfig.toolCallFormat) : nil
+        // Build tool parser: per-model override → auto-detect from model_type.
+        // Per-model override flows from ModelOptionsStore → GenerationParameters →
+        // SamplingParams → VMLXChatCompletionRequest.toolParserOverride.
+        let toolParser: (any ToolCallParser)? = {
+            guard request.tools != nil else { return nil }
+            if let override = request.toolParserOverride,
+               let format = ToolCallFormat(rawValue: override) {
+                return toolParserForFormat(format)
+            }
+            // Fall back to auto-detect from model_type config
+            return toolParserForFormat(container.familyConfig.toolCallFormat)
+        }()
 
         // Don't use reasoning parser here — Osaurus's StreamingDeltaProcessor
         // handles <think> tag parsing at the UI level. If we strip tags here,
@@ -852,8 +859,13 @@ public actor VMLXRuntimeActor {
                                 text = "</think>"
                             }
                             channelState = ""
-                        } else if channelState == "<|message|>" || channelState == "<|end|>"
-                                    || channelState == "<|start|>" {
+                        } else if channelState == "<|start|>" {
+                            // After <|start|>, consume the role token ("assistant", "system", etc.)
+                            // — it's a template artifact, not model output.
+                            channelState = ""
+                            y = nextY ?? y
+                            continue
+                        } else if channelState == "<|message|>" || channelState == "<|end|>" {
                             channelState = ""
                             // First content token after <|message|> — pass through
                         }

@@ -159,6 +159,8 @@ public struct VMLXChatCompletionRequest: Sendable {
     public let reasoningEffort: String?
     public let sessionId: String?     // KV cache reuse across turns
     public let cacheHint: String?     // Explicit prefix cache key
+    public let toolParserOverride: String?
+    public let reasoningParserOverride: String?
 
     public init(
         messages: [VMLXChatMessage],
@@ -174,7 +176,9 @@ public struct VMLXChatCompletionRequest: Sendable {
         enableThinking: Bool? = nil,
         reasoningEffort: String? = nil,
         sessionId: String? = nil,
-        cacheHint: String? = nil
+        cacheHint: String? = nil,
+        toolParserOverride: String? = nil,
+        reasoningParserOverride: String? = nil
     ) {
         self.messages = messages
         self.model = model
@@ -190,6 +194,8 @@ public struct VMLXChatCompletionRequest: Sendable {
         self.reasoningEffort = reasoningEffort
         self.sessionId = sessionId
         self.cacheHint = cacheHint
+        self.toolParserOverride = toolParserOverride
+        self.reasoningParserOverride = reasoningParserOverride
     }
 
     /// Convert to SamplingParams.

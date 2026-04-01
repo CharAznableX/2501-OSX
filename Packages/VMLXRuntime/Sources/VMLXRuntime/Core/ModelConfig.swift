@@ -98,8 +98,12 @@ public struct ModelConfigRegistry: Sendable {
     /// All registered model families. Keyed by config.json `model_type`.
     public static let configs: [ModelFamilyConfig] = [
         // Qwen family
-        ModelFamilyConfig(family: "qwen3", modelTypes: ["qwen3", "qwen3_moe", "qwen3_5", "qwen3_5_moe", "qwen3_5_text", "qwen3_5_moe_text"],
+        ModelFamilyConfig(family: "qwen3", modelTypes: ["qwen3", "qwen3_moe"],
                          toolCallFormat: .qwen, reasoningFormat: .qwen3, thinkInTemplate: true,
+                         defaultContextWindow: 32768, defaultStopTokens: ["<|endoftext|>", "<|im_end|>"]),
+        ModelFamilyConfig(family: "qwen3.5", modelTypes: ["qwen3_5", "qwen3_5_moe", "qwen3_5_text", "qwen3_5_moe_text"],
+                         toolCallFormat: .qwen, reasoningFormat: .qwen3,
+                         isHybrid: true, thinkInTemplate: true,
                          defaultContextWindow: 32768, defaultStopTokens: ["<|endoftext|>", "<|im_end|>"]),
         ModelFamilyConfig(family: "qwen2.5-vl", modelTypes: ["qwen2_vl", "qwen2_5_vl"],
                          toolCallFormat: .qwen, supportsVision: true,

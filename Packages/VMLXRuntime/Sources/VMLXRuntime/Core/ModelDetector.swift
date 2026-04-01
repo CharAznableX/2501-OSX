@@ -295,47 +295,8 @@ public struct ModelDetector: Sendable {
             || hfConfig?["vision_config"] != nil
         let hasVision = jangVision || hfVision || hasPreprocessorConfig
 
-        // SSM detection: check jang_config first, then fall back to config.json evidence.
-        // Some JANG configs have has_ssm=false despite the model having Mamba2 layers
-        // (e.g., Nemotron Cascade JANG reports has_ssm=false but hybrid_override_pattern
-        // contains "M" for Mamba2 layers). Always cross-check config.json.
-        let jangHasSSM = jangArch?.hasSSM ?? false
-        let hfHasSSM: Bool = {
-            if let hop = hfConfig?["hybrid_override_pattern"] as? String, hop.contains("M") {
-                return true
-            }
-            let lt: [String]? = (hfConfig?["layer_types"] as? [String])
-                ?? (hfConfig?["text_config"] as? [String: Any])?["layer_types"] as? [String]
-            if let types = lt {
-                let ssmTypes: Set<String> = ["linear_attention", "ssm", "mamba", "recurrent", "gated_delta"]
-                return types.contains(where: { ssmTypes.contains($0.lowercased()) })
-            }
-            return false
-        }()
-        let hasSSM = jangHasSSM || hfHasSSM
-
-        // MoE detection: jang_config OR config.json
-        let jangHasMoE = jangArch?.hasMoE ?? false
-        let hfHasMoE: Bool = {
-            let experts = hfConfig?["num_local_experts"] as? Int
-                ?? hfConfig?["num_experts"] as? Int
-                ?? (hfConfig?["text_config"] as? [String: Any])?["num_experts"] as? Int
-                ?? (hfConfig?["text_config"] as? [String: Any])?["num_local_experts"] as? Int
-            return (experts ?? 0) > 1
-        }()
-        let hasMoE = jangHasMoE || hfHasMoE
-
-        // Hybrid = has SSM (mixed SSM+attention or SSM-only architecture)
-        let isHybrid = hasSSM
-
-        // HF config fields
-        let modelType = hfConfig?["model_type"] as? String
-        let hfArchitectures = hfConfig?["architectures"] as? [String]
-
-        // Hybrid pattern from config.json
-        let hybridOverridePattern = hfConfig?["hybrid_override_pattern"] as? String
-
         // Layer types from config.json (may be nested under text_config)
+        // Parsed early because SSM detection depends on it.
         let layerTypes: [String]?
         if let lt = hfConfig?["layer_types"] as? [String] {
             layerTypes = lt
@@ -345,6 +306,25 @@ public struct ModelDetector: Sendable {
         } else {
             layerTypes = nil
         }
+
+        // SSM detection: jang_config.json OR config.json layer_types containing non-attention layers
+        var hasSSM = jangArch?.hasSSM ?? false
+        if !hasSSM, let lt = layerTypes {
+            hasSSM = lt.contains { $0 != "full_attention" }
+        }
+
+        // MoE detection
+        let hasMoE = jangArch?.hasMoE ?? false
+
+        // Hybrid = has SSM
+        let isHybrid = hasSSM
+
+        // HF config fields
+        let modelType = hfConfig?["model_type"] as? String
+        let hfArchitectures = hfConfig?["architectures"] as? [String]
+
+        // Hybrid pattern from config.json
+        let hybridOverridePattern = hfConfig?["hybrid_override_pattern"] as? String
 
         // Context window
         let contextWindow = hfConfig?["max_position_embeddings"] as? Int

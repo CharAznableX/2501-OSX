@@ -442,7 +442,7 @@ private func convertMoePackedTensors(blocks: MLXArray, scales: MLXArray) -> MLXA
 
     var out = stacked([lut[idxLo], lut[idxHi]], axis: -1).flattened(start: -2)
     out = (2.0 ** scales) * out
-    out = out.reshaped(prefixShape.count, G * B * 2)
+    out = out.reshaped(prefixShape + [G * B * 2])
     return out.asType(.bfloat16)
 }
 

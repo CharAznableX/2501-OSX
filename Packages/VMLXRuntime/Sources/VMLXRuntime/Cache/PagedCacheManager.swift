@@ -60,6 +60,21 @@ public final class PagedCacheManager: @unchecked Sendable {
         self.stats.freeBlocks = maxBlocks - 1  // exclude null sentinel
     }
 
+    /// Clear all cached data. Resets all blocks to free state.
+    public func clear() {
+        lock.withLock {
+            hashMap.removeAll()
+            requestTables.removeAll()
+            allocatedBlocks.removeAll()
+            freeQueue = FreeBlockQueue()
+            for i in 1..<blocks.count {
+                blocks[i].reset()
+                freeQueue.append(blocks[i])
+            }
+            stats.freeBlocks = blocks.count - 1
+        }
+    }
+
     // MARK: - Allocation
 
     /// Allocate a single block from the free queue. Returns nil if no blocks are available

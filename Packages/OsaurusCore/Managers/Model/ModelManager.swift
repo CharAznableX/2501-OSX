@@ -988,7 +988,9 @@ extension ModelManager {
 
     /// Find an installed model by user-provided name.
     /// Accepts repo name (case-insensitive) or full id (case-insensitive).
-    nonisolated static func findInstalledModel(named name: String) -> (name: String, id: String)? {
+    /// Returns the resolved local directory path so callers don't need to guess
+    /// where the model lives (handles VMLX-detected models in non-standard locations).
+    nonisolated static func findInstalledModel(named name: String) -> (name: String, id: String, path: URL)? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         let models = discoverLocalModels()
@@ -999,14 +1001,29 @@ extension ModelManager {
         }) {
             let repo =
                 match.id.split(separator: "/").last.map(String.init)?.lowercased() ?? trimmed.lowercased()
-            return (repo, match.id)
+            return (repo, match.id, match.localDirectory)
         }
 
         // Try full id match
         if let match = models.first(where: { m in m.id.lowercased() == trimmed.lowercased() }) {
             let repo =
                 match.id.split(separator: "/").last.map(String.init)?.lowercased() ?? trimmed.lowercased()
-            return (repo, match.id)
+            return (repo, match.id, match.localDirectory)
+        }
+
+        // Try normalized match (strip org prefix, separators) for fuzzy matching
+        func normalize(_ s: String) -> String {
+            let base = s.split(separator: "/").last.map(String.init) ?? s
+            return base.lowercased()
+                .replacingOccurrences(of: "-", with: "")
+                .replacingOccurrences(of: "_", with: "")
+                .replacingOccurrences(of: " ", with: "")
+        }
+        let normalizedInput = normalize(trimmed)
+        if let match = models.first(where: { normalize($0.id) == normalizedInput }) {
+            let repo =
+                match.id.split(separator: "/").last.map(String.init)?.lowercased() ?? trimmed.lowercased()
+            return (repo, match.id, match.localDirectory)
         }
         return nil
     }
@@ -1190,36 +1207,50 @@ extension ModelManager {
             return resolved
         }
 
-        for orgURL in orgDirs {
-            guard let resolvedOrgURL = resolvedDirectory(orgURL) else { continue }
+        /// Check if a directory contains a valid model (config + tokenizer + weights).
+        func isValidModelDir(_ dir: URL) -> Bool {
+            guard exists(dir, "config.json") else { return false }
+            let hasTok = exists(dir, "tokenizer.json")
+            let hasBPE = exists(dir, "merges.txt")
+                && (exists(dir, "vocab.json") || exists(dir, "vocab.txt"))
+            let hasSP = exists(dir, "tokenizer.model") || exists(dir, "spiece.model")
+            guard hasTok || hasBPE || hasSP else { return false }
+            guard let items = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil),
+                  items.contains(where: { $0.pathExtension == "safetensors" })
+            else { return false }
+            return true
+        }
+
+        for entryURL in orgDirs {
+            guard let resolvedEntry = resolvedDirectory(entryURL) else { continue }
+
+            // Single-level: entry IS a model directory (flat structure, e.g., ~/.mlxstudio/models/ModelName/)
+            if isValidModelDir(resolvedEntry) {
+                let name = entryURL.lastPathComponent
+                let model = MLXModel(
+                    id: name,
+                    name: friendlyName(from: name),
+                    description: "Local model (detected)",
+                    downloadURL: "",
+                    directModelPath: resolvedEntry
+                )
+                models.append(model)
+                continue
+            }
+
+            // Two-level: entry is an org directory containing repo subdirectories (e.g., JANGQ-AI/ModelName/)
             guard
                 let repos = try? fm.contentsOfDirectory(
-                    at: resolvedOrgURL,
+                    at: resolvedEntry,
                     includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
                     options: [.skipsHiddenFiles]
                 )
             else { continue }
             for repoURL in repos {
                 guard let resolvedRepoURL = resolvedDirectory(repoURL) else { continue }
+                guard isValidModelDir(resolvedRepoURL) else { continue }
 
-                // Validate minimal required files (aligned with MLXModel.isDownloaded)
-                guard exists(resolvedRepoURL, "config.json") else { continue }
-                let hasTokenizerJSON = exists(resolvedRepoURL, "tokenizer.json")
-                let hasBPE =
-                    exists(resolvedRepoURL, "merges.txt")
-                    && (exists(resolvedRepoURL, "vocab.json") || exists(resolvedRepoURL, "vocab.txt"))
-                let hasSentencePiece =
-                    exists(resolvedRepoURL, "tokenizer.model") || exists(resolvedRepoURL, "spiece.model")
-                guard hasTokenizerJSON || hasBPE || hasSentencePiece else { continue }
-                guard
-                    let items = try? fm.contentsOfDirectory(
-                        at: resolvedRepoURL,
-                        includingPropertiesForKeys: nil
-                    ),
-                    items.contains(where: { $0.pathExtension == "safetensors" })
-                else { continue }
-
-                let org = orgURL.lastPathComponent
+                let org = entryURL.lastPathComponent
                 let repo = repoURL.lastPathComponent
                 let id = "\(org)/\(repo)"
                 let model = MLXModel(
@@ -1234,26 +1265,44 @@ extension ModelManager {
 
         // Also scan VMLX well-known directories (JANG models, HF cache, etc.)
         // These are scanned by ModelDetector but not by the primary directory scan above.
-        let vmlxNames = VMLXServiceBridge.getAvailableModels()
-        let existingIds = Set(models.map { $0.id.lowercased() })
-        for name in vmlxNames {
-            let normalized = name.lowercased()
-            if !existingIds.contains(normalized) {
+        // Use getAvailableModelsWithPaths() to get actual filesystem paths so
+        // MLXModel.localDirectory resolves correctly for isDownloaded checks.
+
+        // Normalize for dedup: strip org prefix, lowercase, remove separators.
+        // This catches cases where primary scan has "JANGQ-AI/Model-Name"
+        // and VMLX scan has "Model Name-JANG_2L" — both normalize to the same key.
+        func normalizeForDedup(_ id: String) -> String {
+            let base = id.split(separator: "/").last.map(String.init) ?? id
+            return base.lowercased()
+                .replacingOccurrences(of: "-", with: "")
+                .replacingOccurrences(of: "_", with: "")
+                .replacingOccurrences(of: " ", with: "")
+        }
+
+        let existingNormalized = Set(models.map { normalizeForDedup($0.id) })
+        let vmlxModels = VMLXServiceBridge.getAvailableModelsWithPaths()
+        for (name, path) in vmlxModels {
+            if !existingNormalized.contains(normalizeForDedup(name)) {
                 let model = MLXModel(
                     id: name,
                     name: friendlyName(from: name),
                     description: "Local model (detected)",
-                    downloadURL: ""
+                    downloadURL: "",
+                    directModelPath: path  // Actual filesystem path so isDownloaded works
                 )
+                // Only add models that are actually usable (have config + tokenizer + weights).
+                // This prevents partially-downloaded HF cache entries and non-LLM models
+                // (FLUX, CLIP, etc.) from cluttering the model list.
+                guard model.isDownloaded else { continue }
                 models.append(model)
             }
         }
 
-        // De-duplicate by lowercase id
+        // De-duplicate by normalized key
         var seen: Set<String> = []
         var unique: [MLXModel] = []
         for m in models {
-            let key = m.id.lowercased()
+            let key = normalizeForDedup(m.id)
             if !seen.contains(key) {
                 seen.insert(key)
                 unique.append(m)

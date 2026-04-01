@@ -216,12 +216,14 @@ actor ChatEngine: Sendable, ChatEngineProtocol {
                     continuation.yield(delta)
                 }
 
+                // Finish the stream FIRST so the UI can stop the typing indicator
+                // immediately. Logging runs after — never block stream termination.
+                continuation.finish()
+
                 let totalTime = Date().timeIntervalSince(startTime)
                 print(
                     "[Osaurus][Stream] Stream completed: \(deltaCount) deltas in \(String(format: "%.2f", totalTime))s"
                 )
-
-                continuation.finish()
             } catch let inv as ServiceToolInvocation {
                 print("[Osaurus][Stream] Tool invocation: \(inv.toolName)")
                 toolInvocation = (inv.toolName, inv.jsonArguments)

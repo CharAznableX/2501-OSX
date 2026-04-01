@@ -491,11 +491,13 @@ public final class CacheCoordinator: @unchecked Sendable {
 
     // MARK: - Cache Management
 
-    /// Clear all caches.
+    /// Clear all caches. Called when switching models to prevent stale KV data.
     public func clearAll() {
         ssmStateCache?.clear()
-        // Note: pagedCache, prefixCache, memoryCache, diskCache don't have
-        // bulk clear methods yet. Individual entries are managed via LRU eviction.
+        pagedCache?.clear()
+        prefixCache?.clear()
+        memoryCache?.clear()
+        diskCache?.clear()
     }
 
     /// Get aggregate stats across all cache layers.

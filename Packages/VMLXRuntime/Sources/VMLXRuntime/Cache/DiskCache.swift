@@ -31,6 +31,23 @@ public final class DiskCache: @unchecked Sendable {
     public var misses: Int { lock.withLock { _misses } }
     public var stores: Int { lock.withLock { _stores } }
 
+    /// Clear all cached data from disk and SQLite index.
+    public func clear() {
+        lock.withLock {
+            if let db = db {
+                sqlite3_exec(db, "DELETE FROM cache_entries", nil, nil, nil)
+            }
+            // Remove .safetensors cache files
+            let fm = FileManager.default
+            if let files = try? fm.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: nil) {
+                for file in files where file.pathExtension == "safetensors" {
+                    try? fm.removeItem(at: file)
+                }
+            }
+            _hits = 0; _misses = 0; _stores = 0
+        }
+    }
+
     public init(cacheDir: URL, maxSizeGB: Float = 10.0) {
         self.cacheDir = cacheDir
         self.maxSizeBytes = Int(maxSizeGB * 1024 * 1024 * 1024)

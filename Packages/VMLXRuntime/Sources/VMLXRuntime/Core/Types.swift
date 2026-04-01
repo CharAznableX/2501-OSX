@@ -16,6 +16,11 @@ public struct SamplingParams: Sendable {
     public var enableThinking: Bool
     public var reasoningEffort: String?
 
+    /// Per-model tool parser override. nil or "auto" = use model_type auto-detection.
+    public var toolParserOverride: String?
+    /// Per-model reasoning parser override. nil or "auto" = use model_type auto-detection.
+    public var reasoningParserOverride: String?
+
     /// True when temperature is zero (deterministic / argmax sampling).
     public var isGreedy: Bool { temperature == 0 }
 
@@ -29,7 +34,9 @@ public struct SamplingParams: Sendable {
         stop: [String] = [],
         stopTokenIds: [Int] = [],
         enableThinking: Bool = true,
-        reasoningEffort: String? = nil
+        reasoningEffort: String? = nil,
+        toolParserOverride: String? = nil,
+        reasoningParserOverride: String? = nil
     ) {
         self.maxTokens = maxTokens
         self.temperature = temperature
@@ -41,6 +48,8 @@ public struct SamplingParams: Sendable {
         self.stopTokenIds = stopTokenIds
         self.enableThinking = enableThinking
         self.reasoningEffort = reasoningEffort
+        self.toolParserOverride = toolParserOverride
+        self.reasoningParserOverride = reasoningParserOverride
     }
 }
 

@@ -20,10 +20,33 @@ struct MLXModel: Identifiable, Codable {
     /// Approximate download size in bytes (optional, for display purposes)
     let downloadSizeBytes: Int64?
 
-    // When non-nil, pins the model to a specific directory (used by tests).
+    // When non-nil, pins the model to a specific base directory (used by tests).
     // When nil, `localDirectory` resolves dynamically so that user-selected
     // storage path changes are always respected.
     private let rootDirectory: URL?
+
+    // When non-nil, this IS the model directory (no id-based path appending).
+    // Used for VMLX-detected models (JANG, HF cache) where the actual model path
+    // doesn't follow the org/repo structure under the models directory.
+    private let directModelPath: URL?
+
+    // Exclude runtime-only URL fields from Codable to prevent crashes.
+    // These are set at model discovery time, not persisted.
+    private enum CodingKeys: String, CodingKey {
+        case id, name, description, downloadURL, isTopSuggestion, downloadSizeBytes
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decode(String.self, forKey: .description)
+        downloadURL = try container.decode(String.self, forKey: .downloadURL)
+        isTopSuggestion = try container.decodeIfPresent(Bool.self, forKey: .isTopSuggestion) ?? false
+        downloadSizeBytes = try container.decodeIfPresent(Int64.self, forKey: .downloadSizeBytes)
+        rootDirectory = nil
+        directModelPath = nil
+    }
 
     init(
         id: String,
@@ -32,7 +55,8 @@ struct MLXModel: Identifiable, Codable {
         downloadURL: String,
         isTopSuggestion: Bool = false,
         downloadSizeBytes: Int64? = nil,
-        rootDirectory: URL? = nil
+        rootDirectory: URL? = nil,
+        directModelPath: URL? = nil
     ) {
         self.id = id
         self.name = name
@@ -41,6 +65,7 @@ struct MLXModel: Identifiable, Codable {
         self.isTopSuggestion = isTopSuggestion
         self.downloadSizeBytes = downloadSizeBytes
         self.rootDirectory = rootDirectory
+        self.directModelPath = directModelPath
     }
 
     /// Formatted download size string (e.g., "3.9 GB")
@@ -70,6 +95,12 @@ struct MLXModel: Identifiable, Codable {
     /// Resolves against the current effective models directory unless an
     /// explicit `rootDirectory` was provided at init (e.g. in tests).
     var localDirectory: URL {
+        // Direct model path: VMLX-detected models (JANG, HF cache) where
+        // the actual path doesn't follow org/repo structure.
+        if let direct = directModelPath {
+            return direct
+        }
+        // Base directory (explicit or default) + id components (org/repo)
         let baseDir = rootDirectory ?? DirectoryPickerService.effectiveModelsDirectory()
         let components = id.split(separator: "/").map(String.init)
         return components.reduce(baseDir) { partial, component in

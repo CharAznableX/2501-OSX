@@ -96,10 +96,12 @@ enum ModelProfileRegistry {
         var opts = profile(for: modelId)?.options ?? []
         // Append parser options for all local models so users can override
         // the auto-detected tool/reasoning parser per model.
-        let isLocal = !modelId.contains("/") || modelId.lowercased().contains("jang")
-            || modelId.lowercased().contains("mlx")
-            || !modelId.hasPrefix("openai/") && !modelId.hasPrefix("anthropic/")
-        if isLocal {
+        // Remote models have a known provider prefix (openai/, anthropic/, etc.)
+        let remoteProviders = ["openai/", "anthropic/", "google/", "venice-ai/",
+                               "groq/", "together/", "fireworks/", "perplexity/",
+                               "deepinfra/", "anyscale/"]
+        let isRemote = remoteProviders.contains { modelId.lowercased().hasPrefix($0) }
+        if !isRemote {
             opts.append(contentsOf: parserOptions)
         }
         return opts

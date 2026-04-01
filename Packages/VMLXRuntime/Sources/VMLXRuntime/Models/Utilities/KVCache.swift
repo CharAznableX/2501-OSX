@@ -261,6 +261,16 @@ public class VMLXQuantizedKVCache: VMLXBaseKVCache {
     public override func trim(_ n: Int) -> Int {
         let trimmed = min(offset, n)
         offset -= trimmed
+        // Truncate quantized storage to match new offset so subsequent
+        // update() concatenations start from the correct position.
+        if let qk = quantizedKeys, qk.dim(2) > offset {
+            quantizedKeys = qk[.ellipsis, ..<offset, 0...]
+            quantizedValues = quantizedValues?[.ellipsis, ..<offset, 0...]
+            keyScales = keyScales?[.ellipsis, ..<offset, 0...]
+            valueScales = valueScales?[.ellipsis, ..<offset, 0...]
+            keyBiases = keyBiases?[.ellipsis, ..<offset, 0...]
+            valueBiases = valueBiases?[.ellipsis, ..<offset, 0...]
+        }
         return trimmed
     }
 

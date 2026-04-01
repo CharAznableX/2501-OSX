@@ -112,6 +112,11 @@ public final class MemoryCache: @unchecked Sendable {
         self.effectiveMemoryLimit = limit
     }
 
+    /// Clear all cached entries.
+    public func clear() {
+        lock.withLock { entries.removeAll() }
+    }
+
     /// Fetch cache for token sequence.
     /// Returns (cache, remainingTokens). nil cache = miss.
     public func fetch(tokens: [Int]) -> (HybridCache?, [Int]) {

@@ -94,7 +94,9 @@ public actor VMLXService: VMLXToolCapableService {
             repetitionPenalty: params.repetitionPenalty,
             stop: params.stop,
             stream: false,
-            enableThinking: params.enableThinking
+            enableThinking: params.enableThinking,
+            toolParserOverride: params.toolParserOverride,
+            reasoningParserOverride: params.reasoningParserOverride
         )
         return try await runtime.generate(request: request)
     }
@@ -115,7 +117,9 @@ public actor VMLXService: VMLXToolCapableService {
             stop: stopSequences,
             stream: true,
             enableThinking: params.enableThinking,
-            reasoningEffort: params.reasoningEffort
+            reasoningEffort: params.reasoningEffort,
+            toolParserOverride: params.toolParserOverride,
+            reasoningParserOverride: params.reasoningParserOverride
         )
 
         let eventStream = try await runtime.generateStream(request: request)
@@ -175,7 +179,9 @@ public actor VMLXService: VMLXToolCapableService {
             stream: false,
             tools: tools,
             toolChoice: toolChoice,
-            enableThinking: params.enableThinking
+            enableThinking: params.enableThinking,
+            toolParserOverride: params.toolParserOverride,
+            reasoningParserOverride: params.reasoningParserOverride
         )
         return try await runtime.generate(request: request)
     }
@@ -199,7 +205,9 @@ public actor VMLXService: VMLXToolCapableService {
             stream: true,
             tools: tools,
             toolChoice: toolChoice,
-            enableThinking: params.enableThinking
+            enableThinking: params.enableThinking,
+            toolParserOverride: params.toolParserOverride,
+            reasoningParserOverride: params.reasoningParserOverride
         )
 
         let eventStream = try await runtime.generateStream(request: request)
