@@ -763,6 +763,7 @@ public actor VMLXRuntimeActor {
                     let repPenalty = samplingParams.repetitionPenalty
                     let applyRepPenalty = repPenalty != 1.0
                     var generatedTokenIds: [Int] = []
+                    var lastDecodedText: String = ""  // For GPT-OSS channel protocol tracking
 
                     // Decode parameters for the hot loop
                     let isGreedy = samplingParams.isGreedy
@@ -829,33 +830,35 @@ public actor VMLXRuntimeActor {
                         // Decode token to text (CPU work overlaps with GPU computing nextY)
                         var text = container.decode([currentToken])
 
-                        // GPT-OSS Harmony protocol: detect channel tokens by text content
-                        // and transform to <think>/</ think> for the UI parser.
-                        // These are single-token special tokens that form multi-token patterns.
-                        // Suppress internal protocol tokens entirely.
-                        let isChannelToken = text == "<|channel|>" || text == "<|message|>"
+                        // GPT-OSS Harmony protocol: token-level state machine.
+                        // Track channel tokens to transform analysis→<think>, final→</think>.
+                        // Channel tokens: <|channel|>, <|message|>, <|end|>, <|start|>
+                        // These form patterns: <|channel|> + name + <|message|> + content
+                        let isProtocolToken = text == "<|channel|>" || text == "<|message|>"
                             || text == "<|end|>" || text == "<|start|>"
-                        if isChannelToken {
-                            // Buffer channel protocol tokens — they're internal framing
+                            || text == "<|endoftext|>"
+                        if isProtocolToken {
+                            lastDecodedText = text
                             y = nextY ?? y
                             continue
                         }
-                        // After <|channel|>, the next token is the channel name
-                        // After <|message|>, content starts
-                        // Detect channel transitions from decoded text
-                        if text == "analysis" && _step > 0 {
-                            let prevText = container.decode([generatedTokenIds.last ?? 0])
-                            if prevText == "<|message|>" {
-                                // analysis channel → inject <think>
-                                text = "<think>"
-                            }
-                        } else if (text == "final" || text == "reply" || text == "assistant")
-                                    && _step > 0 {
-                            let prevText = container.decode([generatedTokenIds.last ?? 0])
-                            if prevText == "<|channel|>" {
-                                // response channel → inject </think>
+                        // After <|channel|>, the next word is the channel name
+                        if lastDecodedText == "<|channel|>" {
+                            if text == "analysis" || text.hasPrefix("analysis") {
+                                lastDecodedText = text
+                                text = "<think>\n"
+                            } else if text == "final" || text == "reply" || text == "assistant"
+                                        || text.hasPrefix("final") || text.hasPrefix("reply") {
+                                lastDecodedText = text
                                 text = "</think>"
+                            } else {
+                                lastDecodedText = text
                             }
+                        } else if lastDecodedText == "<|message|>" {
+                            // Content after <|message|> — just pass through
+                            lastDecodedText = text
+                        } else {
+                            lastDecodedText = text
                         }
 
                         // Track thinking state transitions

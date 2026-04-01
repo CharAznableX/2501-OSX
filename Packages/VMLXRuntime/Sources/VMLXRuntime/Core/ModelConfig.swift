@@ -156,6 +156,11 @@ public struct ModelConfigRegistry: Sendable {
         ModelFamilyConfig(family: "phi-3-vision", toolCallFormat: .generic, supportsVision: true,
                          defaultContextWindow: 4096),
 
+        // GPT-OSS
+        ModelFamilyConfig(family: "gpt-oss", toolCallFormat: .generic, reasoningFormat: .qwen3,
+                         thinkInTemplate: true,
+                         defaultContextWindow: 131072, defaultStopTokens: ["<|return|>"]),
+
         // GLM
         ModelFamilyConfig(family: "glm-4", toolCallFormat: .glm, reasoningFormat: .gptoss,
                          defaultContextWindow: 32768),

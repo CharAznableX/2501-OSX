@@ -165,16 +165,15 @@ enum StreamingMiddlewareResolver {
         let thinkingDisabled = modelOptions["disableThinking"]?.boolValue == true
         let id = modelId.lowercased()
 
-        // GPT-OSS: transform <|channel|>analysis/final tags to <think>/</ think>
-        if !thinkingDisabled && (id.contains("gpt-oss") || id.contains("gpt_oss") || id.contains("gptoss")) {
-            print("[Middleware] ChannelTagMiddleware created for model: \(modelId)")
-            return ChannelTagMiddleware()
-        }
-
-        // PrependThinkTagMiddleware: for models that output </think> but NOT <think>
+        // PrependThinkTagMiddleware: for models that output </think> but NOT <think>.
+        // These models have thinkInTemplate=true — the chat template injects <think>
+        // in the generation prompt, so the model's output starts INSIDE thinking.
+        // The MLXService path doesn't inject <think>, so the middleware does it.
+        // (VMLX path handles this via VMLXRuntimeActor's thinkInTemplate flag.)
         let needsPrependThink =
             !thinkingDisabled
-            && (id.contains("glm") && id.contains("flash"))
+            && ((id.contains("glm") && id.contains("flash"))
+                || id.contains("gpt-oss") || id.contains("gpt_oss") || id.contains("gptoss"))
 
         return needsPrependThink ? PrependThinkTagMiddleware() : nil
     }
