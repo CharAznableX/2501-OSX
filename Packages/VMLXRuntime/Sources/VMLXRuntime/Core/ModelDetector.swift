@@ -264,7 +264,16 @@ public struct ModelDetector: Sendable {
         } else if !sourceModel.isEmpty {
             name = sourceModel
         } else {
-            name = dirName
+            // For HF cache: extract repo name from parent path
+            // Path: ~/.cache/huggingface/hub/models--org--name/snapshots/hash/
+            let parentPath = path.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent
+            if parentPath.hasPrefix("models--") {
+                name = parentPath
+                    .replacingOccurrences(of: "models--", with: "")
+                    .replacingOccurrences(of: "--", with: "/")
+            } else {
+                name = dirName
+            }
         }
 
         // Family detection
