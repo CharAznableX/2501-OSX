@@ -16,63 +16,23 @@ protocol StreamingMiddleware: AnyObject {
 
 // MARK: - Middleware Implementations
 
-/// Buffers early deltas for models that emit `</think>` without `<think>`.
-/// Only prepends `<think>` if a `</think>` is detected in the first N tokens,
-/// confirming the model is actually reasoning. Otherwise, flushes buffered
-/// content as-is (no false thinking box).
+/// Prepends `<think>` on the first non-empty delta for models that output
+/// thinking content without the opening tag (thinkInTemplate models).
+/// Streams everything through immediately — no buffering delay.
+/// If the model isn't thinking, `<think>` goes through but StreamingDeltaProcessor
+/// will see it as content and the thinking box opens (acceptable trade-off
+/// vs buffering 20+ tokens and delaying all output).
 @MainActor
 final class PrependThinkTagMiddleware: StreamingMiddleware {
-    private var state: State = .buffering
-    private var buffer: String = ""
-    private var deltaCount = 0
-    private static let maxBufferDeltas = 20  // Check first ~20 tokens
-
-    private enum State {
-        case buffering   // Accumulating early deltas to check for </think>
-        case confirmed   // </think> found — already prepended <think>
-        case passthrough // No </think> detected — no thinking, pass through
-    }
+    private var hasFired = false
 
     func process(_ delta: String) -> String {
-        switch state {
-        case .confirmed, .passthrough:
-            return delta
-
-        case .buffering:
-            deltaCount += 1
-            buffer += delta
-
-            // Check if </think> appeared — confirms model is reasoning
-            if buffer.contains("</think>") {
-                state = .confirmed
-                // Only prepend <think> if buffer doesn't already have it
-                // (VMLX path injects <think> via thinkInTemplate; don't double it)
-                let alreadyHasThink = buffer.contains("<think>")
-                let result = alreadyHasThink ? buffer : "<think>" + buffer
-                buffer = ""
-                return result
-            }
-
-            // If buffer already has <think>, pass through immediately
-            // (VMLX already injected it, no need to wait for </think>)
-            if buffer.contains("<think>") {
-                state = .confirmed
-                let result = buffer
-                buffer = ""
-                return result
-            }
-
-            // If we've buffered enough without seeing </think>, give up
-            if deltaCount >= Self.maxBufferDeltas {
-                state = .passthrough
-                let result = buffer
-                buffer = ""
-                return result
-            }
-
-            // Still buffering — suppress output for now
-            return ""
-        }
+        guard !hasFired else { return delta }
+        guard !delta.isEmpty else { return delta }
+        hasFired = true
+        // Don't double-inject if VMLX already added <think>
+        if delta.contains("<think>") { return delta }
+        return "<think>" + delta
     }
 }
 
