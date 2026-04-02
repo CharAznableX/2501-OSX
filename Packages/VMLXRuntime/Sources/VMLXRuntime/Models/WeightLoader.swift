@@ -85,10 +85,17 @@ public func vmlxLoadWeights(
     // We infer the actual bits per-layer from weight/scales shapes:
     //   bits = weight.dim(1) * 32 / (scales.dim(1) * group_size)
     let hasScales = weights.keys.contains { $0.hasSuffix(".scales") }
-    if hasScales {
+    let mode = quantization?.mode ?? .affine
+
+    // MXFP4/MXFP8 models store weights in a special packed format with uint8 scales.
+    // The standard affine quantization path (bits inference from weight/scales ratio)
+    // does NOT apply to MXFP4. These models need mode passed through to gatherQuantizedMM
+    // but don't need the quantize() module transformation — weights are already packed.
+    let isMXFP = (mode == .mxfp4 || mode == .mxfp8)
+
+    if hasScales && !isMXFP {
         let defaultGroupSize = quantization?.groupSize ?? 64
         let defaultBits = quantization?.bits ?? 4
-        let mode = quantization?.mode ?? .affine
 
         // For JANG mixed-precision: config may specify bits that MLX's quantize()
         // doesn't support (e.g., 3-bit in JANG_4K). Use nearest valid bit width
@@ -145,8 +152,11 @@ public func vmlxLoadWeights(
     // This requires our mlx-swift fork (jjang-ai/mlx-swift) which makes bits/groupSize
     // mutable (`var` instead of `let`).
     // Ported from VMLX Python engine's _fix_quantized_bits().
-    let fixGroupSize = quantization?.groupSize ?? 64
-    vmlxFixQuantizedBits(model: model, defaultGroupSize: fixGroupSize)
+    // Skip for MXFP4/MXFP8 — different packing, bits inference doesn't apply.
+    if !isMXFP {
+        let fixGroupSize = quantization?.groupSize ?? 64
+        vmlxFixQuantizedBits(model: model, defaultGroupSize: fixGroupSize)
+    }
 }
 
 /// Fix per-layer bits and groupSize on all QuantizedLinear/QuantizedEmbedding modules.
