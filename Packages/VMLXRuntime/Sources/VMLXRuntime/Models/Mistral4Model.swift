@@ -669,12 +669,7 @@ public class Mistral4TransformerModel: Module {
         var newWeights = [String: MLXArray]()
 
         // Collect all weight_scale_inv keys for FP8 dequantization
-        var scaleInvKeys = Set<String>()
-        for key in weights.keys {
-            if key.hasSuffix(".weight_scale_inv") {
-                scaleInvKeys.insert(key)
-            }
-        }
+        let scaleInvKeys = Set(weights.keys.filter { $0.hasSuffix(".weight_scale_inv") })
 
         for (origKey, value) in weights {
             var key = origKey
@@ -684,13 +679,9 @@ public class Mistral4TransformerModel: Module {
                 continue
             }
 
-            // Skip activation_scale (not needed for weight-only inference)
-            if key.hasSuffix(".activation_scale") {
-                continue
-            }
-
-            // Skip weight_scale_inv (processed with corresponding weight)
-            if key.hasSuffix(".weight_scale_inv") {
+            // Skip activation_scale and scale_inv (FP8 metadata, not needed for inference)
+            // Matches both .activation_scale and _activation_scale (JANG leftover keys)
+            if key.contains("activation_scale") || key.contains("scale_inv") {
                 continue
             }
 

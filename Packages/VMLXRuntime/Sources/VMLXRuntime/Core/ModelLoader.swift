@@ -64,12 +64,22 @@ public final class LoadedModel: @unchecked Sendable {
     }
 
     /// EOS token IDs.
+    /// Checks top-level config first, then text_config (for VLM models like Mistral3/4).
     public var eosTokenIds: Set<Int> {
         var ids = Set<Int>()
+        // Check top-level config
         if let eosIds = config["eos_token_id"] as? [Int] {
             ids.formUnion(eosIds)
         } else if let eosId = config["eos_token_id"] as? Int {
             ids.insert(eosId)
+        }
+        // Fallback to text_config (VLM models nest eos_token_id there)
+        if ids.isEmpty, let tc = config["text_config"] as? [String: Any] {
+            if let eosIds = tc["eos_token_id"] as? [Int] {
+                ids.formUnion(eosIds)
+            } else if let eosId = tc["eos_token_id"] as? Int {
+                ids.insert(eosId)
+            }
         }
         return ids
     }
