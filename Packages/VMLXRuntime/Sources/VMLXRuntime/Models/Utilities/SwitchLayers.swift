@@ -56,18 +56,14 @@ public class VMLXSwitchGLU: Module {
     public init(
         inputDims: Int, hiddenDims: Int, numExperts: Int,
         activation: @escaping (MLXArray) -> MLXArray = MLXNN.silu,
+        isSilu: Bool = true,
         bias: Bool = false
     ) {
         self.inputDims = inputDims
         self.hiddenDims = hiddenDims
         self.numExperts = numExperts
         self.activation = activation
-        
-        // MLXNN.silu is not equatable, so we assume silu is used unless a custom closure is provided
-        // that isn't the default. But in Swift we can't easily check closure equality.
-        // We will default to using compiledSwiGLU if the activation behaves like silu on a test tensor,
-        // or just add a flag. Since all our models use silu, we'll just add an explicit flag.
-        self.isSilu = true // For our models, this is always SiLU
+        self.isSilu = isSilu
 
         self._gateProj.wrappedValue = VMLXSwitchLinear(
             inputDims: inputDims, outputDims: hiddenDims, numExperts: numExperts, bias: bias)

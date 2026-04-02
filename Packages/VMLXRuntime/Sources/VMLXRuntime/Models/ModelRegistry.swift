@@ -168,17 +168,14 @@ public struct VMLXModelRegistry {
             quantization: baseConfig.quantization
         )
 
-        // For large MoE models (≥256 experts), convert non-quantized weights to bfloat16.
-        // This prevents float16 overflow in gate routing math and avoids implicit float32
-        // promotion that kills performance (e.g., MiniMax M2.5 with 512 experts: 23→75+ tok/s).
+        // Convert non-quantized weights to bfloat16 for MoE and MLA models.
+        // Without this, mixed float16/float32 params cause implicit float32 promotion
+        // in Metal, killing performance (e.g., MiniMax 512 experts: 23→75 tok/s,
+        // Gemma4 128 experts with sigmoid routing: similar gains).
         // Matches Python mlx-lm behavior.
         let numExperts = _getNumExperts(configData: configData)
         let kvLoraRank = _getKVLoraRank(configData: configData)
-        if numExperts >= 256 || kvLoraRank > 0 {
-            // bfloat16 required for:
-            // - Large MoE (≥256 experts): prevents float16 overflow in gate routing
-            // - MLA models (kv_lora_rank > 0, e.g. Mistral4): prevents mixed-dtype float32
-            //   promotion from gate weights, achieving 3.5x speedup (23→82 tok/s)
+        if numExperts > 1 || kvLoraRank > 0 {
             NSLog("[ModelRegistry] Converting to bfloat16 (experts=\(numExperts), kvLoraRank=\(kvLoraRank))")
             _convertToBFloat16(model: model)
         }
