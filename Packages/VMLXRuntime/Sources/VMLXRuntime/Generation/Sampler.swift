@@ -2,6 +2,15 @@ import Foundation
 import MLX
 import MLXRandom
 
+/// Compiled categorical sampler — fused temperature scaling + sampling.
+/// `compile(shapeless: true)` generates a single GPU kernel instead of
+/// separate division + categorical ops, avoiding intermediate allocations.
+public let compiledCategoricalSample: @Sendable (MLXArray, MLXArray) -> MLXArray = compile(shapeless: true) {
+    (logits: MLXArray, temperature: MLXArray) -> MLXArray in
+    let scaled = logits / temperature
+    return MLXRandom.categorical(scaled.expandedDimensions(axis: 0))
+}
+
 /// Token sampler supporting multiple sampling strategies.
 /// Operates on logits (raw model output) to produce token IDs.
 public struct Sampler: Sendable {
@@ -65,32 +74,28 @@ public struct Sampler: Sendable {
     // MARK: - Filtering Operations
 
     /// Apply repetition penalty to previously seen tokens.
+    /// Uses index-gather instead of full-vocab mask allocation:
+    /// only reads/writes the unique token positions, O(unique_tokens) not O(vocab_size).
     public static func applyRepetitionPenalty(
         logits: MLXArray, tokens: [Int], penalty: Float
     ) -> MLXArray {
         let uniqueTokens = Array(Set(tokens))
         guard !uniqueTokens.isEmpty else { return logits }
 
-        let vocabSize = logits.shape[0]
+        // Index-gather: extract logits at seen positions only
+        let indices = MLXArray(uniqueTokens.map { Int32($0) })
+        let gathered = logits[indices]
 
-        // Build a boolean mask: true at positions that appeared in tokens
-        var maskData = [Float](repeating: 0.0, count: vocabSize)
-        for tokenId in uniqueTokens {
-            if tokenId >= 0 && tokenId < vocabSize {
-                maskData[tokenId] = 1.0
-            }
-        }
-        let mask = MLXArray(maskData) .> 0
+        // Penalize: negative scores * penalty, positive scores / penalty
+        let penaltyVal = MLXArray(penalty)
+        let penalizedNeg = gathered * penaltyVal
+        let penalizedPos = gathered / penaltyVal
+        let penalized = which(gathered .< 0, penalizedNeg, penalizedPos)
 
-        // Compute penalized logits for every position (applied selectively via mask).
-        // If score < 0, multiply by penalty; if score > 0, divide by penalty.
-        let penaltyArray = MLXArray(penalty)
-        let penalizedNeg = logits * penaltyArray
-        let penalizedPos = logits / penaltyArray
-        let penalized = which(logits .< 0, penalizedNeg, penalizedPos)
-
-        // Apply penalty only at token positions that appeared previously
-        return which(mask, penalized, logits)
+        // Scatter-write penalized values back at the token positions
+        var result = logits[0...]  // shallow copy
+        result[indices] = penalized
+        return result
     }
 
     /// Keep only top-k logits, set rest to -inf.

@@ -1194,6 +1194,12 @@ extension FloatingInputCard {
                 } label: {
                     Label("Unload Model", systemImage: "eject")
                 }
+            } else if selectedModel != nil {
+                // Model selected but not loaded — show disabled unload
+                Button(action: {}) {
+                    Label("No Model Loaded", systemImage: "info.circle")
+                }
+                .disabled(true)
             }
         }
         .popover(isPresented: $showModelPicker, arrowEdge: .top) {
@@ -1212,6 +1218,12 @@ extension FloatingInputCard {
         }
         .task(id: selectedModel) {
             await refreshUnloadTarget()
+        }
+        .task(id: isStreaming) {
+            // Refresh after generation completes — model may have been auto-loaded.
+            if !isStreaming {
+                await refreshUnloadTarget()
+            }
         }
     }
 

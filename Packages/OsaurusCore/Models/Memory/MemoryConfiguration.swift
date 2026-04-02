@@ -49,6 +49,9 @@ public struct MemoryConfiguration: Codable, Equatable, Sendable {
     /// Maximum active entries per agent before oldest are archived (0 = unlimited)
     public var maxEntriesPerAgent: Int
 
+    /// Core model identifier used for memory extraction and profile generation
+    public var coreModelIdentifier: String
+
     /// Whether the memory system is enabled
     public var enabled: Bool
 
@@ -91,6 +94,7 @@ public struct MemoryConfiguration: Codable, Equatable, Sendable {
         mmrLambda: Double = 0.7,
         mmrFetchMultiplier: Double = 2.0,
         maxEntriesPerAgent: Int = 500,
+        coreModelIdentifier: String = "default",
         enabled: Bool = true,
         verificationEnabled: Bool = true,
         verificationSemanticDedupThreshold: Double = 0.85,
@@ -111,6 +115,7 @@ public struct MemoryConfiguration: Codable, Equatable, Sendable {
         self.mmrLambda = mmrLambda
         self.mmrFetchMultiplier = mmrFetchMultiplier
         self.maxEntriesPerAgent = maxEntriesPerAgent
+        self.coreModelIdentifier = coreModelIdentifier
         self.enabled = enabled
         self.verificationEnabled = verificationEnabled
         self.verificationSemanticDedupThreshold = verificationSemanticDedupThreshold
@@ -167,6 +172,8 @@ public struct MemoryConfiguration: Codable, Equatable, Sendable {
             try c.decodeIfPresent(Double.self, forKey: .mmrFetchMultiplier) ?? defaults.mmrFetchMultiplier
         maxEntriesPerAgent =
             try c.decodeIfPresent(Int.self, forKey: .maxEntriesPerAgent) ?? defaults.maxEntriesPerAgent
+        coreModelIdentifier =
+            try c.decodeIfPresent(String.self, forKey: .coreModelIdentifier) ?? defaults.coreModelIdentifier
         enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? defaults.enabled
         verificationEnabled =
             try c.decodeIfPresent(Bool.self, forKey: .verificationEnabled) ?? defaults.verificationEnabled

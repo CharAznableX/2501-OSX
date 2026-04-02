@@ -161,13 +161,8 @@ actor VMLXServiceBridge: ToolCapableService {
                              userInfo: [NSLocalizedDescriptionKey: "Model requires MLXService (unsupported architecture for VMLXRuntime)"])
             }
 
-            // Block VLM/vision models — VMLX has no vision processing pipeline wired
-            // into the generation loop. VLMs must fall through to MLXService.
-            if _isVisionModel(at: resolved) {
-                _vmlxLog("[Bridge] VLM model detected, deferring to MLXService: \(modelName)")
-                throw NSError(domain: "VMLXServiceBridge", code: 3,
-                             userInfo: [NSLocalizedDescriptionKey: "Vision models require MLXService (VMLXRuntime has no vision pipeline)"])
-            }
+            // VL models load as text-only — vision features won't work but text
+            // inference is fine. The model's sanitize() strips vision tower weights.
 
             do {
                 try await service.loadModel(from: resolved)
@@ -315,17 +310,44 @@ actor VMLXServiceBridge: ToolCapableService {
     /// Check if a model is a vision/multimodal model that needs MLXService.
     /// Checks config.json for vision_config, image_token_id, or preprocessor_config.json.
     private func _isVisionModel(at path: URL) -> Bool {
-        // Check preprocessor_config.json existence (strongest signal)
-        if FileManager.default.fileExists(atPath: path.appendingPathComponent("preprocessor_config.json").path) {
-            return true
-        }
-        // Check config.json for vision fields
+        // Check config.json model_type — only VL model types need vision pipeline.
+        // preprocessor_config.json is NOT reliable: JANG text-only conversions often
+        // copy it from the VL base model, causing false positives.
         let configURL = path.appendingPathComponent("config.json")
         guard let data = try? Data(contentsOf: configURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return false
         }
-        return json["vision_config"] != nil || json["image_token_id"] != nil || json["video_token_id"] != nil
+        // Check model_type for known VL types
+        if let modelType = json["model_type"] as? String {
+            let vlTypes: Set<String> = [
+                "llava", "llava_next", "llava_onevision",
+                "paligemma",
+                "qwen2_vl", "qwen2_5_vl", "qwen3_5_vl",
+                "phi3_v",
+                "pixtral", "mllama",
+                "idefics2", "idefics3",
+                "internvl_chat",
+            ]
+            // NOTE: gemma3, gemma4, phi4mm NOT in vlTypes — they use the same
+            // model_type for both VL and text-only. Let them load as text;
+            // vision features just won't work until VL pipeline is implemented.
+            // VL types need vision pipeline. Text subtypes (gemma3_text, qwen3_5_moe) do NOT.
+            if vlTypes.contains(modelType) {
+                return true
+            }
+        }
+        // Also check if vision_config has actual layer definitions (not just null)
+        if let visionConfig = json["vision_config"] as? [String: Any],
+           visionConfig["num_hidden_layers"] != nil {
+            // Has real vision encoder — but still check model_type isn't text-only
+            if let modelType = json["model_type"] as? String,
+               modelType.hasSuffix("_text") || modelType.hasSuffix("_moe") {
+                return false  // Text-only variant with inherited vision config
+            }
+            return true
+        }
+        return false
     }
 
     private func _isMLXServiceOnlyModel(at path: URL) -> Bool {

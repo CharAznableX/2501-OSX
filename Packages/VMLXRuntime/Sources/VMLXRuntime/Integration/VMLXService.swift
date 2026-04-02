@@ -101,7 +101,8 @@ public actor VMLXService: VMLXToolCapableService {
                                 + "\"pp\":\(String(format:"%.1f",ppTPS)),"
                                 + "\"tg\":\(String(format:"%.1f",decTPS)),"
                                 + "\"cb\":\(cacheBytes),"
-                                + "\"d\":\"\(detail ?? "miss")\"}"
+                                + "\"d\":\"\(detail ?? "miss")\","
+                                + "\"e\":\"vmlx\"}"
                             continuation.yield("\u{FFFE}stats:" + statsJSON)
                         }
                     }

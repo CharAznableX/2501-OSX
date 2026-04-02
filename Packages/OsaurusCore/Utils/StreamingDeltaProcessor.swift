@@ -133,17 +133,40 @@ final class StreamingDeltaProcessor {
     }
 
     /// Finalize streaming: drain remaining buffers and partial tags, sync to UI.
+    /// Incomplete tag prefixes in pendingTagBuffer are flushed as literal text —
+    /// they were never completed, so they're content, not markup.
     func finalize() {
         invalidateTimer()
 
+        // Combine pending partial tag + any remaining delta buffer.
+        // The pendingTagBuffer holds partial prefixes like "<thi" or "</thin"
+        // that were waiting for more data. Since the stream ended, they're
+        // just literal text — flush them to the appropriate channel.
         if !deltaBuffer.isEmpty || !pendingTagBuffer.isEmpty {
-            let remaining = pendingTagBuffer + deltaBuffer
+            var remaining = pendingTagBuffer + deltaBuffer
             pendingTagBuffer = ""
             deltaBuffer = ""
+
+            // If we're inside thinking, check for a final </think> in the remaining text
             if isInsideThinking {
-                appendThinking(remaining)
+                if let closeRange = remaining.range(of: "</think>") {
+                    appendThinking(String(remaining[..<closeRange.lowerBound]))
+                    let after = String(remaining[closeRange.upperBound...])
+                    isInsideThinking = false
+                    if !after.isEmpty { appendContent(after) }
+                } else {
+                    appendThinking(remaining)
+                }
             } else {
-                appendContent(remaining)
+                // Check for an unclosed <think> in the remaining text
+                if let openRange = remaining.range(of: "<think>") {
+                    appendContent(String(remaining[..<openRange.lowerBound]))
+                    let after = String(remaining[openRange.upperBound...])
+                    isInsideThinking = true
+                    if !after.isEmpty { appendThinking(after) }
+                } else {
+                    appendContent(remaining)
+                }
             }
         }
 
@@ -207,13 +230,16 @@ final class StreamingDeltaProcessor {
 
     private func syncIfNeeded(now: Date) {
         let totalChars = contentLength + thinkingLength
-        // Sync to UI on every flush for per-token smoothness.
-        // At high tok/s, each sync triggers a SwiftUI layout pass.
-        // Back off on very long outputs to prevent layout thrash.
+        // Sync to UI at a throttled cadence to balance per-token smoothness
+        // against SwiftUI layout cost. Each sync triggers a view re-render.
+        // At 60+ tok/s, syncing every token causes 60+ layout passes/sec
+        // which freezes the UI. 16ms (~60fps) is the sweet spot for short
+        // responses; back off harder as content grows.
         let syncIntervalMs: Double =
             switch totalChars {
-            case 0 ..< 2_000: 0      // Every token
-            case 2_000 ..< 5_000: 16  // ~60fps
+            case 0 ..< 500: 16        // ~60fps — short responses feel instant
+            case 500 ..< 2_000: 16    // ~60fps
+            case 2_000 ..< 5_000: 33  // ~30fps
             case 5_000 ..< 10_000: 50  // ~20fps
             case 10_000 ..< 20_000: 100  // ~10fps
             default: 200               // ~5fps — prevent main thread freeze
@@ -230,16 +256,17 @@ final class StreamingDeltaProcessor {
     private func recomputeFlushTuning() {
         let totalChars = contentLength + thinkingLength
 
-        // Flush every token for smooth per-token streaming on local inference.
-        // At 60 tok/s = 16ms/token, we flush on every delta arrival.
-        // Aggressively back off for long outputs where markdown layout
-        // becomes expensive — a single re-render can take 200ms+ for large
-        // code blocks, completely blocking the main thread and freezing the UI.
+        // Flush tuning: buffer deltas and flush in batches to minimize
+        // parseAndRoute() calls. At 60 tok/s, flushing every token means
+        // 60 string scans/sec for think tags — wasteful. Batch 4-8 tokens
+        // per flush for short responses, more for long ones.
         switch totalChars {
-        case 0 ..< 2_000:
-            flushIntervalMs = 0; maxBufferSize = 1    // Every token
+        case 0 ..< 500:
+            flushIntervalMs = 16; maxBufferSize = 4    // ~60fps, batch 4 tokens
+        case 500 ..< 2_000:
+            flushIntervalMs = 16; maxBufferSize = 8    // ~60fps, batch 8
         case 2_000 ..< 5_000:
-            flushIntervalMs = 16; maxBufferSize = 16   // ~60fps
+            flushIntervalMs = 33; maxBufferSize = 16   // ~30fps
         case 5_000 ..< 10_000:
             flushIntervalMs = 50; maxBufferSize = 64   // ~20fps
         case 10_000 ..< 20_000:
@@ -259,10 +286,11 @@ final class StreamingDeltaProcessor {
     // MARK: - Thinking Tag Parsing
 
     /// Partial tag prefixes for `<think>` and `</think>`, longest first.
-    /// Close partials include shorter prefixes (</th, </) because </think> can be
-    /// split across tokens. Open partials stay at 4+ chars to avoid false positives.
+    /// Only match prefixes that are unambiguously part of think tags.
+    /// Shorter prefixes like "</t" or "</" are excluded — they match common HTML
+    /// like </table>, </td>, </tr> and cause false positives that corrupt output.
     private static let openPartials = ["<think", "<thin", "<thi"]
-    private static let closePartials = ["</think", "</thin", "</thi", "</th", "</t", "</"]
+    private static let closePartials = ["</think", "</thin", "</thi"]
 
     private func parseAndRoute(_ text: inout String) {
         // GPT-OSS <|channel|> tags are handled by ChannelTagMiddleware

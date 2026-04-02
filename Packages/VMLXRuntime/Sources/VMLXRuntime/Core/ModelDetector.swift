@@ -307,12 +307,15 @@ public struct ModelDetector: Sendable {
             layerTypes = nil
         }
 
-        // SSM detection: jang_config.json OR config.json layer_types OR hybrid_override_pattern
+        // SSM detection: jang_config.json OR config.json layer_types OR hybrid_override_pattern.
+        // Some JANG configs have has_ssm=false despite the model having Mamba2 layers
+        // (e.g., Nemotron Cascade JANG). Always cross-check config.json.
         var hasSSM = jangArch?.hasSSM ?? false
         if !hasSSM, let lt = layerTypes {
-            hasSSM = lt.contains { $0 != "full_attention" }
+            // Match specific SSM layer types — NOT sliding_attention (that's still attention)
+            let ssmTypes: Set<String> = ["linear_attention", "ssm", "mamba", "recurrent", "gated_delta"]
+            hasSSM = lt.contains { ssmTypes.contains($0.lowercased()) }
         }
-        // Nemotron-H: hybrid_override_pattern with 'M' (Mamba) layers
         if !hasSSM {
             let hop = hfConfig?["hybrid_override_pattern"] as? String
                 ?? (hfConfig?["text_config"] as? [String: Any])?["hybrid_override_pattern"] as? String
@@ -321,36 +324,60 @@ public struct ModelDetector: Sendable {
             }
         }
 
-        // MoE detection
-        let hasMoE = jangArch?.hasMoE ?? false
+        // MoE detection: jang_config OR config.json
+        let jangHasMoE = jangArch?.hasMoE ?? false
+        let hfHasMoE: Bool = {
+            let experts = hfConfig?["num_local_experts"] as? Int
+                ?? hfConfig?["num_experts"] as? Int
+                ?? (hfConfig?["text_config"] as? [String: Any])?["num_experts"] as? Int
+                ?? (hfConfig?["text_config"] as? [String: Any])?["num_local_experts"] as? Int
+            return (experts ?? 0) > 1
+        }()
+        let hasMoE = jangHasMoE || hfHasMoE
 
         // Hybrid = has SSM
         let isHybrid = hasSSM
 
-        // HF config fields
+        // text_config helper — many models nest core fields under text_config
+        let textConfig = hfConfig?["text_config"] as? [String: Any]
+
+        // HF config fields — check top-level first, then text_config
         let modelType = hfConfig?["model_type"] as? String
         let hfArchitectures = hfConfig?["architectures"] as? [String]
 
-        // Hybrid pattern from config.json
+        // Hybrid pattern from config.json (can be top-level or nested)
         let hybridOverridePattern = hfConfig?["hybrid_override_pattern"] as? String
+            ?? textConfig?["hybrid_override_pattern"] as? String
 
-        // Context window
+        // Context window (check multiple field names at both levels)
         let contextWindow = hfConfig?["max_position_embeddings"] as? Int
+            ?? textConfig?["max_position_embeddings"] as? Int
             ?? hfConfig?["max_seq_len"] as? Int
+            ?? textConfig?["max_seq_len"] as? Int
 
-        // Model dimensions
+        // Model dimensions (top-level → text_config fallback)
         let vocabSize = hfConfig?["vocab_size"] as? Int
+            ?? textConfig?["vocab_size"] as? Int
         let numLayers = hfConfig?["num_hidden_layers"] as? Int
+            ?? textConfig?["num_hidden_layers"] as? Int
 
-        // MoE fields
+        // MoE fields (top-level → text_config, multiple key names)
         let numExperts = hfConfig?["num_local_experts"] as? Int
             ?? hfConfig?["num_experts"] as? Int
+            ?? textConfig?["num_local_experts"] as? Int
+            ?? textConfig?["num_experts"] as? Int
         let numExpertsPerTok = hfConfig?["num_experts_per_tok"] as? Int
+            ?? textConfig?["num_experts_per_tok"] as? Int
+            ?? hfConfig?["top_k_experts"] as? Int
+            ?? textConfig?["top_k_experts"] as? Int
 
-        // MLA fields
+        // MLA fields (top-level → text_config)
         let kvLoraRank = hfConfig?["kv_lora_rank"] as? Int
+            ?? textConfig?["kv_lora_rank"] as? Int
         let qkNopeHeadDim = hfConfig?["qk_nope_head_dim"] as? Int
+            ?? textConfig?["qk_nope_head_dim"] as? Int
         let qkRopeHeadDim = hfConfig?["qk_rope_head_dim"] as? Int
+            ?? textConfig?["qk_rope_head_dim"] as? Int
 
         // Vision IDs
         let imageTokenId = hfConfig?["image_token_id"] as? Int
@@ -545,6 +572,8 @@ public struct ModelDetector: Sendable {
             if normalized.contains("mistral") { return "mistral" }
             if normalized.contains("deepseek") { return "deepseek" }
             if normalized.contains("nemotron") { return "nemotron" }
+            if normalized.contains("gemma4") { return "gemma4" }
+            if normalized.contains("gemma3n") { return "gemma3n" }
             if normalized.contains("gemma") { return "gemma" }
             if normalized.contains("phi") { return "phi" }
             if normalized.contains("minimax") || normalized.contains("m2") { return "minimax" }
@@ -566,6 +595,7 @@ public struct ModelDetector: Sendable {
             if lower.contains("mistral") { return "mistral" }
             if lower.contains("deepseek") { return "deepseek" }
             if lower.contains("nemotron") { return "nemotron" }
+            if lower.contains("gemma4") || lower.contains("gemma-4") { return "gemma4" }
             if lower.contains("gemma") { return "gemma" }
             if lower.contains("phi") { return "phi" }
             if lower.contains("minimax") { return "minimax" }

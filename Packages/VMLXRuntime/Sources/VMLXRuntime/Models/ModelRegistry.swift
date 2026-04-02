@@ -45,6 +45,9 @@ public struct VMLXModelRegistry {
         "gemma2",           // Gemma 2
         "gemma3",           // Gemma 3
         "gemma3_text",      // Gemma 3 text
+        "gemma4",           // Gemma 4
+        "gemma4_text",      // Gemma 4 text
+        "gemma3n",          // Gemma 3n
         "phi3",             // Phi 3
         "phi4mm",           // Phi 4
         "starcoder2",       // StarCoder 2

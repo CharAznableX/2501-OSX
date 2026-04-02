@@ -145,6 +145,9 @@ public struct ModelConfigRegistry: Sendable {
                          defaultContextWindow: 32768, defaultStopTokens: ["<|endoftext|>"]),
 
         // Gemma
+        ModelFamilyConfig(family: "gemma4", modelTypes: ["gemma4", "gemma4_text"],
+                         toolCallFormat: .generic,
+                         defaultContextWindow: 262144, defaultStopTokens: ["<end_of_turn>"]),
         ModelFamilyConfig(family: "gemma", modelTypes: ["gemma", "gemma2", "gemma3", "gemma3_text", "gemma3n"],
                          toolCallFormat: .generic,
                          defaultContextWindow: 32768, defaultStopTokens: ["<end_of_turn>"]),

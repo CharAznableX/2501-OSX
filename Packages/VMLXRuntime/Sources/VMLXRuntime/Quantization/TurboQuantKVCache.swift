@@ -68,6 +68,7 @@ public final class TurboQuantKVCache: VMLXBaseKVCache, @unchecked Sendable {
         floatWindowKeys = nil
         floatWindowValues = nil
         windowOffset = 0
+        prefixTokenCount = 0
         offset = 0
     }
 
@@ -82,8 +83,13 @@ public final class TurboQuantKVCache: VMLXBaseKVCache, @unchecked Sendable {
         floatWindowKeys = nil
         floatWindowValues = nil
         windowOffset = 0
+        prefixTokenCount = 0
         offset = keys.dim(2)
     }
+
+    /// Number of tokens in the decoded prefix (compressed region).
+    /// Used to calculate window position in the unified buffer.
+    private var prefixTokenCount: Int = 0
 
     private func installCompressedState(
         encodedKeys: EncodedKeys,
@@ -93,13 +99,24 @@ public final class TurboQuantKVCache: VMLXBaseKVCache, @unchecked Sendable {
     ) {
         compressedKeys = encodedKeys
         compressedValues = encodedValues
-        decodedKeyBuffer = TurboQuantEncoder.decodeKeys(encodedKeys, state: state)
-        decodedValueBuffer = TurboQuantEncoder.decodeValues(encodedValues, state: state)
+        let dKeys = TurboQuantEncoder.decodeKeys(encodedKeys, state: state)
+        let dValues = TurboQuantEncoder.decodeValues(encodedValues, state: state)
+        decodedKeyBuffer = dKeys
+        decodedValueBuffer = dValues
+        prefixTokenCount = dKeys.dim(2)
         floatKeys = nil
         floatValues = nil
-        floatWindowKeys = nil
-        floatWindowValues = nil
+
+        // Pre-allocate unified buffer: prefix + windowStep slots.
+        // This eliminates the concatenated() call in getKeys()/getValues()
+        // during the decode loop — single contiguous buffer, scatter-write only.
+        let B = dKeys.dim(0), H = dKeys.dim(1), kD = dKeys.dim(3), vD = dValues.dim(3)
+        let windowSlots = MLXArray.zeros([B, H, windowStep, kD], dtype: dKeys.dtype)
+        let windowSlotsV = MLXArray.zeros([B, H, windowStep, vD], dtype: dValues.dtype)
+        floatWindowKeys = concatenated([dKeys, windowSlots], axis: 2)
+        floatWindowValues = concatenated([dValues, windowSlotsV], axis: 2)
         windowOffset = 0
+
         phase = .compressed
         self.offset = offset
     }
@@ -213,12 +230,13 @@ public final class TurboQuantKVCache: VMLXBaseKVCache, @unchecked Sendable {
         let newTokens = newKeys.dim(2)
         offset += newTokens
 
-        // Pre-allocated buffer pattern (O(1) per token, same as VMLXKVCacheSimple):
-        // Allocate in chunks of `windowStep`. Write new tokens in-place via scatter.
-        // This avoids the O(N) concatenation chain that killed long-context speed.
+        // Unified buffer layout: [prefix | window...]
+        // Write position is prefixTokenCount + windowOffset.
+        // When the unified buffer runs out of space, extend with a new chunk.
+        let writePos = prefixTokenCount + windowOffset
         let needsRealloc: Bool
         if let existingKeys = floatWindowKeys {
-            needsRealloc = (windowOffset + newTokens) > existingKeys.dim(2)
+            needsRealloc = (writePos + newTokens) > existingKeys.dim(2)
         } else {
             needsRealloc = true
         }
@@ -228,13 +246,14 @@ public final class TurboQuantKVCache: VMLXBaseKVCache, @unchecked Sendable {
             let H = newKeys.dim(1)
             let kD = newKeys.dim(3)
             let vD = newValues.dim(3)
-            let nSteps = (windowStep + newTokens - 1) / windowStep
+            let nSteps = max(1, (windowStep + newTokens - 1) / windowStep)
             let newK = MLXArray.zeros([B, H, nSteps * windowStep, kD], dtype: newKeys.dtype)
             let newV = MLXArray.zeros([B, H, nSteps * windowStep, vD], dtype: newValues.dtype)
 
-            if let existingKeys = floatWindowKeys, let existingValues = floatWindowValues, windowOffset > 0 {
-                floatWindowKeys = concatenated([existingKeys[.ellipsis, ..<windowOffset, 0...], newK], axis: 2)
-                floatWindowValues = concatenated([existingValues[.ellipsis, ..<windowOffset, 0...], newV], axis: 2)
+            if let existingKeys = floatWindowKeys, let existingValues = floatWindowValues, writePos > 0 {
+                // Extend: copy existing data + append new zero chunk
+                floatWindowKeys = concatenated([existingKeys[.ellipsis, ..<writePos, 0...], newK], axis: 2)
+                floatWindowValues = concatenated([existingValues[.ellipsis, ..<writePos, 0...], newV], axis: 2)
             } else {
                 floatWindowKeys = newK
                 floatWindowValues = newV
@@ -242,45 +261,36 @@ public final class TurboQuantKVCache: VMLXBaseKVCache, @unchecked Sendable {
         }
 
         // In-place scatter write (O(1) — no new array allocation)
-        floatWindowKeys?[.ellipsis, windowOffset..<(windowOffset + newTokens), 0...] = newKeys
-        floatWindowValues?[.ellipsis, windowOffset..<(windowOffset + newTokens), 0...] = newValues
+        floatWindowKeys?[.ellipsis, writePos..<(writePos + newTokens), 0...] = newKeys
+        floatWindowValues?[.ellipsis, writePos..<(writePos + newTokens), 0...] = newValues
         windowOffset += newTokens
     }
 
+    /// Return all keys: prefix + window as a single contiguous slice.
+    /// No concatenation needed — the unified buffer already contains both.
     public func getKeys() -> MLXArray? {
         switch phase {
         case .compressed:
-            if let decodedKeyBuffer {
-                if let floatWindowKeys, windowOffset > 0 {
-                    // O(1) slice view — NOT a copy
-                    let windowSlice = floatWindowKeys[.ellipsis, ..<windowOffset, 0...]
-                    return concatenated([decodedKeyBuffer, windowSlice], axis: 2)
-                }
-                return decodedKeyBuffer
+            let totalTokens = prefixTokenCount + windowOffset
+            if totalTokens > 0, let buf = floatWindowKeys {
+                return buf[.ellipsis, ..<totalTokens, 0...]
             }
-            if let floatWindowKeys, windowOffset > 0 {
-                return floatWindowKeys[.ellipsis, ..<windowOffset, 0...]
-            }
-            return nil
+            // Fallback: no unified buffer yet (freshly compressed, no decode tokens)
+            return decodedKeyBuffer
         case .fill:
             return floatKeys
         }
     }
 
+    /// Return all values: prefix + window as a single contiguous slice.
     public func getValues() -> MLXArray? {
         switch phase {
         case .compressed:
-            if let decodedValueBuffer {
-                if let floatWindowValues, windowOffset > 0 {
-                    let windowSlice = floatWindowValues[.ellipsis, ..<windowOffset, 0...]
-                    return concatenated([decodedValueBuffer, windowSlice], axis: 2)
-                }
-                return decodedValueBuffer
+            let totalTokens = prefixTokenCount + windowOffset
+            if totalTokens > 0, let buf = floatWindowValues {
+                return buf[.ellipsis, ..<totalTokens, 0...]
             }
-            if let floatWindowValues, windowOffset > 0 {
-                return floatWindowValues[.ellipsis, ..<windowOffset, 0...]
-            }
-            return nil
+            return decodedValueBuffer
         case .fill:
             return floatValues
         }
@@ -356,7 +366,7 @@ public final class TurboQuantKVCache: VMLXBaseKVCache, @unchecked Sendable {
            let ek = compressedKeys,
            let ev = compressedValues {
             let compressedTokens = TurboQuantLayerCache.totalTokenCount(for: ek)
-            let windowTokens = floatWindowKeys?.dim(2) ?? 0
+            let totalUsedTokens = prefixTokenCount + windowOffset
 
             if targetOffset <= compressedTokens {
                 // Target is within compressed region — slice compressed data directly
@@ -378,11 +388,11 @@ public final class TurboQuantKVCache: VMLXBaseKVCache, @unchecked Sendable {
                     }
                 }
                 // Slice failed — fall through to decode path
-            } else if targetOffset <= compressedTokens + windowTokens, windowTokens > 0 {
-                // Target is within float window — just truncate the window
-                let windowTarget = targetOffset - compressedTokens
-                floatWindowKeys = floatWindowKeys?[.ellipsis, ..<windowTarget, 0...]
-                floatWindowValues = floatWindowValues?[.ellipsis, ..<windowTarget, 0...]
+            } else if targetOffset <= totalUsedTokens, windowOffset > 0 {
+                // Target is within the unified buffer (prefix + window region).
+                // Just update windowOffset — the unified buffer stays intact.
+                let newWindowOffset = targetOffset - prefixTokenCount
+                windowOffset = max(0, newWindowOffset)
                 offset = targetOffset
                 return trimmed
             }
@@ -415,6 +425,7 @@ public final class TurboQuantKVCache: VMLXBaseKVCache, @unchecked Sendable {
         new.decodedValueBuffer = decodedValueBuffer.map { $0[.ellipsis] }
         new.floatWindowKeys = floatWindowKeys.map { $0[.ellipsis] }
         new.floatWindowValues = floatWindowValues.map { $0[.ellipsis] }
+        new.prefixTokenCount = prefixTokenCount
         new.offset = offset
         return new
     }

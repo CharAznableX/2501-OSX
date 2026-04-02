@@ -58,11 +58,12 @@ public final class VMLXModelContainer: @unchecked Sendable {
 
     /// Map config.json layer_type strings to LayerType enum.
     /// Handles Qwen3.5 ("linear_attention"/"full_attention"),
-    /// Nemotron-H ("mamba"/"attention"), and generic variants.
+    /// Nemotron-H ("mamba"/"attention"), Gemma 4 ("sliding_attention"),
+    /// and generic variants.
     private static func parseLayerTypeString(_ str: String) -> LayerType {
         let lower = str.lowercased()
         switch lower {
-        case "full_attention", "attention", "attn", "self_attention":
+        case "full_attention", "sliding_attention", "attention", "attn", "self_attention":
             return .attention
         case "linear_attention", "ssm", "mamba", "recurrent", "gated_delta":
             return .ssm

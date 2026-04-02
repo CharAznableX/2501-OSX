@@ -27,9 +27,17 @@ public struct GenerationStats: Sendable {
     /// Live cache footprint in bytes for the active generation path, when available.
     public let cacheBytes: Int64
 
+    /// Which inference engine handled this request ("vmlx", "mlx", "foundation", "remote").
+    public let engine: String?
+
     /// Formatted summary for display in the chat bubble.
     public var summary: String {
         var parts: [String] = []
+
+        // Engine attribution
+        if let engine, !engine.isEmpty {
+            parts.append(engine.uppercased())
+        }
 
         // TTFT
         if ttft < 1.0 {
@@ -74,7 +82,8 @@ public struct GenerationStats: Sendable {
         completionTokens: Int = 0,
         cachedTokens: Int = 0,
         cacheDetail: String? = nil,
-        cacheBytes: Int64 = 0
+        cacheBytes: Int64 = 0,
+        engine: String? = nil
     ) {
         self.ttft = ttft
         self.prefillTokensPerSecond = prefillTokensPerSecond
@@ -84,5 +93,6 @@ public struct GenerationStats: Sendable {
         self.cachedTokens = cachedTokens
         self.cacheDetail = cacheDetail
         self.cacheBytes = cacheBytes
+        self.engine = engine
     }
 }

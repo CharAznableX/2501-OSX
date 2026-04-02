@@ -1059,14 +1059,9 @@ public actor VMLXRuntimeActor {
                     // uncached turns or after the whole prompt.
                     _vmlxLog2("[Gen] Prefill: \(totalPrefillTokens) tokens, step=\(prefillStep), cacheTypes=\(cache.prefix(3).map { String(describing: type(of: $0)) })")
 
-                    // Dedicated Metal stream for prefill — isolates GPU work from other
-                    // Metal activity (UI compositing, cache serialization, etc.).
-                    // Python vLLM-MLX: `with mx.stream(generation_stream):`
-                    Stream.withNewDefaultStream {
-                        if totalPrefillTokens > 1 {
-                            _chunkedPrefill(0, totalPrefillTokens - 1)
-                            _vmlxLog2("[Gen] Chunked prefill done")
-                        }
+                    if totalPrefillTokens > 1 {
+                        _chunkedPrefill(0, totalPrefillTokens - 1)
+                        _vmlxLog2("[Gen] Chunked prefill done")
                     }
 
                     // Final token → logits for first generated token
@@ -1145,9 +1140,6 @@ public actor VMLXRuntimeActor {
                     var _steadyStart: Double = 0
                     let _warmupTokens = 3  // First N tokens are slow (Metal pipeline warmup)
 
-                    // Dedicated Metal stream for decode loop — GPU isolation from
-                    // UI compositing / cache serialization / other Metal consumers.
-                    try Stream.withNewDefaultStream {
                     for _step in 0 ..< maxTokens {
                         try Task.checkCancellation()
 
@@ -1293,6 +1285,7 @@ public actor VMLXRuntimeActor {
                             Memory.clearCache()
                         }
                     }
+                    // end decode loop
 
                     // Finalize
                     let finalEvents = accumulator.finalize()
@@ -1430,11 +1423,14 @@ public actor VMLXRuntimeActor {
                     pagedWriteSession?.abort()
                     continuation.finish()
                 } catch {
-                    // Request-scoped recovery only: invalidate the request key and
-                    // clear volatile layers. Preserve unrelated persistent entries.
+                    // Request-scoped recovery: invalidate cache key, clear volatile
+                    // layers, and release GPU memory. This handles Metal OOM and other
+                    // GPU errors by freeing temporary allocations before fallback.
                     pagedWriteSession?.abort()
                     self.scheduler.cache.invalidate(tokens: cacheKeyTokens)
                     self.scheduler.cache.clearVolatile()
+                    Memory.clearCache()
+                    _vmlxLog2("[Gen] Error recovery: \(error.localizedDescription) — cache invalidated, GPU memory released")
                     continuation.finish(throwing: error)
                 }
             }

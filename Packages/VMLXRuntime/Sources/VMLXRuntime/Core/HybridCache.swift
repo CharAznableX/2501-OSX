@@ -171,12 +171,15 @@ public func parseHybridPattern(_ pattern: String) -> [LayerType] {
         switch char {
         case "M", "m":
             return .ssm
-        case "*":
+        case "*", "A", "a":
             return .attention
         case "E", "e":
             return .expert
+        case "-":
+            // Dense MLP layer (no KV cache) — skip for TQ like expert layers
+            return .expert
         default:
-            return .attention  // default to attention for unknown characters
+            return .attention
         }
     }
 }
