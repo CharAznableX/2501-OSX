@@ -213,9 +213,11 @@ public struct VMLXModelRegistry {
         }
         if let n = json["num_local_experts"] as? Int { return n }
         if let n = json["num_experts"] as? Int { return n }
+        if let n = json["n_routed_experts"] as? Int { return n }
         if let tc = json["text_config"] as? [String: Any] {
             if let n = tc["num_local_experts"] as? Int { return n }
             if let n = tc["num_experts"] as? Int { return n }
+            if let n = tc["n_routed_experts"] as? Int { return n }
         }
         return 0
     }
