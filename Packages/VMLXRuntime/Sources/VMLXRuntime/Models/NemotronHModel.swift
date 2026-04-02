@@ -276,11 +276,12 @@ final class NemotronHAttention: Module {
         // Apply RoPE — attention layers need positional encoding.
         // SSM layers provide sequential ordering through recurrence,
         // but attention layers still require explicit position information.
-        let offset = (cache as? VMLXKVCacheSimple)?.offset ?? 0
+        let offset = cache?.offset ?? 0
         q = rope(q, offset: offset)
         k = rope(k, offset: offset)
 
-        if let cache = cache as? VMLXKVCacheSimple {
+        // Use protocol-level update for TQ/quantized cache compatibility
+        if let cache {
             (k, v) = cache.update(keys: k, values: v)
         }
 
