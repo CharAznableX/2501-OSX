@@ -533,20 +533,13 @@ struct ConfigurationView: View {
                                                     .font(.system(size: 11, weight: .medium))
                                                     .foregroundColor(theme.secondaryText)
                                                 Picker("", selection: $tempToolParser) {
-                                                    Text("Auto (from model_type)").tag("auto")
-                                                    Text("None").tag("none")
-                                                    Text("Qwen").tag("qwen")
-                                                    Text("Llama").tag("llama")
-                                                    Text("Mistral").tag("mistral")
-                                                    Text("DeepSeek").tag("deepseek")
-                                                    Text("Hermes").tag("hermes")
-                                                    Text("Functionary").tag("functionary")
-                                                    Text("Granite").tag("granite")
-                                                    Text("GLM").tag("glm")
-                                                    Text("MiniMax").tag("minimax")
-                                                    Text("Nemotron").tag("nemotron")
-                                                    Text("xLAM").tag("xlam")
-                                                    Text("Generic JSON").tag("generic")
+                                                    ForEach(LocalParserOptions.toolSegments) { segment in
+                                                        if segment.id == "auto" {
+                                                            Text("Auto (from model_type)").tag(segment.id)
+                                                        } else {
+                                                            Text(segment.label).tag(segment.id)
+                                                        }
+                                                    }
                                                 }
                                                 .labelsHidden()
                                                 Text("How the model formats tool/function calls. Auto uses config.json model_type.")
@@ -559,11 +552,20 @@ struct ConfigurationView: View {
                                                     .font(.system(size: 11, weight: .medium))
                                                     .foregroundColor(theme.secondaryText)
                                                 Picker("", selection: $tempReasoningParser) {
-                                                    Text("Auto (from model_type)").tag("auto")
-                                                    Text("None").tag("none")
-                                                    Text("<think> tags (Qwen3, DeepSeek R1)").tag("think_tags")
-                                                    Text("[THINK] tags (Mistral)").tag("mistral")
-                                                    Text("GPT-OSS / Harmony").tag("gptoss")
+                                                    ForEach(LocalParserOptions.reasoningSegments) { segment in
+                                                        switch segment.id {
+                                                        case "auto":
+                                                            Text("Auto (from model_type)").tag(segment.id)
+                                                        case "think":
+                                                            Text("<think> tags (Qwen, DeepSeek)").tag(segment.id)
+                                                        case "mistral":
+                                                            Text("[THINK] tags (Mistral)").tag(segment.id)
+                                                        case "gptoss":
+                                                            Text("GPT-OSS / Harmony").tag(segment.id)
+                                                        default:
+                                                            Text(segment.label).tag(segment.id)
+                                                        }
+                                                    }
                                                 }
                                                 .labelsHidden()
                                                 Text("How the model outputs reasoning/thinking content. Auto uses config.json model_type.")
@@ -804,8 +806,8 @@ struct ConfigurationView: View {
         tempEnableTurboQuant = configuration.enableTurboQuant ?? false
         tempEnableDiskCache = configuration.enableDiskCache ?? false
         tempShowInferenceStats = configuration.showInferenceStats ?? false
-        tempToolParser = configuration.toolParserOverride ?? "auto"
-        tempReasoningParser = configuration.reasoningParserOverride ?? "auto"
+        tempToolParser = LocalParserOptions.normalizeToolParser(configuration.toolParserOverride) ?? "auto"
+        tempReasoningParser = LocalParserOptions.normalizeReasoningParser(configuration.reasoningParserOverride) ?? "auto"
         tempCacheMemoryPercent = {
             let pct = configuration.cacheMemoryPercent ?? 0.30
             return pct == 0.30 ? "" : String(format: "%.0f", pct * 100)
@@ -863,6 +865,12 @@ struct ConfigurationView: View {
         tempMaxKV = ""
         tempPrefillStep = ""
         tempEvictionPolicy = serverDefaults.modelEvictionPolicy
+        tempEnableTurboQuant = false
+        tempEnableDiskCache = false
+        tempCacheMemoryPercent = ""
+        tempShowInferenceStats = false
+        tempToolParser = "auto"
+        tempReasoningParser = "auto"
 
         showSuccess("Settings reset to defaults")
     }
@@ -918,8 +926,14 @@ struct ConfigurationView: View {
         configuration.enableTurboQuant = tempEnableTurboQuant
         configuration.enableDiskCache = tempEnableDiskCache
         configuration.showInferenceStats = tempShowInferenceStats
-        configuration.toolParserOverride = tempToolParser == "auto" ? nil : tempToolParser
-        configuration.reasoningParserOverride = tempReasoningParser == "auto" ? nil : tempReasoningParser
+        configuration.toolParserOverride = LocalParserOptions.resolveToolOverride(
+            perModel: nil,
+            global: tempToolParser
+        )
+        configuration.reasoningParserOverride = LocalParserOptions.resolveReasoningOverride(
+            perModel: nil,
+            global: tempReasoningParser
+        )
         let trimmedMemPct = tempCacheMemoryPercent.trimmingCharacters(in: .whitespacesAndNewlines)
         if let pctVal = Float(trimmedMemPct) {
             configuration.cacheMemoryPercent = pctVal / 100.0

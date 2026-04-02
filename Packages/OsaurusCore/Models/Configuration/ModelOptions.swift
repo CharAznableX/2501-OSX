@@ -9,6 +9,137 @@
 
 import Foundation
 
+enum LocalParserOptions {
+    static let remoteProviders = [
+        "openai/", "anthropic/", "google/", "venice-ai/",
+        "groq/", "together/", "fireworks/", "perplexity/",
+        "deepinfra/", "anyscale/",
+    ]
+
+    static let toolSegments: [ModelOptionSegment] = [
+        ModelOptionSegment(id: "auto", label: "Auto"),
+        ModelOptionSegment(id: "none", label: "None"),
+        ModelOptionSegment(id: "qwen", label: "Qwen"),
+        ModelOptionSegment(id: "llama", label: "Llama"),
+        ModelOptionSegment(id: "mistral", label: "Mistral"),
+        ModelOptionSegment(id: "deepseek", label: "DeepSeek"),
+        ModelOptionSegment(id: "hermes", label: "Hermes"),
+        ModelOptionSegment(id: "functionary", label: "Functionary"),
+        ModelOptionSegment(id: "granite", label: "Granite"),
+        ModelOptionSegment(id: "glm", label: "GLM"),
+        ModelOptionSegment(id: "minimax", label: "MiniMax"),
+        ModelOptionSegment(id: "nemotron", label: "Nemotron"),
+        ModelOptionSegment(id: "xlam", label: "xLAM"),
+        ModelOptionSegment(id: "moonshot", label: "Moonshot"),
+        ModelOptionSegment(id: "stepfun", label: "StepFun"),
+        ModelOptionSegment(id: "generic", label: "Generic"),
+    ]
+
+    static let reasoningSegments: [ModelOptionSegment] = [
+        ModelOptionSegment(id: "auto", label: "Auto"),
+        ModelOptionSegment(id: "none", label: "None"),
+        ModelOptionSegment(id: "think", label: "<think>"),
+        ModelOptionSegment(id: "mistral", label: "[THINK]"),
+        ModelOptionSegment(id: "gptoss", label: "GPT-OSS"),
+    ]
+
+    static func isRemoteModel(_ modelId: String) -> Bool {
+        remoteProviders.contains { modelId.lowercased().hasPrefix($0) }
+    }
+
+    static func normalizeToolParser(_ raw: String?) -> String? {
+        guard let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else { return nil }
+        let normalized = trimmed.lowercased()
+        let valid = Set(toolSegments.map(\.id))
+        return valid.contains(normalized) ? normalized : "auto"
+    }
+
+    static func normalizeReasoningParser(_ raw: String?) -> String? {
+        guard let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else { return nil }
+
+        switch trimmed.lowercased() {
+        case "think_tags", "think-tag", "thinktag", "qwen3", "deepseek_r1":
+            return "think"
+        case "gpt-oss", "harmony":
+            return "gptoss"
+        default:
+            let normalized = trimmed.lowercased()
+            let valid = Set(reasoningSegments.map(\.id))
+            return valid.contains(normalized) ? normalized : "auto"
+        }
+    }
+
+    static func resolveToolOverride(perModel: String?, global: String?) -> String? {
+        resolveOverride(perModel: normalizeToolParser(perModel), global: normalizeToolParser(global))
+    }
+
+    static func resolveReasoningOverride(perModel: String?, global: String?) -> String? {
+        resolveOverride(
+            perModel: normalizeReasoningParser(perModel),
+            global: normalizeReasoningParser(global)
+        )
+    }
+
+    static func normalizedOptions(_ options: [String: ModelOptionValue]) -> [String: ModelOptionValue] {
+        var normalized = options
+
+        if let tool = normalizeToolParser(options["toolParser"]?.stringValue) {
+            normalized["toolParser"] = .string(tool)
+        }
+        if let reasoning = normalizeReasoningParser(options["reasoningParser"]?.stringValue) {
+            normalized["reasoningParser"] = .string(reasoning)
+        }
+
+        return normalized
+    }
+
+    private static func resolveOverride(perModel: String?, global: String?) -> String? {
+        if let perModel, perModel != "auto" { return perModel }
+        if let global, global != "auto" { return global }
+        return nil
+    }
+}
+
+private enum LocalModelFamilyMatchers {
+    static func normalized(_ modelId: String) -> String {
+        modelId
+            .lowercased()
+            .replacingOccurrences(of: "_", with: "-")
+            .replacingOccurrences(of: " ", with: "-")
+    }
+
+    static func isQwenReasoningModel(_ modelId: String) -> Bool {
+        let lower = normalized(modelId)
+        let isQwenReasoning =
+            ((lower.contains("qwen3.5") || lower.contains("qwen3-5") || lower.contains("qwen3"))
+             && !lower.contains("coder")
+             && !lower.contains("vl"))
+            || lower.contains("qwq")
+        return isQwenReasoning
+    }
+
+    static func isMiniMaxModel(_ modelId: String) -> Bool {
+        normalized(modelId).contains("minimax")
+    }
+
+    static func isDeepSeekReasoningModel(_ modelId: String) -> Bool {
+        normalized(modelId).contains("deepseek")
+    }
+
+    static func isMistralReasoningModel(_ modelId: String) -> Bool {
+        let lower = normalized(modelId)
+        guard !lower.contains("codestral"), !lower.contains("pixtral") else { return false }
+        return lower.contains("mistral") || lower.contains("mixtral")
+    }
+
+    static func isPhiReasoningModel(_ modelId: String) -> Bool {
+        let lower = normalized(modelId)
+        return lower.contains("phi-4") && lower.contains("reason")
+    }
+}
+
 // MARK: - Option Value
 
 enum ModelOptionValue: Sendable, Equatable, Hashable, Codable {
@@ -79,6 +210,10 @@ enum ModelProfileRegistry {
         OpenAIReasoningProfile.self,
         GPTOSSReasoningProfile.self,
         QwenThinkingProfile.self,
+        MiniMaxThinkingProfile.self,
+        DeepSeekThinkingProfile.self,
+        MistralThinkingProfile.self,
+        PhiReasoningProfile.self,
         Gemini31FlashImageProfile.self,
         GeminiProImageProfile.self,
         GeminiFlashImageProfile.self,
@@ -94,17 +229,14 @@ enum ModelProfileRegistry {
 
     static func options(for modelId: String) -> [ModelOptionDefinition] {
         var opts = profile(for: modelId)?.options ?? []
-        // Append parser options for all local models so users can override
-        // the auto-detected tool/reasoning parser per model.
-        // Remote models have a known provider prefix (openai/, anthropic/, etc.)
-        let remoteProviders = ["openai/", "anthropic/", "google/", "venice-ai/",
-                               "groq/", "together/", "fireworks/", "perplexity/",
-                               "deepinfra/", "anyscale/"]
-        let isRemote = remoteProviders.contains { modelId.lowercased().hasPrefix($0) }
-        if !isRemote {
+        if !LocalParserOptions.isRemoteModel(modelId) {
             opts.append(contentsOf: parserOptions)
         }
         return opts
+    }
+
+    static func normalizedOptions(_ options: [String: ModelOptionValue]) -> [String: ModelOptionValue] {
+        LocalParserOptions.normalizedOptions(options)
     }
 
     /// Parser override options available for all local models.
@@ -113,26 +245,13 @@ enum ModelProfileRegistry {
             id: "toolParser",
             label: "Tool Parser",
             icon: "wrench",
-            kind: .segmented([
-                ModelOptionSegment(id: "auto", label: "Auto"),
-                ModelOptionSegment(id: "none", label: "None"),
-                ModelOptionSegment(id: "qwen", label: "Qwen"),
-                ModelOptionSegment(id: "llama", label: "Llama"),
-                ModelOptionSegment(id: "mistral", label: "Mistral"),
-                ModelOptionSegment(id: "hermes", label: "Hermes"),
-                ModelOptionSegment(id: "generic", label: "Generic"),
-            ])
+            kind: .segmented(LocalParserOptions.toolSegments)
         ),
         ModelOptionDefinition(
             id: "reasoningParser",
             label: "Reasoning",
             icon: "brain",
-            kind: .segmented([
-                ModelOptionSegment(id: "auto", label: "Auto"),
-                ModelOptionSegment(id: "none", label: "None"),
-                ModelOptionSegment(id: "think", label: "<think>"),
-                ModelOptionSegment(id: "mistral", label: "[THINK]"),
-            ])
+            kind: .segmented(LocalParserOptions.reasoningSegments)
         ),
     ]
 }
@@ -218,14 +337,107 @@ struct QwenThinkingProfile: ModelProfile {
     static let displayName = "Thinking"
 
     static func matches(modelId: String) -> Bool {
-        let lower = modelId.lowercased()
-        // Models that support reasoning (via <think> tags or <|channel|> tags)
-        return (lower.contains("qwen3") && !lower.contains("coder"))
-            || lower.contains("minimax")
-            || lower.contains("deepseek")
-            || lower.contains("glm")
-            || lower.contains("phi-4")
-            || lower.contains("qwq")
+        LocalModelFamilyMatchers.isQwenReasoningModel(modelId)
+    }
+
+    static let options: [ModelOptionDefinition] = [
+        ModelOptionDefinition(
+            id: "disableThinking",
+            label: "Disable Thinking",
+            icon: "brain.head.profile",
+            kind: .toggle(default: true)
+        )
+    ]
+
+    static let defaults: [String: ModelOptionValue] = [
+        "disableThinking": .bool(true)
+    ]
+
+    static let thinkingOption: (id: String, inverted: Bool)? = ("disableThinking", true)
+}
+
+// MARK: - MiniMax Thinking Profile
+
+struct MiniMaxThinkingProfile: ModelProfile {
+    static let displayName = "Thinking"
+
+    static func matches(modelId: String) -> Bool {
+        LocalModelFamilyMatchers.isMiniMaxModel(modelId)
+    }
+
+    static let options: [ModelOptionDefinition] = [
+        ModelOptionDefinition(
+            id: "disableThinking",
+            label: "Disable Thinking",
+            icon: "brain.head.profile",
+            kind: .toggle(default: true)
+        )
+    ]
+
+    static let defaults: [String: ModelOptionValue] = [
+        "disableThinking": .bool(true)
+    ]
+
+    static let thinkingOption: (id: String, inverted: Bool)? = ("disableThinking", true)
+}
+
+// MARK: - DeepSeek Thinking Profile
+
+struct DeepSeekThinkingProfile: ModelProfile {
+    static let displayName = "Thinking"
+
+    static func matches(modelId: String) -> Bool {
+        LocalModelFamilyMatchers.isDeepSeekReasoningModel(modelId)
+    }
+
+    static let options: [ModelOptionDefinition] = [
+        ModelOptionDefinition(
+            id: "disableThinking",
+            label: "Disable Thinking",
+            icon: "brain.head.profile",
+            kind: .toggle(default: true)
+        )
+    ]
+
+    static let defaults: [String: ModelOptionValue] = [
+        "disableThinking": .bool(true)
+    ]
+
+    static let thinkingOption: (id: String, inverted: Bool)? = ("disableThinking", true)
+}
+
+// MARK: - Mistral Thinking Profile
+
+struct MistralThinkingProfile: ModelProfile {
+    static let displayName = "Thinking"
+
+    static func matches(modelId: String) -> Bool {
+        LocalModelFamilyMatchers.isMistralReasoningModel(modelId)
+    }
+
+    static let options: [ModelOptionDefinition] = [
+        ModelOptionDefinition(
+            id: "disableThinking",
+            label: "Disable Thinking",
+            icon: "brain.head.profile",
+            kind: .toggle(default: true)
+        )
+    ]
+
+    static let defaults: [String: ModelOptionValue] = [
+        "disableThinking": .bool(true)
+    ]
+
+    static let thinkingOption: (id: String, inverted: Bool)? = ("disableThinking", true)
+}
+
+// MARK: - Phi Reasoning Profile
+
+struct PhiReasoningProfile: ModelProfile {
+    static let displayName = "Thinking"
+
+    static func matches(modelId: String) -> Bool {
+        LocalModelFamilyMatchers.isPhiReasoningModel(modelId)
     }
 
     static let options: [ModelOptionDefinition] = [

@@ -101,7 +101,8 @@ enum StreamingToolHint: Sendable {
             promptTokens: (obj["p"] as? Int) ?? 0,
             completionTokens: (obj["c"] as? Int) ?? 0,
             cachedTokens: (obj["k"] as? Int) ?? 0,
-            cacheDetail: obj["d"] as? String
+            cacheDetail: obj["d"] as? String,
+            cacheBytes: Int64((obj["cb"] as? Int) ?? 0)
         )
     }
 }

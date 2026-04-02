@@ -22,6 +22,7 @@ final class StreamingDeltaProcessor {
     /// Model-specific delta preprocessing (resolved once from modelId + options)
     private let modelId: String
     private let modelOptions: [String: ModelOptionValue]
+    private let globalReasoningParserOverride: String?
     private var middleware: StreamingMiddleware?
 
     /// Delta buffering
@@ -56,13 +57,19 @@ final class StreamingDeltaProcessor {
         turn: ChatTurn,
         modelId: String = "",
         modelOptions: [String: ModelOptionValue] = [:],
+        globalReasoningParserOverride: String? = nil,
         onSync: (() -> Void)? = nil
     ) {
         self.turn = turn
         self.modelId = modelId
         self.modelOptions = modelOptions
+        self.globalReasoningParserOverride = globalReasoningParserOverride
         self.onSync = onSync
-        self.middleware = StreamingMiddlewareResolver.resolve(for: modelId, modelOptions: modelOptions)
+        self.middleware = StreamingMiddlewareResolver.resolve(
+            for: modelId,
+            modelOptions: modelOptions,
+            globalReasoningParserOverride: globalReasoningParserOverride
+        )
     }
 
     // MARK: - Public API
@@ -151,7 +158,11 @@ final class StreamingDeltaProcessor {
         lastSyncTime = Date()
         lastFlushTime = Date()
         syncCount = 0
-        middleware = StreamingMiddlewareResolver.resolve(for: modelId, modelOptions: modelOptions)
+        middleware = StreamingMiddlewareResolver.resolve(
+            for: modelId,
+            modelOptions: modelOptions,
+            globalReasoningParserOverride: globalReasoningParserOverride
+        )
     }
 
     // MARK: - Private

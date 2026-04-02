@@ -266,7 +266,7 @@ actor VMLXServiceBridge: ToolCapableService {
 
     /// Name of the currently loaded VMLX model (nil if none).
     var loadedModelName: String? {
-        currentLoadedModel
+        get async { await service.currentModelName }
     }
 
     // MARK: - Static Model Discovery
@@ -377,13 +377,17 @@ extension GenerationParameters {
     /// topP: uses per-request override if set, otherwise falls back to globalTopP.
     /// Parser overrides: per-model (from modelOptions) → global (from ServerConfiguration) → auto.
     func toSamplingParams(globalTopP: Float = 0.9, globalToolParser: String? = nil, globalReasoningParser: String? = nil) -> SamplingParams {
-        // Per-model parser override from ModelOptionsStore (via modelOptions dict)
         let perModelToolParser = modelOptions["toolParser"]?.stringValue
         let perModelReasoningParser = modelOptions["reasoningParser"]?.stringValue
 
-        // Priority: per-model → global ServerConfiguration → nil (auto-detect)
-        let effectiveToolParser = Self.resolveParserOverride(perModel: perModelToolParser, global: globalToolParser)
-        let effectiveReasoningParser = Self.resolveParserOverride(perModel: perModelReasoningParser, global: globalReasoningParser)
+        let effectiveToolParser = LocalParserOptions.resolveToolOverride(
+            perModel: perModelToolParser,
+            global: globalToolParser
+        )
+        let effectiveReasoningParser = LocalParserOptions.resolveReasoningOverride(
+            perModel: perModelReasoningParser,
+            global: globalReasoningParser
+        )
 
         return SamplingParams(
             maxTokens: maxTokens,
@@ -395,14 +399,6 @@ extension GenerationParameters {
             toolParserOverride: effectiveToolParser,
             reasoningParserOverride: effectiveReasoningParser
         )
-    }
-
-    /// Resolve parser override with priority: per-model → global → nil.
-    /// "auto" is treated as nil (fall through to auto-detection).
-    private static func resolveParserOverride(perModel: String?, global: String?) -> String? {
-        if let pm = perModel, pm != "auto", !pm.isEmpty { return pm }
-        if let g = global, g != "auto", !g.isEmpty { return g }
-        return nil
     }
 
     /// Extract reasoning effort from model options ("low", "medium", "high").

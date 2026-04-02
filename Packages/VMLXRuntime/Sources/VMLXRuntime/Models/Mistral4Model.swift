@@ -408,8 +408,8 @@ class Mistral4Attention: Module {
         qPe = rope(qPe, offset: offset)
         kPe = rope(kPe, offset: offset)
 
-        // Expand k_pe from 1 head -> numHeads
-        kPe = repeated(kPe, count: numHeads, axis: 1)
+        // Broadcast instead of materializing per-head copies on decode.
+        kPe = MLX.broadcast(kPe, to: [B, numHeads, L, qkRopeHeadDim])
 
         // --- Assemble full keys and queries ---
         var keys = concatenated([kNope, kPe], axis: -1)

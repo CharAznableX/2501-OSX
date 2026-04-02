@@ -56,6 +56,65 @@ public actor VMLXService: VMLXToolCapableService {
         self.runtime = runtime
     }
 
+    private nonisolated func bridgeEventStream(
+        _ eventStream: AsyncThrowingStream<VMLXEvent, Error>
+    ) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            let producerTask = Task {
+                var isInsideThinking = false
+
+                func closeThinkingIfNeeded() {
+                    guard isInsideThinking else { return }
+                    continuation.yield("</think>")
+                    isInsideThinking = false
+                }
+
+                do {
+                    for try await event in eventStream {
+                        switch event {
+                        case .tokens(let text):
+                            closeThinkingIfNeeded()
+                            if !text.isEmpty {
+                                continuation.yield(text)
+                            }
+                        case .thinking(let text):
+                            guard !text.isEmpty else { continue }
+                            if !isInsideThinking {
+                                continuation.yield("<think>")
+                                isInsideThinking = true
+                            }
+                            continuation.yield(text)
+                        case .toolInvocation(let name, let args, _):
+                            closeThinkingIfNeeded()
+                            continuation.yield("\u{FFFE}tool:" + name)
+                            continuation.yield("\u{FFFE}args:" + args)
+                        case .usage(let prompt, let completion, let cached,
+                                    let ttft, let ppTPS, let decTPS, let detail, let cacheBytes):
+                            closeThinkingIfNeeded()
+                            let statsJSON = "{\"p\":\(prompt),\"c\":\(completion),\"k\":\(cached),"
+                                + "\"ttft\":\(String(format:"%.3f",ttft)),"
+                                + "\"pp\":\(String(format:"%.1f",ppTPS)),"
+                                + "\"tg\":\(String(format:"%.1f",decTPS)),"
+                                + "\"cb\":\(cacheBytes),"
+                                + "\"d\":\"\(detail ?? "miss")\"}"
+                            continuation.yield("\u{FFFE}stats:" + statsJSON)
+                        }
+                    }
+                    closeThinkingIfNeeded()
+                    continuation.finish()
+                } catch {
+                    if isInsideThinking {
+                        continuation.yield("</think>")
+                    }
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { @Sendable _ in
+                producerTask.cancel()
+            }
+        }
+    }
+
     // MARK: - VMLXModelService
 
     public nonisolated func isAvailable() -> Bool {
@@ -123,39 +182,7 @@ public actor VMLXService: VMLXToolCapableService {
         )
 
         let eventStream = try await runtime.generateStream(request: request)
-
-        // Transform VMLXEvent stream into String delta stream
-        return AsyncThrowingStream { continuation in
-            Task {
-                do {
-                    for try await event in eventStream {
-                        switch event {
-                        case .tokens(let text):
-                            continuation.yield(text)
-                        case .thinking(let text):
-                            // Pass thinking content as raw text with think tags.
-                            // Osaurus's StreamingDeltaProcessor handles <think> parsing at the UI level.
-                            continuation.yield(text)
-                        case .toolInvocation(let name, let args, _):
-                            continuation.yield("\u{FFFE}tool:" + name)
-                            continuation.yield("\u{FFFE}args:" + args)
-                        case .usage(let prompt, let completion, let cached,
-                                    let ttft, let ppTPS, let decTPS, let detail):
-                            // Encode stats as sentinel-prefixed JSON for the bridge to parse
-                            let statsJSON = "{\"p\":\(prompt),\"c\":\(completion),\"k\":\(cached),"
-                                + "\"ttft\":\(String(format:"%.3f",ttft)),"
-                                + "\"pp\":\(String(format:"%.1f",ppTPS)),"
-                                + "\"tg\":\(String(format:"%.1f",decTPS)),"
-                                + "\"d\":\"\(detail ?? "miss")\"}"
-                            continuation.yield("\u{FFFE}stats:" + statsJSON)
-                        }
-                    }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-        }
+        return bridgeEventStream(eventStream)
     }
 
     // MARK: - VMLXToolCapableService
@@ -211,35 +238,7 @@ public actor VMLXService: VMLXToolCapableService {
         )
 
         let eventStream = try await runtime.generateStream(request: request)
-
-        return AsyncThrowingStream { continuation in
-            Task {
-                do {
-                    for try await event in eventStream {
-                        switch event {
-                        case .tokens(let text):
-                            continuation.yield(text)
-                        case .thinking(let text):
-                            continuation.yield(text)
-                        case .toolInvocation(let name, let args, _):
-                            continuation.yield("\u{FFFE}tool:" + name)
-                            continuation.yield("\u{FFFE}args:" + args)
-                        case .usage(let prompt, let completion, let cached,
-                                    let ttft, let ppTPS, let decTPS, let detail):
-                            let statsJSON = "{\"p\":\(prompt),\"c\":\(completion),\"k\":\(cached),"
-                                + "\"ttft\":\(String(format:"%.3f",ttft)),"
-                                + "\"pp\":\(String(format:"%.1f",ppTPS)),"
-                                + "\"tg\":\(String(format:"%.1f",decTPS)),"
-                                + "\"d\":\"\(detail ?? "miss")\"}"
-                            continuation.yield("\u{FFFE}stats:" + statsJSON)
-                        }
-                    }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-        }
+        return bridgeEventStream(eventStream)
     }
 
     // MARK: - Runtime Configuration Passthrough

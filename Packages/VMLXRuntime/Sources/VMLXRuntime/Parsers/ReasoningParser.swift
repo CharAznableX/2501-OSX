@@ -26,30 +26,44 @@ public protocol ReasoningParser: Sendable {
     mutating func reset()
 }
 
+/// Create a reasoning parser for a specific ReasoningFormat.
+public func reasoningParserForFormat(_ format: ReasoningFormat) -> (any ReasoningParser)? {
+    switch format {
+    case .qwen3, .deepseekR1:
+        return ThinkTagReasoningParser()
+    case .gptoss:
+        return GPTOSSReasoningParser()
+    case .mistral:
+        return MistralReasoningParser()
+    case .none:
+        return nil
+    }
+}
+
 /// Auto-detect reasoning parser for a model.
 public func autoDetectReasoningParser(modelName: String) -> (any ReasoningParser)? {
     let name = modelName.lowercased()
 
     if name.contains("qwen3") || name.contains("qwen2.5") {
-        return ThinkTagReasoningParser()
+        return reasoningParserForFormat(.qwen3)
     }
     if name.contains("deepseek") && name.contains("r1") {
-        return ThinkTagReasoningParser()
+        return reasoningParserForFormat(.deepseekR1)
     }
 
     // GPT-OSS / Harmony protocol (GLM-4.7 Flash, etc.)
     if name.contains("gptoss") || name.contains("harmony") {
-        return GPTOSSReasoningParser()
+        return reasoningParserForFormat(.gptoss)
     }
 
     // Mistral 4 uses [THINK]/[/THINK] tokens
     if name.contains("mistral") && (name.contains("4") || name.contains("large")) {
-        return MistralReasoningParser()
+        return reasoningParserForFormat(.mistral)
     }
 
     // Default: use ThinkTag parser for any model.
     // Many models (MiniMax, Qwen3.5, etc.) include <think> in their chat template.
     // The ThinkTag parser is safe for non-thinking models too — if no <think> tags
     // appear in the output, it passes everything through unchanged.
-    return ThinkTagReasoningParser()
+    return reasoningParserForFormat(.qwen3)
 }

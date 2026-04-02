@@ -114,7 +114,24 @@ public final class MemoryCache: @unchecked Sendable {
 
     /// Clear all cached entries.
     public func clear() {
-        lock.withLock { entries.removeAll() }
+        lock.withLock {
+            entries.removeAll()
+            currentMemory = 0
+            effectiveMemoryLimit = baseMemoryLimit
+            lastPressureCheck = 0
+            hits = 0
+            misses = 0
+            evictions = 0
+        }
+    }
+
+    /// Remove the cache entry for an exact token sequence.
+    public func invalidate(tokens: [Int]) {
+        lock.withLock {
+            guard let idx = entries.firstIndex(where: { $0.key == tokens }) else { return }
+            let removed = entries.remove(at: idx)
+            currentMemory -= removed.entry.memoryBytes
+        }
     }
 
     /// Fetch cache for token sequence.
@@ -235,6 +252,20 @@ public final class MemoryCache: @unchecked Sendable {
     public var memoryUsed: Int {
         lock.withLock { currentMemory }
     }
+
+    #if DEBUG
+        var debugEffectiveMemoryLimit: Int {
+            lock.withLock { effectiveMemoryLimit }
+        }
+
+        var debugBaseMemoryLimit: Int {
+            lock.withLock { baseMemoryLimit }
+        }
+
+        var debugLastPressureCheck: CFAbsoluteTime {
+            lock.withLock { lastPressureCheck }
+        }
+    #endif
 
     // MARK: - Private
 

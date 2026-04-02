@@ -126,24 +126,105 @@ final class ChannelTagMiddleware: StreamingMiddleware {
     }
 }
 
+/// Transforms Mistral-style `[THINK]...[/THINK]` markers into standard
+/// `<think>...</think>` tags consumed by StreamingDeltaProcessor.
+@MainActor
+final class MistralTagMiddleware: StreamingMiddleware {
+    private var buffer = ""
+
+    private static let openTag = "[THINK]"
+    private static let closeTag = "[/THINK]"
+
+    func process(_ delta: String) -> String {
+        buffer += delta
+
+        var output = ""
+        while !buffer.isEmpty {
+            if let range = buffer.range(of: Self.openTag) {
+                output += buffer[..<range.lowerBound]
+                output += "<think>"
+                buffer = String(buffer[range.upperBound...])
+                continue
+            }
+
+            if let range = buffer.range(of: Self.closeTag) {
+                output += buffer[..<range.lowerBound]
+                output += "</think>"
+                buffer = String(buffer[range.upperBound...])
+                continue
+            }
+
+            let partials = [Self.closeTag, Self.openTag]
+            if let partial = partials.first(where: { tag in
+                (1..<tag.count).reversed().contains { len in
+                    buffer.hasSuffix(String(tag.prefix(len)))
+                }
+            }) {
+                for len in (1..<partial.count).reversed() {
+                    let prefix = String(partial.prefix(len))
+                    if buffer.hasSuffix(prefix) {
+                        output += buffer.dropLast(len)
+                        buffer = prefix
+                        return output
+                    }
+                }
+            }
+
+            output += buffer
+            buffer = ""
+        }
+
+        return output
+    }
+}
+
 // MARK: - Resolver
 
 enum StreamingMiddlewareResolver {
     @MainActor
     static func resolve(
         for modelId: String,
-        modelOptions: [String: ModelOptionValue] = [:]
+        modelOptions: [String: ModelOptionValue] = [:],
+        globalReasoningParserOverride: String? = nil
     ) -> StreamingMiddleware? {
         let thinkingDisabled = modelOptions["disableThinking"]?.boolValue == true
         let id = modelId.lowercased()
+        let effectiveReasoningParser = LocalParserOptions.resolveReasoningOverride(
+            perModel: modelOptions["reasoningParser"]?.stringValue,
+            global: globalReasoningParserOverride
+        )
 
-        // PrependThinkTagMiddleware: for MLXService fallback models that output
-        // </think> without <think>. VMLX models handle thinking at the engine level
-        // via VMLXRuntimeActor's text buffer. Since all local models now try VMLX
-        // first, this middleware only activates for the few that fall through to MLX.
-        // No model name matching — the middleware is safe for any model (it only
-        // prepends <think> on the first non-empty delta if thinking is enabled).
-        if !thinkingDisabled {
+        switch effectiveReasoningParser {
+        case "none":
+            return nil
+        case "gptoss":
+            return ChannelTagMiddleware()
+        case "mistral":
+            return MistralTagMiddleware()
+        case "think":
+            return thinkingDisabled ? nil : PrependThinkTagMiddleware()
+        default:
+            break
+        }
+
+        if id.contains("gptoss") || id.contains("harmony") {
+            return ChannelTagMiddleware()
+        }
+
+        if id.contains("mistral") && (id.contains("4") || id.contains("large")) {
+            return MistralTagMiddleware()
+        }
+
+        let usesThinkTags =
+            id.contains("qwen3")
+            || id.contains("qwen2.5")
+            || id.contains("deepseek")
+            || id.contains("qwq")
+            || id.contains("glm")
+            || id.contains("minimax")
+            || id.contains("phi-4")
+
+        if !thinkingDisabled && usesThinkTags {
             return PrependThinkTagMiddleware()
         }
 

@@ -47,7 +47,7 @@ public enum VMLXEvent: Sendable {
     case toolInvocation(name: String, argsJSON: String, callId: String)
     case usage(promptTokens: Int, completionTokens: Int, cachedTokens: Int,
                ttft: Double, prefillToksPerSec: Double, decodeToksPerSec: Double,
-               cacheDetail: String?)
+               cacheDetail: String?, cacheBytes: Int)
 }
 
 // MARK: - Power Management
@@ -112,6 +112,39 @@ public actor VMLXRuntimeActor {
 
     /// Currently active model (for single-model requests).
     public private(set) var activeModelName: String?
+
+    private func estimateLiveCacheBytes(_ cache: [any VMLXKVCache]) -> Int {
+        cache.reduce(into: 0) { total, layer in
+            total += layer.state.reduce(into: 0) { $0 += $1.nbytes }
+        }
+    }
+
+    private func adaptivePrefillStep(
+        for container: VMLXModelContainer,
+        configuredStep: Int,
+        totalPrefillTokens: Int
+    ) -> Int {
+        guard totalPrefillTokens > 1 else { return configuredStep }
+
+        let detectedExperts = container.model.detected.numExperts ?? 0
+        let isLargeJangMoE = container.isJang && detectedExperts >= 256
+        guard isLargeJangMoE else { return configuredStep }
+
+        let shortPromptCap = 8
+        let mediumPromptCap = 16
+        let longPromptCap = 32
+        let cap: Int
+
+        if totalPrefillTokens <= 128 {
+            cap = shortPromptCap
+        } else if totalPrefillTokens <= 512 {
+            cap = mediumPromptCap
+        } else {
+            cap = longPromptCap
+        }
+
+        return min(configuredStep, cap)
+    }
 
     // MARK: - Init
 
@@ -330,6 +363,7 @@ public actor VMLXRuntimeActor {
         }
         activeGenerations.removeAll()
         scheduler.shutdown()
+        scheduler.cache.clearAll()
 
         if let reDeriver = ssmReDeriver {
             await reDeriver.cancelAll()
@@ -339,7 +373,9 @@ public actor VMLXRuntimeActor {
 
         modelContainer = nil
         loadedModels.removeAll()
+        activeModelName = nil
         currentModelName = nil
+        powerState = .deepSleep
 
         // Force Metal memory cleanup AFTER all generation tasks have stopped
         Memory.clearCache()
@@ -437,7 +473,6 @@ public actor VMLXRuntimeActor {
         }
 
         let requestId = UUID().uuidString
-        let modelName = currentModelName ?? ""
 
         // Build tool parser: per-model override → auto-detect from model_type.
         // Per-model override flows from ModelOptionsStore → GenerationParameters →
@@ -452,10 +487,26 @@ public actor VMLXRuntimeActor {
             return toolParserForFormat(container.familyConfig.toolCallFormat)
         }()
 
-        // Don't use reasoning parser here — Osaurus's StreamingDeltaProcessor
-        // handles <think> tag parsing at the UI level. If we strip tags here,
-        // the UI can't detect thinking blocks.
-        let reasoningParser: (any ReasoningParser)? = nil
+        // Build reasoning parser: per-model override → family config.
+        // VMLXService wraps `.thinking` events back into `<think>` markers so
+        // Osaurus's StreamingDeltaProcessor can keep using the same UI path.
+        let reasoningParser: (any ReasoningParser)? = {
+            if let override = request.reasoningParserOverride {
+                switch override {
+                case "think":
+                    return reasoningParserForFormat(.qwen3)
+                case "gptoss":
+                    return reasoningParserForFormat(.gptoss)
+                case "mistral":
+                    return reasoningParserForFormat(.mistral)
+                case "none":
+                    return nil
+                default:
+                    break
+                }
+            }
+            return reasoningParserForFormat(container.familyConfig.reasoningFormat)
+        }()
 
         // Tokenize via chat template
         let samplingParams = request.toSamplingParams()
@@ -514,40 +565,35 @@ public actor VMLXRuntimeActor {
                     let tqEnabled = self.scheduler.config.enableTurboQuant
                     _vmlxLog2("[Gen] Config: kvQuant=\(kvBitsStr) tq=\(tqEnabled) hybrid=\(container.isHybrid)")
                     let cache = container.newCache(kvBits: kvBits, kvGroupSize: kvGroupSize)
-                    var inputTokens: MLXArray
+                    var inputTokens = MLXArray()
                     var cachedTokenCount = 0
 
-                    _vmlxLog2("[Gen] Fetch cache: \(cacheKeyTokens.count) cacheKeyTokens, \(tokens.count) total tokens, genPromptLen=\(genPromptLen)")
-                    let fetchResult = self.scheduler.cache.fetch(tokens: cacheKeyTokens)
-                    switch fetchResult {
-                    case .hit(let cachedHybrid, let remaining, let detail, let ssmCheckpoint)
-                        where cachedHybrid.layerCount == cache.count:
-                        cacheDetailStr = "\(detail)"
-                        _vmlxLog2("[Gen] Cache HIT: \(cachedHybrid.layerCount) layers, \(remaining.count) remaining tokens, detail=\(detail)")
-                        // Restore cached KV state into the VMLXKVCache objects.
-                        // Uses protocol-based .state setter — works with both VMLXKVCacheSimple
-                        // AND VMLXQuantizedKVCache (which re-quantizes on assignment).
-                        // Create TQ encoder state ONCE for all layers (avoid recreating
-                        // 128×128 QJL matrix + codebook per layer — was 124× overhead).
-                        let hasTQ = cachedHybrid.layers.contains {
-                            if case .compressedAttention = $0 { return true }
-                            return false
-                        }
-                        let tqState: TurboQuantEncoder.EncoderState?
-                        if hasTQ, let firstTQ = cachedHybrid.layers.first(where: {
-                            if case .compressedAttention = $0 { return true }
-                            return false
-                        }), case .compressedAttention(let ek, _, _) = firstTQ {
-                            let dim = ek.shape.last ?? 128
-                            let keyBits = ek.indexBits + 1
-                            tqState = TurboQuantEncoder.EncoderState(
-                                dim: dim, keyBits: keyBits,
-                                valueBits: ek.indexBits, seed: ek.seed)
-                        } else {
-                            tqState = nil
+                    func _makeTQState(for cachedHybrid: HybridCache) -> TurboQuantEncoder.EncoderState? {
+                        guard
+                            let firstTQ = cachedHybrid.layers.first(where: {
+                                if case .compressedAttention = $0 { return true }
+                                return false
+                            }),
+                            case .compressedAttention(let ek, _, _) = firstTQ
+                        else {
+                            return nil
                         }
 
+                        let dim = ek.shape.last ?? 128
+                        let keyBits = ek.indexBits + 1
+                        return TurboQuantEncoder.EncoderState(
+                            dim: dim,
+                            keyBits: keyBits,
+                            valueBits: ek.indexBits,
+                            seed: ek.seed
+                        )
+                    }
+
+                    @discardableResult
+                    func _restoreCachedHybrid(_ cachedHybrid: HybridCache) -> Int {
+                        let tqState = _makeTQState(for: cachedHybrid)
                         var restoredLayers = 0
+
                         for (i, entry) in cachedHybrid.layers.enumerated() {
                             guard i < cache.count else { break }
                             switch entry {
@@ -580,111 +626,195 @@ public actor VMLXRuntimeActor {
                                 }
                             }
                         }
-                        // Log cache state after restore for debugging
-                        let cacheType = cache.first.map { String(describing: type(of: $0)) } ?? "unknown"
-                        let restoredOffset = (cache.first as? VMLXBaseKVCache)?.offset ?? -1
-                        let firstEntryType: String = cachedHybrid.layers.first.map {
-                            switch $0 {
-                            case .attention: return "attention"
-                            case .compressedAttention: return "compressedAttention(TQ)"
-                            case .ssm: return "ssm"
-                            }
-                        } ?? "empty"
-                        _vmlxLog2("[Gen] Restored \(restoredLayers)/\(cachedHybrid.layerCount) layers, type=\(cacheType), offset=\(restoredOffset), entryType=\(firstEntryType)")
 
-                        // For hybrid models only: inject SSM companion state from checkpoint.
-                        // Non-hybrid models have no VMLXMambaCache entries, so this is a no-op.
-                        if container.isHybrid, let checkpoint = ssmCheckpoint, !checkpoint.ssmStates.isEmpty {
-                            var ssmIdx = 0
-                            for c in cache {
-                                if let mambaCache = c as? VMLXMambaCache,
-                                   ssmIdx < checkpoint.ssmStates.count {
-                                    mambaCache.state = checkpoint.ssmStates[ssmIdx].state
-                                    ssmIdx += 1
-                                }
+                        return restoredLayers
+                    }
+
+                    @discardableResult
+                    func _injectSSMCheckpoint(_ checkpoint: SSMCheckpoint) -> Int {
+                        var ssmIdx = 0
+                        for c in cache {
+                            if let mambaCache = c as? VMLXMambaCache,
+                               ssmIdx < checkpoint.ssmStates.count {
+                                mambaCache.state = checkpoint.ssmStates[ssmIdx].state
+                                ssmIdx += 1
                             }
-                            _vmlxLog2("[Gen] Injected \(ssmIdx) SSM companion states from checkpoint")
+                        }
+                        return ssmIdx
+                    }
+
+                    func _configureCachedPrefixState(
+                        restoredBoundary: Int,
+                        replayTokens: [Int],
+                        trimAttentionToBoundary: Bool
+                    ) {
+                        if trimAttentionToBoundary {
+                            for c in cache where c.isTrimmable && !(c is VMLXMambaCache) && c.offset > restoredBoundary {
+                                c.trim(c.offset - restoredBoundary)
+                            }
                         }
 
-                        // Force-evaluate restored cache to complete any lazy TQ decode
-                        // BEFORE the forward pass starts. Without this, the TQ decode
-                        // computation graph (QJL matmul × N layers) runs during inference,
-                        // causing GPU stalls and 3-10x decode slowdowns.
-                        eval(cache)
-                        Memory.clearCache()
+                        let genSuffix = genPromptLen > 0 ? Array(tokens.suffix(genPromptLen)) : [Int]()
+                        cachedTokenCount = restoredBoundary
+                        inputTokens = MLXArray((replayTokens + genSuffix).map { Int32($0) })
+                    }
 
-                        // remaining = uncached portion of cacheKeyTokens (not full tokens).
-                        // We also need to process gen_prompt_len suffix tokens.
-                        let genSuffix = genPromptLen > 0
-                            ? Array(tokens.suffix(genPromptLen)) : [Int]()
+                    func _captureCurrentSSMSnapshot() -> [[MLXArray]] {
+                        cache.compactMap { c -> [MLXArray]? in
+                            guard let mamba = c as? VMLXMambaCache else { return nil }
+                            return mamba.state.map { $0[.ellipsis] }
+                        }
+                    }
 
-                        cachedTokenCount = cacheKeyTokens.count - remaining.count
-                        if remaining.isEmpty {
-                            // Full cache hit on cacheKeyTokens. Re-feed last cached token
-                            // to get fresh logits, plus gen_prompt_len suffix.
-                            for c in cache where c.isTrimmable && !(c is VMLXMambaCache) {
-                                c.trim(1)
+                    _vmlxLog2("[Gen] Fetch cache: \(cacheKeyTokens.count) cacheKeyTokens, \(tokens.count) total tokens, genPromptLen=\(genPromptLen)")
+                    let fetchResult = self.scheduler.cache.fetch(tokens: cacheKeyTokens)
+                    switch fetchResult {
+                    case .hit(let cachedHybrid, let remaining, let detail, let ssmCheckpoint)
+                        where cachedHybrid.layerCount == cache.count:
+                        cacheDetailStr = "\(detail)"
+                        _vmlxLog2("[Gen] Cache HIT: \(cachedHybrid.layerCount) layers, \(remaining.count) remaining tokens, detail=\(detail)")
+
+                        let restoredBoundary = remaining.isEmpty
+                            ? max(0, cacheKeyTokens.count - 1)
+                            : cacheKeyTokens.count - remaining.count
+                        var effectiveCheckpoint = ssmCheckpoint
+                        var canUseHit = true
+
+                        if container.isHybrid,
+                           remaining.isEmpty,
+                           restoredBoundary > 0,
+                           ssmCheckpoint?.boundary != restoredBoundary {
+                            do {
+                                effectiveCheckpoint = try await self.ssmReDeriver?.requestReDerive(
+                                    tokens: cacheKeyTokens,
+                                    stableBoundary: restoredBoundary
+                                )
+                                if effectiveCheckpoint != nil {
+                                    cacheDetailStr = "rederived/\(detail)"
+                                    _vmlxLog2("[Gen] Exact hybrid hit: recovered boundary-aligned SSM at \(restoredBoundary) tokens")
+                                } else {
+                                    canUseHit = false
+                                    _vmlxLog2("[Gen] Exact hybrid hit: boundary-aligned SSM unavailable at \(restoredBoundary) tokens; falling back to full prefill")
+                                }
+                            } catch {
+                                canUseHit = false
+                                _vmlxLog2("[Gen] Exact hybrid hit: boundary re-derive failed at \(restoredBoundary) tokens: \(error.localizedDescription); full prefill")
                             }
-                            cachedTokenCount -= 1
-                            let refeedTokens = [cacheKeyTokens.last!] + genSuffix
-                            inputTokens = MLXArray(refeedTokens.map { Int32($0) })
+                        }
+
+                        if canUseHit {
+                            let restoredLayers = _restoreCachedHybrid(cachedHybrid)
+                            // Log cache state after restore for debugging
+                            let cacheType = cache.first.map { String(describing: type(of: $0)) } ?? "unknown"
+                            let restoredOffset = (cache.first as? VMLXBaseKVCache)?.offset ?? -1
+                            let firstEntryType: String = cachedHybrid.layers.first.map {
+                                switch $0 {
+                                case .attention: return "attention"
+                                case .compressedAttention: return "compressedAttention(TQ)"
+                                case .ssm: return "ssm"
+                                }
+                            } ?? "empty"
+                            _vmlxLog2("[Gen] Restored \(restoredLayers)/\(cachedHybrid.layerCount) layers, type=\(cacheType), offset=\(restoredOffset), entryType=\(firstEntryType)")
+
+                            // For hybrid models only: inject SSM companion state from checkpoint.
+                            // Non-hybrid models have no VMLXMambaCache entries, so this is a no-op.
+                            if container.isHybrid, let checkpoint = effectiveCheckpoint, !checkpoint.ssmStates.isEmpty {
+                                let ssmIdx = _injectSSMCheckpoint(checkpoint)
+                                _vmlxLog2("[Gen] Injected \(ssmIdx) SSM companion states from checkpoint")
+                            }
+
+                            // Force-evaluate restored cache to complete any lazy TQ decode
+                            // BEFORE the forward pass starts. Without this, the TQ decode
+                            // computation graph (QJL matmul × N layers) runs during inference,
+                            // causing GPU stalls and 3-10x decode slowdowns.
+                            eval(cache)
+                            Memory.clearCache()
+
+                            if remaining.isEmpty {
+                                // Exact hits are normalized back to the standard N-1
+                                // boundary so the final cached token can be replayed for logits.
+                                let replayTokens = cacheKeyTokens.isEmpty ? [Int]() : [cacheKeyTokens.last!]
+                                _configureCachedPrefixState(
+                                    restoredBoundary: restoredBoundary,
+                                    replayTokens: replayTokens,
+                                    trimAttentionToBoundary: true
+                                )
+                            } else {
+                                // Prefix hit: some cacheKeyTokens matched. Prefill remaining + suffix.
+                                _configureCachedPrefixState(
+                                    restoredBoundary: restoredBoundary,
+                                    replayTokens: remaining,
+                                    trimAttentionToBoundary: false
+                                )
+                            }
                         } else {
-                            // Prefix hit: some cacheKeyTokens matched. Prefill remaining + suffix.
-                            let allRemaining = remaining + genSuffix
-                            inputTokens = MLXArray(allRemaining.map { Int32($0) })
+                            inputTokens = MLXArray(tokens.map { Int32($0) })
                         }
                     case .partialHit(let attentionCache, let remaining, let detail):
                         cacheDetailStr = "partial/\(detail)"
                         if container.isHybrid {
-                            // Hybrid model: SSM companion missing. SSM state is path-dependent —
-                            // can't use KV cache without matching SSM state.
-                            // Safe fallback: discard attention cache, full prefill.
-                            // The forward pass re-derives SSM state as a side effect.
-                            // After generation, CacheCoordinator.store() will save SSM companion
-                            // for the next turn (self-healing).
-                            //
-                            // Future optimization (SSMReDeriver): background re-derivation to
-                            // avoid redundant attention recomputation. Requires ModelForwardPass
-                            // protocol update to accept [VMLXKVCache] instead of [MLXArray].
-                            _vmlxLog2("[Gen] Cache PARTIAL HIT (hybrid, SSM missing): full prefill \(tokens.count) tokens (SSM will be stored after)")
-                            inputTokens = MLXArray(tokens.map { Int32($0) })
+                            let matchedBoundary = cacheKeyTokens.count - remaining.count
+                            let recoveryBoundary: Int
+                            let replayTokens: [Int]
+                            let trimAttentionToBoundary: Bool
+
+                            if remaining.isEmpty, matchedBoundary > 0 {
+                                recoveryBoundary = matchedBoundary - 1
+                                replayTokens = [cacheKeyTokens.last!]
+                                trimAttentionToBoundary = true
+                            } else {
+                                recoveryBoundary = matchedBoundary
+                                replayTokens = remaining
+                                trimAttentionToBoundary = false
+                            }
+
+                            if recoveryBoundary > 0 {
+                                do {
+                                    if let checkpoint = try await self.ssmReDeriver?.requestReDerive(
+                                        tokens: cacheKeyTokens,
+                                        stableBoundary: recoveryBoundary
+                                    ) {
+                                        let restoredLayers = _restoreCachedHybrid(attentionCache)
+                                        let injectedLayers = _injectSSMCheckpoint(checkpoint)
+                                        eval(cache)
+                                        Memory.clearCache()
+
+                                        _configureCachedPrefixState(
+                                            restoredBoundary: recoveryBoundary,
+                                            replayTokens: replayTokens,
+                                            trimAttentionToBoundary: trimAttentionToBoundary
+                                        )
+                                        cacheDetailStr = "rederived/\(detail)"
+                                        _vmlxLog2("[Gen] Cache PARTIAL HIT (hybrid): recovered SSM at boundary=\(recoveryBoundary), restored=\(restoredLayers), injected=\(injectedLayers), remaining=\(replayTokens.count)")
+                                    } else {
+                                        _vmlxLog2("[Gen] Cache PARTIAL HIT (hybrid): re-derive pending/unavailable at boundary=\(recoveryBoundary); full prefill \(tokens.count) tokens")
+                                        inputTokens = MLXArray(tokens.map { Int32($0) })
+                                    }
+                                } catch {
+                                    _vmlxLog2("[Gen] Cache PARTIAL HIT (hybrid): re-derive failed at boundary=\(recoveryBoundary): \(error.localizedDescription); full prefill \(tokens.count) tokens")
+                                    inputTokens = MLXArray(tokens.map { Int32($0) })
+                                }
+                            } else {
+                                _vmlxLog2("[Gen] Cache PARTIAL HIT (hybrid): boundary too small for SSM recovery; full prefill \(tokens.count) tokens")
+                                inputTokens = MLXArray(tokens.map { Int32($0) })
+                            }
                         } else {
                             // Non-hybrid: no SSM layers, so partial hit = prefix hit.
                             // Restore attention KV and prefill only remaining + gen_prompt_len.
                             _vmlxLog2("[Gen] Cache PARTIAL HIT (non-hybrid): \(attentionCache.layerCount) layers, \(remaining.count) remaining, detail=\(detail)")
-                            for (i, entry) in attentionCache.layers.enumerated() {
-                                guard i < cache.count else { break }
-                                switch entry {
-                                case .attention(let kv):
-                                    if let kvBase = cache[i] as? VMLXBaseKVCache,
-                                       !(cache[i] is VMLXMambaCache) {
-                                        kvBase.state = [kv.keys, kv.values]
-                                    }
-                                case .compressedAttention(let ek, let ev, _):
-                                    if let kvBase = cache[i] as? VMLXBaseKVCache,
-                                       !(cache[i] is VMLXMambaCache) {
-                                        kvBase.state = [
-                                            TurboQuantEncoder.decodeKeys(ek, seed: ek.seed),
-                                            TurboQuantEncoder.decodeValues(ev, seed: ev.seed)
-                                        ]
-                                    }
-                                default:
-                                    break  // SSM layers handled separately
-                                }
-                            }
-                            let genSuffix = genPromptLen > 0
-                                ? Array(tokens.suffix(genPromptLen)) : [Int]()
-                            cachedTokenCount = cacheKeyTokens.count - remaining.count
+                            _ = _restoreCachedHybrid(attentionCache)
                             if remaining.isEmpty {
-                                for c in cache where c.isTrimmable && !(c is VMLXMambaCache) {
-                                    c.trim(1)
-                                }
-                                cachedTokenCount -= 1
-                                let refeed = [cacheKeyTokens.last!] + genSuffix
-                                inputTokens = MLXArray(refeed.map { Int32($0) })
+                                _configureCachedPrefixState(
+                                    restoredBoundary: max(0, cacheKeyTokens.count - 1),
+                                    replayTokens: cacheKeyTokens.isEmpty ? [Int]() : [cacheKeyTokens.last!],
+                                    trimAttentionToBoundary: true
+                                )
                             } else {
-                                let allRemaining = remaining + genSuffix
-                                inputTokens = MLXArray(allRemaining.map { Int32($0) })
+                                _configureCachedPrefixState(
+                                    restoredBoundary: cacheKeyTokens.count - remaining.count,
+                                    replayTokens: remaining,
+                                    trimAttentionToBoundary: false
+                                )
                             }
                         }
 
@@ -696,45 +826,67 @@ public actor VMLXRuntimeActor {
 
                     var generatedTokenCount = 0
 
-                    // Prefill with two-phase SSM snapshot for hybrid models.
-                    // Split at storeTokens boundary so SSM state matches stored KV.
-                    let prefillStep = self.scheduler.config.prefillStepSize
+                    // Hybrid models need a boundary-aligned SSM snapshot for the
+                    // cache store. The target boundary is storeTokens.count, which
+                    // can already be satisfied by a restored cache hit.
                     let totalPrefillTokens = inputTokens.dim(0)
+                    let configuredPrefillStep = self.scheduler.config.prefillStepSize
+                    let prefillStep = self.adaptivePrefillStep(
+                        for: container,
+                        configuredStep: configuredPrefillStep,
+                        totalPrefillTokens: totalPrefillTokens
+                    )
+                    if prefillStep != configuredPrefillStep {
+                        _vmlxLog2(
+                            "[Gen] Adaptive prefill step: \(prefillStep) "
+                                + "(configured \(configuredPrefillStep), family=\(container.familyConfig.family), "
+                                + "experts=\(container.model.detected.numExperts ?? 0), total=\(totalPrefillTokens))"
+                        )
+                    }
                     let storeTokensCount = max(0, cacheKeyTokens.count - 1)
                     var prefillSSMSnapshot: [[MLXArray]]? = nil
+                    let needSSMSnapshot = container.isHybrid && storeTokensCount > 0
+                    let boundaryAdvance = max(0, storeTokensCount - cachedTokenCount)
 
-                    let needSSMSnapshot = container.isHybrid && cachedTokenCount == 0
-                        && storeTokensCount > 0 && storeTokensCount < totalPrefillTokens
+                    func _captureBoundarySnapshotIfNeeded(_ reason: String) {
+                        guard needSSMSnapshot, prefillSSMSnapshot == nil else { return }
+                        prefillSSMSnapshot = _captureCurrentSSMSnapshot()
+                        _vmlxLog2("[Gen] SSM snapshot: \(prefillSSMSnapshot!.count) layers (\(reason), boundary=\(storeTokensCount))")
+                    }
+
+                    if needSSMSnapshot && cachedTokenCount == storeTokensCount {
+                        _captureBoundarySnapshotIfNeeded("restored")
+                    }
 
                     // Chunked prefill helper
                     func _chunkedPrefill(_ start: Int, _ end: Int) {
                         var pos = start
                         while pos < end {
-                            let chunkEnd = min(pos + prefillStep, end)
+                            var chunkEnd = min(pos + prefillStep, end)
+                            if needSSMSnapshot,
+                               prefillSSMSnapshot == nil,
+                               boundaryAdvance > pos,
+                               boundaryAdvance < chunkEnd {
+                                chunkEnd = boundaryAdvance
+                            }
                             _ = container.forward(
                                 inputTokens[pos ..< chunkEnd].expandedDimensions(axis: 0),
                                 cache: cache)
                             eval(cache)
                             Memory.clearCache()
                             pos = chunkEnd
+                            if needSSMSnapshot && prefillSSMSnapshot == nil && pos == boundaryAdvance {
+                                _captureBoundarySnapshotIfNeeded("post-prefill")
+                            }
                         }
                     }
 
                     // Single-pass prefill for all models (including hybrid SSM).
-                    // SSM snapshot is captured AFTER full prefill — slightly less precise
-                    // than mid-prefill capture but avoids the expensive two-phase state
-                    // propagation that causes 100s+ hangs on Mamba2/SSD models.
+                    // For hybrid cache storage, capture SSM exactly when the cache
+                    // reaches the store boundary instead of snapshotting only on
+                    // uncached turns or after the whole prompt.
                     if totalPrefillTokens > 1 {
                         _chunkedPrefill(0, totalPrefillTokens - 1)
-                    }
-
-                    // Capture SSM snapshot after prefill for hybrid cache storage
-                    if needSSMSnapshot {
-                        prefillSSMSnapshot = cache.compactMap { c -> [MLXArray]? in
-                            guard let mamba = c as? VMLXMambaCache else { return nil }
-                            return mamba.state.map { $0[.ellipsis] }
-                        }
-                        _vmlxLog2("[Gen] SSM snapshot: \(prefillSSMSnapshot!.count) layers (post-prefill)")
                     }
 
                     // Final token → logits for first generated token
@@ -988,7 +1140,8 @@ public actor VMLXRuntimeActor {
                             ? Double(generatedTokenCount) / decodeElapsed : 0
                     }
 
-                    // Emit usage with timing
+                    // Emit usage with timing and live cache footprint
+                    let liveCacheBytes = self.estimateLiveCacheBytes(cache)
                     _vmlxLog2("[Gen] Stats: ttft=\(String(format:"%.3f",ttftTime))s pp=\(String(format:"%.1f",prefillTPS))t/s tg=\(String(format:"%.1f",decodeTPS))t/s prompt=\(promptTokenCount) gen=\(generatedTokenCount) cached=\(cachedTokenCount)")
                     continuation.yield(.usage(
                         promptTokens: promptTokenCount,
@@ -997,7 +1150,8 @@ public actor VMLXRuntimeActor {
                         ttft: ttftTime,
                         prefillToksPerSec: prefillTPS,
                         decodeToksPerSec: decodeTPS,
-                        cacheDetail: cacheDetailStr
+                        cacheDetail: cacheDetailStr,
+                        cacheBytes: liveCacheBytes
                     ))
 
                     continuation.finish()
@@ -1067,12 +1221,15 @@ public actor VMLXRuntimeActor {
                     }
 
                 } catch is CancellationError {
-                    // Generation was stopped — don't store partial cache
-                    // Clear any stale cache that might have wrong shapes
-                    self.scheduler.cache.clearAll()
+                    // Generation was stopped before cache store completed.
+                    // Do not nuke the cache stack here — that destroys unrelated
+                    // L2 entries and makes cancellations look like cache failures.
                     continuation.finish()
                 } catch {
-                    self.scheduler.cache.clearAll()
+                    // Request-scoped recovery only: invalidate the request key and
+                    // clear volatile layers. Preserve unrelated persistent entries.
+                    self.scheduler.cache.invalidate(tokens: cacheKeyTokens)
+                    self.scheduler.cache.clearVolatile()
                     continuation.finish(throwing: error)
                 }
             }

@@ -491,6 +491,38 @@ public final class CacheCoordinator: @unchecked Sendable {
 
     // MARK: - Cache Management
 
+    /// Clear volatile caches while preserving persistent L2 entries.
+    /// Used for request-scoped recovery without destroying the disk cache.
+    public func clearVolatile() {
+        ssmStateCache?.clear()
+        pagedCache?.clear()
+        prefixCache?.clear()
+        memoryCache?.clear()
+    }
+
+    /// Invalidate request-related cache keys without wiping the full cache stack.
+    /// Includes both the exact token key and the standard N-1 store key.
+    public func invalidate(tokens: [Int]) {
+        let candidateKeys: [[Int]] = {
+            guard tokens.count > 1 else { return [tokens] }
+            let truncated = Array(tokens.dropLast(1))
+            return truncated == tokens ? [tokens] : [tokens, truncated]
+        }()
+
+        for key in candidateKeys {
+            memoryCache?.invalidate(tokens: key)
+            prefixCache?.invalidate(tokens: key)
+            diskCache?.remove(tokens: key)
+
+            let tokenHash = SSMStateCache.hashTokens(key, count: key.count)
+            ssmStateCache?.invalidate(tokenHash: tokenHash, boundary: key.count)
+        }
+
+        // Paged cache does not support exact-key invalidation today.
+        // Clear only the volatile paged layer instead of nuking L2.
+        pagedCache?.clear()
+    }
+
     /// Clear all caches. Called when switching models to prevent stale KV data.
     public func clearAll() {
         ssmStateCache?.clear()

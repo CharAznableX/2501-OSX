@@ -107,7 +107,7 @@ final class ChatSession: ObservableObject {
 
                 // Load persisted options or use defaults
                 if let persisted = ModelOptionsStore.shared.loadOptions(for: model) {
-                    self.activeModelOptions = persisted
+                    self.activeModelOptions = ModelProfileRegistry.normalizedOptions(persisted)
                 } else {
                     self.activeModelOptions = ModelProfileRegistry.defaults(for: model)
                 }
@@ -929,7 +929,9 @@ final class ChatSession: ObservableObject {
                         let processor = StreamingDeltaProcessor(
                             turn: assistantTurn,
                             modelId: selectedModel ?? "default",
-                            modelOptions: activeModelOptions
+                            modelOptions: activeModelOptions,
+                            globalReasoningParserOverride: ServerConfigurationStore.load()?
+                                .reasoningParserOverride
                         ) { [weak self] in
                             self?.objectWillChange.send()
                         }

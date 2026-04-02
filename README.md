@@ -2,213 +2,160 @@
 
 <p align="center">
   <strong>VMLXRuntime: Native Swift Inference Engine for Osaurus</strong><br>
-  <em>Development build -- this engine will replace mlx-swift-lm and all external model dependencies in the main <a href="https://github.com/osaurus-ai/osaurus">Osaurus</a> project.</em>
+  <em>Development branch for replacing <code>mlx-swift-lm</code> and external model-library dependencies inside Osaurus.</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-Dev%20Build-yellow" alt="Status">
+  <img src="https://img.shields.io/badge/Status-Active%20Dev-yellow" alt="Status">
   <img src="https://img.shields.io/badge/Platform-macOS%20(Apple%20Silicon)-black?logo=apple" alt="Platform">
   <img src="https://img.shields.io/badge/Swift-6.2-orange?logo=swift" alt="Swift">
   <img src="https://img.shields.io/badge/MLX-Metal%20GPU-blue" alt="MLX">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
 </p>
 
-> **Development branch.** VMLXRuntime is being built as a standalone native inference engine to replace `mlx-swift-lm` and all external model library dependencies in [Osaurus](https://github.com/osaurus-ai/osaurus). Once validated end-to-end, this engine will be merged upstream as the production Osaurus inference backend -- giving Osaurus its own engine with zero third-party model library dependencies.
+> Status note, April 1 2026: the repo contains a real native VMLX runtime and real Osaurus integration, but some older docs below this repo previously mixed planned work, landed code, and aspirational status. This README is now aligned to the current branch state.
 
 ---
 
 ## Goal
 
-Replace Osaurus's `mlx-swift-lm` dependency with a native Swift inference engine that:
-- Has **zero external model library dependencies** (only mlx-swift for tensor ops + swift-transformers for tokenization)
-- Supports **all model architectures natively** (standard transformers, hybrid SSM, MoE, MLA)
-- Includes **production-grade caching** (5-layer stack with paged, prefix, memory, disk, SSM companion)
-- Handles **JANG mixed-precision quantization** (per-layer 2/4/6/8-bit auto-detection)
-- Provides **TurboQuant 3-bit KV compression**, continuous batching, tool/reasoning parsing, VL support, power management, and multi-model gateway
+Replace Osaurus's `mlx-swift-lm` backend with a native Swift inference engine that:
+- uses `mlx-swift` for tensor ops only
+- loads architectures natively in Swift
+- handles hybrid SSM, MoE, MLA, and JANG mixed-precision weights
+- provides a multi-layer cache stack with hybrid-safe behavior
+- integrates directly into the Osaurus app, API, tools, and settings flow
 
 ---
 
-## Current Status
+## Current Branch Status
 
-### Working (verified with real models)
+### Verified Working
 
-| Model | Type | Status |
-|-------|------|--------|
-| **Llama 3.2 1B** (MLX 4-bit) | Standard transformer | Loads, generates coherent text |
-| **Qwen 2.5 0.5B** (MLX 4-bit) | Standard transformer | Loads, generates coherent text |
-| **Qwen 3.5 4B/9B/27B** (JANG 2-bit) | Hybrid SSM + GQA | Loads, generates coherent text, SSM cache splits correctly |
-| **Qwen 3.5 35B/122B MoE** (JANG) | Hybrid SSM + MoE | Architecture loads (not tested on this machine -- too large) |
-| **MiniMax M2.5** (JANG 2-bit) | MoE (256 experts) | Loads and runs forward pass, but generates garbage due to swift-transformers tokenizer incompatibility with MiniMax's unusual special tokens |
+| Area | Status |
+|------|--------|
+| Standard transformer path | Verified with real local models such as Llama 3.2 1B and Qwen 2.5 0.5B |
+| Qwen 3.5 hybrid SSM path | Verified with real JANG models; hybrid cache split and restore paths are in use |
+| Osaurus integration | `VMLXServiceBridge` is wired into `ChatEngine`, settings, model discovery, and cache inspector |
+| Cache stack fundamentals | Paged cache, memory cache, prefix cache, disk cache, SSM companion cache, and cache coordinator are implemented |
+| Tool/reasoning parsing | VMLX tool/reasoning parsers are wired through the bridge and app settings; MLX reasoning overrides still apply on the app streaming path |
 
-### Not Yet Working
+### Implemented But Still Under Active Validation
 
-| Model | Issue | What's Needed |
-|-------|-------|---------------|
-| **Mistral Small 4 (119B)** | FP8 quantization format (`_scale_inv`, fused `gate_up_proj`) | FP8 dequantization support -- completely different weight format from JANG/MLX |
-| **NemotronH** | Not implemented | Dedicated hybrid SSM architecture |
-| **MiniMax M2.5 text quality** | swift-transformers can't encode MiniMax's special tokens (`]~!b[`, `[e~[`) | Custom tokenizer path or swift-transformers fix |
+| Area | Status |
+|------|--------|
+| NemotronH | Native model class landed and recent fixes corrected Mamba2 scan, MoE routing, latent projections, and attention projection dimensions |
+| Mistral Small 4 | Native MLA + MoE path landed and recent fixes corrected config decoding and inference alignment with Python reference |
+| TurboQuant | Swift encode/decode and runtime compression path exist, but the cross-turn caching story is still conservative to avoid quality drift |
 
-### Infrastructure Done
+### Important Current Caveats
 
-- 5-layer cache stack (memory, prefix, disk, paged, SSM companion) -- verified with roundtrip tests
-- Hybrid SSM cache splitting (24 SSM + 8 attention for Qwen3.5) -- verified
-- Disk cache safetensors serialization -- verified roundtrip
-- Per-layer mixed-precision auto-quantization (infers bits AND group_size from weight shapes)
-- Model switching (unloads previous model before loading new one)
-- Reasoning parser (always active for models with `<think>` in chat template)
-- Settings UI: Local Inference panel with sampling, KV cache, cache stack (TurboQuant toggle, disk cache toggle, memory budget)
-- Model cache inspector with unload button (wired to both old MLXService and VMLXRuntime)
-
-### Still Needed Before Merge
-
-- [ ] MiniMax tokenizer fix (custom encoding path for unusual special tokens)
-- [ ] FP8 quantization support (Mistral 4, other FP8 models)
-- [ ] NemotronH hybrid architecture
-- [ ] TurboQuant Metal kernels (codebook encode/decode -- stubs exist)
-- [ ] Vision encoder forward pass (preprocessing done, encoder integration pending)
-- [ ] Full model unload/reload UI polish
-- [ ] Multi-turn cache reuse in generation loop (CacheCoordinator fetch before prefill)
+- The runtime still executes one active generation task at a time. Scheduler and batching primitives exist, but true multi-request continuous batching is not the active hot path yet.
+- Hybrid partial hits now attempt boundary-aligned SSM re-derive when attention KV exists but the matching SSM companion state is missing. The current request still full-prefills when re-derive is pending or unavailable.
+- `SSMReDeriver` is now on the live VMLX hybrid recovery path, but it is still fallback-heavy for large or unavailable checkpoints.
+- Hybrid prefill currently uses single-phase prefill plus a post-prefill SSM snapshot. Earlier two-phase checkpointing plans were backed out from the hot path after SSD/Mamba2 hangs.
+- Vision preprocessing and embedding cache exist; full vision encoder inference is still pending.
+- MiniMax tokenizer incompatibilities still block trustworthy text generation quality.
+- Qwen 3.5 35B JANG still needs a deeper MoE-path optimization pass. Adaptive prefill chunking is in, but the quantized expert prefill path remains the current bottleneck.
 
 ---
 
-## Architecture
+## What The Engine Actually Does Today
+
+### Cache Stack
+
+- Paged KV cache via block hash chains for the main prefix-reuse path
+- Memory LRU cache and token-trie prefix cache
+- Disk L2 safetensors cache with SQLite index
+- SSM companion cache for hybrid models
+- `gen_prompt_len` stripping so cache keys ignore assistant-generation suffix tokens
+
+### Hybrid SSM Behavior
+
+- Hybrid caches are represented explicitly as mixed `.attention` and `.ssm` layers
+- SSM state is treated as path-dependent and non-truncatable
+- Prefix-style reuse is safe only when the KV and SSM sides agree on the same boundary
+- If only attention KV is found for a hybrid request, the runtime currently chooses correctness and re-prefills
+
+### TurboQuant Reality
+
+- Swift implementations exist for `TurboQuantEncoder`, `TurboQuantKVCache`, `EncodedKeys`, `EncodedValues`, and `TQDiskStore`
+- The runtime can compress post-prefill KV, decode once back into float buffers, and use that for lower-memory decode
+- Cross-turn cache store currently preserves original float KV snapshots instead of storing lossy TQ-decoded KV as the main reuse path
+
+---
+
+## Package Snapshot
 
 ```
-Osaurus App (SwiftUI)
-  |
-  v
-VMLXServiceBridge (ToolCapableService)     -- drop-in for MLXService
-  |
-  v
-VMLXRuntimeActor (singleton)               -- replaces ModelRuntime
-  |
-  +-- ModelLoader + VMLXModelRegistry      -- native model construction
-  |     +-- StandardTransformerModel       -- Llama, Qwen2/3, Mistral, Gemma, Phi, MiniMax MoE
-  |     +-- Qwen35TopLevelModel            -- Qwen3.5 hybrid (GatedDeltaNet + GQA + MoE)
-  |
-  +-- VMLXModelContainer (weights + tokenizer + metadata)
-  +-- Scheduler (continuous batching)
-  +-- CacheCoordinator (5-layer stack)
-  +-- SSMReDeriver (async recovery)
-  |
-  v
-mlx-swift (tensor ops) --> MLX C++ --> Metal GPU
+Packages/VMLXRuntime/
+  Sources/VMLXRuntime/   88 source files
+  Tests/VMLXRuntimeTests 49 test files
 ```
 
-### Weight Loading (zero external dependency)
-
-1. Read `config.json` for `model_type` and quantization
-2. `VMLXModelRegistry` creates the correct Module subclass
-3. Load all `.safetensors` files
-4. `sanitize(weights:)` -- model-specific key remapping (VL wrapper strip, conv1d transpose, norm shift)
-5. Auto-quantize: infer per-layer bits AND group_size from `weight.dim * 32 / (scales.dim * group_size)`, swap `Linear` to `QuantizedLinear`
-6. `model.update(parameters:)` loads weights
-
-Handles JANG mixed-precision (different layers use different bits AND different group sizes).
+Main areas:
+- `Core/` model loading, configs, hybrid cache abstractions
+- `Cache/` paged, memory, prefix, disk, SSM companion, coordinator
+- `Quantization/` JANG loading and TurboQuant pieces
+- `Models/` standard, Qwen3.5, NemotronH, Mistral4, GPT-OSS, MLA, MoE, SSM utilities
+- `Integration/` runtime actor and Osaurus-facing service layer
 
 ---
 
-## Package Structure
+## Osaurus Integration
 
-```
-Packages/VMLXRuntime/           81 source files, 17,719 lines
-  Sources/VMLXRuntime/
-    Core/          8 files   -- Types, HybridCache, ModelLoader, ModelDetector, ModelConfig
-    Cache/        13 files   -- 5-layer stack, TQ disk store, SSM companion, coordinator
-    Quantization/  6 files   -- TurboQuant, JANG loader (7 profiles)
-    Models/       14 files   -- StandardModel, Qwen3.5, MoE, MLA, Hybrid, GatedDelta kernel
-    Generation/    5 files   -- Sampler, stop detector, stream accumulator, PLD
-    Scheduler/     5 files   -- Continuous batching, request queue, batch builder
-    Vision/        3 files   -- CoreImage processor, embedding cache, 7 VLM architectures
-    Parsers/      19 files   -- 14 tool parsers + 3 reasoning parsers
-    Integration/   3 files   -- VMLXRuntimeActor, VMLXService, ChatMessageMapper
-    API/           4 files   -- Anthropic, Ollama, Completions, Embeddings adapters
-  Tests/           44 files, 7,781 lines
-```
+The current app wiring is real, not stubbed:
 
----
+- `Packages/OsaurusCore/Services/Inference/VMLXServiceBridge.swift`
+- `Packages/OsaurusCore/Services/Chat/ChatEngine.swift`
+- `Packages/OsaurusCore/Views/Settings/ConfigurationView.swift`
+- `Packages/OsaurusCore/Views/Model/ModelCacheInspectorView.swift`
+- `Packages/OsaurusCore/Managers/Model/ModelManager.swift`
 
-## Model Support
-
-### StandardTransformerModel (StandardModel.swift)
-
-Handles all standard HuggingFace decoder-only transformers:
-- **Architectures**: Llama 2/3/4, Qwen 2.5/3, Mistral (non-FP8), Gemma 2/3, Phi 3/4, StarCoder 2, InternLM 2, Granite, Cohere, MiniMax M2.5
-- **Features**: GQA attention, SwiGLU MLP, MoE (via SwitchGLU), q/k norm, RoPE (default/linear/llama3/yarn/longrope/su-scaled), partial rotation, optional attention bias, tied embeddings, 2/4/6/8-bit quantization
-
-### Qwen35TopLevelModel (Qwen35Model.swift)
-
-Handles Qwen3.5 hybrid SSM models:
-- **Architectures**: Qwen3.5-4B/9B/27B (dense), Qwen3.5-35B/122B (MoE)
-- **Features**: GatedDeltaNet SSM (custom Metal kernel), full GQA attention, SwitchGLU MoE, shared expert, RMSNormGated, conv1d, language_model wrapper sanitization
-
-### JANG Quantization
-
-All 7 profiles from [JANGQ-AI](https://huggingface.co/JANGQ-AI): JANG_1L, JANG_2L, JANG_2S, JANG_3M, JANG_4K, JANG_4M, JANG_4S.
+That integration covers:
+- model discovery and de-duplication with MLX models
+- model load/unload routing
+- Local Inference settings passthrough
+- parser overrides, with VMLX reasoning chunks bridged back into the app's `<think>` UI path
+- cache stats/unload visibility in the app
 
 ---
 
-## Key Features
+## Recent Fix Run
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| 5-layer cache stack | Done, verified | Memory + prefix + disk + paged + SSM companion |
-| TurboQuant 3-bit KV | Config + lifecycle done | Metal kernels pending |
-| Continuous batching | Scheduler done | Single-request generation active |
-| 14 tool call parsers | Done | Auto-detected from model name |
-| 3 reasoning parsers | Done | Always active for thinking models |
-| Power management | Done | softSleep/deepSleep/wake/JIT |
-| Multi-model gateway | Done | Load by alias, route by name |
-| Mid-prefill SSM checkpoint | Architecture done | Integration pending |
-| Vision preprocessing | Done | CoreImage resize/normalize |
-| Vision encoder inference | Pending | VLMModelProtocol defined, not implemented |
+Recent branch work has been concentrated on hybrid-model correctness:
+
+- `582a6e8b` fix: verified audit fixes
+- `5a7e1315` fix: NemotronH + Mistral4 inference corrections from Python reference
+- `44506ac0` fix: single-phase prefill for hybrid models + SSD state projection
+- `b479140a` fix: efficient 4D SSD state projection
+- `b34f28ea` feat: SSD parallel scan for Mamba2
+- `466dcc9a` feat: native NemotronH model class
+- `8a0a7d05` feat: TurboQuant decode-once lifecycle
 
 ---
 
-## Settings (Local Inference)
-
-Settings -> Local Inference panel:
-
-| Setting | Controls |
-|---------|----------|
-| Top P | Nucleus sampling threshold |
-| Max Context Length | Maximum KV cache tokens |
-| Cache Bits | KV cache quantization (2-8 bit) |
-| Group Size | Quantization group size |
-| Prefill Step | Tokens per prefill chunk |
-| TurboQuant toggle | 3-bit KV compression |
-| Disk Cache toggle | L2 SSD persistence |
-| Memory Cache Budget | RAM fraction for cache (default 30%) |
-
-All settings flow through: ConfigurationView -> ServerConfiguration -> RuntimeConfig -> VMLXServiceBridge -> VMLXRuntimeActor -> SchedulerConfig.
-
----
-
-## Building
+## Build
 
 ```bash
-# Build VMLXRuntime standalone
 cd Packages/VMLXRuntime && swift build
-
-# Run tests (requires Xcode for Metal)
 xcodebuild test -scheme VMLXRuntime -destination 'platform=macOS'
-
-# Build full app (Xcode 16.4+, macOS 15.5+, Apple Silicon)
-open osaurus.xcworkspace  # Cmd+R
+open osaurus.xcworkspace
 ```
 
 ---
 
 ## Documentation
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** -- Full architecture with code map
-- **[FEATURE_COMPARISON.md](docs/FEATURE_COMPARISON.md)** -- Feature comparison with VMLX Python
+- [Current Architecture](docs/ARCHITECTURE.md)
+- [Current Feature Comparison](docs/FEATURE_COMPARISON.md)
+- [Historical Implementation Plan](docs/plans/2026-03-29-vmlx-runtime-integration.md)
 
 ---
 
 ## Credits
 
-- **VMLXRuntime** -- Jinho Eric Jang
-- **Osaurus** -- [osaurus-ai](https://github.com/osaurus-ai/osaurus) (Terence Pae / tpae)
-- **MLX** -- Apple
-- **JANG Quantization** -- [JANGQ-AI](https://huggingface.co/JANGQ-AI)
+- VMLXRuntime: Jinho Eric Jang
+- Osaurus: [osaurus-ai](https://github.com/osaurus-ai/osaurus)
+- MLX: Apple
+- JANG Quantization: [JANGQ-AI](https://huggingface.co/JANGQ-AI)

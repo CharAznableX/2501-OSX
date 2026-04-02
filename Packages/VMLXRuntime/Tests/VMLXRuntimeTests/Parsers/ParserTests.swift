@@ -119,6 +119,18 @@ struct ThinkTagReasoningParserTests {
         let parser = autoDetectReasoningParser(modelName: "Qwen3-8B-JANG")
         #expect(parser != nil)
     }
+
+    @Test("Format lookup finds think-tag parser")
+    func formatLookupQwen3() {
+        let parser = reasoningParserForFormat(.qwen3)
+        #expect(parser is ThinkTagReasoningParser)
+    }
+
+    @Test("Format lookup finds DeepSeek-R1 think-tag parser")
+    func formatLookupDeepSeek() {
+        let parser = reasoningParserForFormat(.deepseekR1)
+        #expect(parser is ThinkTagReasoningParser)
+    }
 }
 
 @Suite("GPTOSSReasoningParser")
@@ -182,6 +194,12 @@ struct GPTOSSReasoningParserTests {
     func autoDetectHarmony() {
         let parser = autoDetectReasoningParser(modelName: "harmony-chat-7b")
         #expect(parser != nil)
+        #expect(parser is GPTOSSReasoningParser)
+    }
+
+    @Test("Format lookup finds GPTOSSReasoningParser")
+    func formatLookupGPTOSS() {
+        let parser = reasoningParserForFormat(.gptoss)
         #expect(parser is GPTOSSReasoningParser)
     }
 }
@@ -252,5 +270,17 @@ struct MistralReasoningParserTests {
         let parser = autoDetectReasoningParser(modelName: "Mistral-Large-Instruct-2411")
         #expect(parser != nil)
         #expect(parser is MistralReasoningParser)
+    }
+
+    @Test("Format lookup finds MistralReasoningParser")
+    func formatLookupMistral() {
+        let parser = reasoningParserForFormat(.mistral)
+        #expect(parser is MistralReasoningParser)
+    }
+
+    @Test("Format lookup disables parser for none")
+    func formatLookupNone() {
+        let parser = reasoningParserForFormat(.none)
+        #expect(parser == nil)
     }
 }

@@ -24,6 +24,9 @@ public struct GenerationStats: Sendable {
     /// Which cache layer hit (nil = miss).
     public let cacheDetail: String?
 
+    /// Live cache footprint in bytes for the active generation path, when available.
+    public let cacheBytes: Int64
+
     /// Formatted summary for display in the chat bubble.
     public var summary: String {
         var parts: [String] = []
@@ -55,6 +58,11 @@ public struct GenerationStats: Sendable {
             parts.append(tokenInfo)
         }
 
+        if cacheBytes > 0 {
+            let cacheGB = Double(cacheBytes) / 1_073_741_824
+            parts.append(String(format: "KV %.2f GB", cacheGB))
+        }
+
         return parts.joined(separator: " | ")
     }
 
@@ -65,7 +73,8 @@ public struct GenerationStats: Sendable {
         promptTokens: Int = 0,
         completionTokens: Int = 0,
         cachedTokens: Int = 0,
-        cacheDetail: String? = nil
+        cacheDetail: String? = nil,
+        cacheBytes: Int64 = 0
     ) {
         self.ttft = ttft
         self.prefillTokensPerSecond = prefillTokensPerSecond
@@ -74,5 +83,6 @@ public struct GenerationStats: Sendable {
         self.completionTokens = completionTokens
         self.cachedTokens = cachedTokens
         self.cacheDetail = cacheDetail
+        self.cacheBytes = cacheBytes
     }
 }

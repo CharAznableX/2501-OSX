@@ -167,4 +167,43 @@ struct CacheCoordinatorTests {
         coord.clearAll()
         #expect(coord.ssmStateCache?.count == 0)
     }
+
+    @Test("invalidate removes request-scoped memory entries")
+    func invalidateRequestScopedEntries() {
+        let config = CacheCoordinatorConfig(usePagedCache: false, useMemoryAwareCache: true)
+        let coord = CacheCoordinator(config: config)
+        let tokens = [1, 2, 3, 4]
+
+        coord.store(tokens: tokens, cache: makeCache(tokenCount: tokens.count))
+        if case .hit = coord.fetch(tokens: tokens) {
+            // warm hit confirmed
+        } else {
+            Issue.record("Expected memory hit before invalidation")
+        }
+
+        coord.invalidate(tokens: tokens)
+
+        let result = coord.fetch(tokens: tokens)
+        if case .miss = result {
+            // expected
+        } else {
+            Issue.record("Expected miss after targeted invalidation")
+        }
+    }
+
+    @Test("clearVolatile preserves disk cache entries")
+    func clearVolatilePreservesDisk() {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let config = CacheCoordinatorConfig(enableDiskCache: true, diskCacheDir: dir)
+        let coord = CacheCoordinator(config: config)
+        _ = coord.diskCache?.store(tokens: [7, 8, 9], numTokens: 3)
+        #expect(coord.diskCache?.entryCount == 1)
+
+        coord.clearVolatile()
+
+        #expect(coord.diskCache?.entryCount == 1)
+    }
 }

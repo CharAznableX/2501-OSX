@@ -18,6 +18,12 @@ public final class DiskCache: @unchecked Sendable {
     private let lock = OSAllocatedUnfairLock()
     private var db: OpaquePointer?  // SQLite handle
     private let dbPath: String
+    private var pendingWrites: [String: Task<Void, Never>] = [:]
+    private var writeVersions: [String: UInt64] = [:]
+
+    #if DEBUG
+        var testWriteDelayNanoseconds: UInt64 = 0
+    #endif
 
     /// SQLITE_TRANSIENT tells SQLite to copy the string immediately.
     private static let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
@@ -33,10 +39,15 @@ public final class DiskCache: @unchecked Sendable {
 
     /// Clear all cached data from disk and SQLite index.
     public func clear() {
-        lock.withLock {
+        let tasks = lock.withLock {
             if let db = db {
                 sqlite3_exec(db, "DELETE FROM cache_entries", nil, nil, nil)
             }
+            for hash in pendingWrites.keys {
+                writeVersions[hash, default: 0] += 1
+            }
+            let tasks = Array(pendingWrites.values)
+            pendingWrites.removeAll()
             // Remove .safetensors cache files
             let fm = FileManager.default
             if let files = try? fm.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: nil) {
@@ -45,7 +56,9 @@ public final class DiskCache: @unchecked Sendable {
                 }
             }
             _hits = 0; _misses = 0; _stores = 0
+            return tasks
         }
+        tasks.forEach { $0.cancel() }
     }
 
     public init(cacheDir: URL, maxSizeGB: Float = 10.0) {
@@ -139,9 +152,13 @@ public final class DiskCache: @unchecked Sendable {
     /// Remove entry for tokens.
     public func remove(tokens: [Int]) {
         let hash = Self.hashTokens(tokens)
-        lock.withLock {
+        let task = lock.withLock {
+            writeVersions[hash, default: 0] += 1
+            let task = pendingWrites.removeValue(forKey: hash)
             _deleteEntry(hash: hash)
+            return task
         }
+        task?.cancel()
     }
 
     /// Total entries in index.
@@ -153,6 +170,19 @@ public final class DiskCache: @unchecked Sendable {
     public var totalSizeBytes: Int {
         lock.withLock { _totalSizeBytes() }
     }
+
+    #if DEBUG
+        var pendingWriteCount: Int {
+            lock.withLock { pendingWrites.count }
+        }
+
+        func waitForPendingWrites() async {
+            let tasks = lock.withLock { Array(pendingWrites.values) }
+            for task in tasks {
+                await task.value
+            }
+        }
+    #endif
 
     // MARK: - Tensor I/O (Safetensors)
 
@@ -174,6 +204,7 @@ public final class DiskCache: @unchecked Sendable {
     public func storeCache(tokens: [Int], cache: HybridCache) {
         let hash = Self.hashTokens(tokens)
         let fileURL = cacheDir.appendingPathComponent("\(hash).safetensors")
+        let tempURL = cacheDir.appendingPathComponent("\(hash).\(UUID().uuidString).tmp")
 
         // Pre-serialize: evaluate all arrays on the calling thread (Metal safety)
         var arrays: [String: MLXArray] = [:]
@@ -234,14 +265,63 @@ public final class DiskCache: @unchecked Sendable {
         // Record in SQLite index immediately (metadata-only, fast)
         _ = store(tokens: tokens, numTokens: tokens.count, fileSize: estimatedSize)
 
+        let version = lock.withLock {
+            let nextVersion = (writeVersions[hash] ?? 0) + 1
+            writeVersions[hash] = nextVersion
+            pendingWrites[hash]?.cancel()
+            return nextVersion
+        }
+
         // Write safetensors file in background (no Metal calls here)
-        Task.detached { [arrays, metadata, fileURL] in
+        let task = Task.detached { [weak self, arrays, metadata, fileURL, tempURL, hash, version] in
+            guard let self else { return }
             do {
-                try MLX.save(arrays: arrays, metadata: metadata, url: fileURL)
+                #if DEBUG
+                    let delay = self.lock.withLock { self.testWriteDelayNanoseconds }
+                    if delay > 0 {
+                        try? await Task.sleep(nanoseconds: delay)
+                    }
+                #endif
+
+                if Task.isCancelled { return }
+
+                try MLX.save(arrays: arrays, metadata: metadata, url: tempURL)
+                if Task.isCancelled {
+                    try? FileManager.default.removeItem(at: tempURL)
+                    return
+                }
+
+                let shouldCommit = self.lock.withLock {
+                    self.writeVersions[hash] == version && self._lookupEntry(hash: hash) != nil
+                }
+
+                if shouldCommit {
+                    try? FileManager.default.removeItem(at: fileURL)
+                    try FileManager.default.moveItem(at: tempURL, to: fileURL)
+
+                    let stillCurrent = self.lock.withLock {
+                        self.writeVersions[hash] == version && self._lookupEntry(hash: hash) != nil
+                    }
+                    if !stillCurrent {
+                        try? FileManager.default.removeItem(at: fileURL)
+                    }
+                } else {
+                    try? FileManager.default.removeItem(at: tempURL)
+                }
             } catch {
                 // File write failed; the SQLite entry remains but the file is missing.
                 // On next fetch, the missing-file check will treat it as a miss.
+                try? FileManager.default.removeItem(at: tempURL)
             }
+
+            self.lock.withLock {
+                if self.writeVersions[hash] == version {
+                    self.pendingWrites.removeValue(forKey: hash)
+                }
+            }
+        }
+        lock.withLock {
+            pendingWrites[hash] = task
         }
     }
 

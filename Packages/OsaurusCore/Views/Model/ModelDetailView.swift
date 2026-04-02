@@ -108,8 +108,12 @@ struct ModelDetailView: View, Identifiable {
 
             // Load saved per-model parser settings
             if let saved = ModelOptionsStore.shared.loadOptions(for: model.id) {
-                selectedToolParser = saved["toolParser"]?.stringValue ?? "auto"
-                selectedReasoningParser = saved["reasoningParser"]?.stringValue ?? "auto"
+                selectedToolParser = LocalParserOptions.normalizeToolParser(
+                    saved["toolParser"]?.stringValue
+                ) ?? "auto"
+                selectedReasoningParser = LocalParserOptions.normalizeReasoningParser(
+                    saved["reasoningParser"]?.stringValue
+                ) ?? "auto"
             }
             parserOptionsLoaded = true
 
@@ -374,20 +378,15 @@ struct ModelDetailView: View, Identifiable {
                 Spacer()
 
                 Picker("", selection: $selectedToolParser) {
-                    Text("Auto").tag("auto")
-                    Text("None").tag("none")
-                    Divider()
-                    Text("Qwen").tag("qwen")
-                    Text("Llama").tag("llama")
-                    Text("Mistral").tag("mistral")
-                    Text("DeepSeek").tag("deepseek")
-                    Text("Hermes").tag("hermes")
-                    Text("Functionary").tag("functionary")
-                    Text("Generic").tag("generic")
+                    ForEach(LocalParserOptions.toolSegments) { segment in
+                        Text(segment.label).tag(segment.id)
+                    }
                 }
                 .pickerStyle(.menu)
                 .frame(width: 140)
-                .onChange(of: selectedToolParser) { _ in if parserOptionsLoaded { saveParserSettings() } }
+                .onChange(of: selectedToolParser) { _, _ in
+                    if parserOptionsLoaded { saveParserSettings() }
+                }
             }
 
             // Reasoning Parser
@@ -404,16 +403,15 @@ struct ModelDetailView: View, Identifiable {
                 Spacer()
 
                 Picker("", selection: $selectedReasoningParser) {
-                    Text("Auto").tag("auto")
-                    Text("None").tag("none")
-                    Divider()
-                    Text("<think> tags").tag("think")
-                    Text("[THINK] tags").tag("mistral")
-                    Text("GPT-OSS").tag("gptoss")
+                    ForEach(LocalParserOptions.reasoningSegments) { segment in
+                        Text(segment.label).tag(segment.id)
+                    }
                 }
                 .pickerStyle(.menu)
                 .frame(width: 140)
-                .onChange(of: selectedReasoningParser) { _ in if parserOptionsLoaded { saveParserSettings() } }
+                .onChange(of: selectedReasoningParser) { _, _ in
+                    if parserOptionsLoaded { saveParserSettings() }
+                }
             }
         }
         .padding(16)
@@ -429,9 +427,13 @@ struct ModelDetailView: View, Identifiable {
 
     /// Save parser settings to ModelOptionsStore, merging with existing options.
     private func saveParserSettings() {
-        var options = ModelOptionsStore.shared.loadOptions(for: model.id) ?? [:]
-        options["toolParser"] = .string(selectedToolParser)
-        options["reasoningParser"] = .string(selectedReasoningParser)
+        var options = ModelProfileRegistry.normalizedOptions(
+            ModelOptionsStore.shared.loadOptions(for: model.id) ?? [:]
+        )
+        options["toolParser"] = .string(LocalParserOptions.normalizeToolParser(selectedToolParser) ?? "auto")
+        options["reasoningParser"] = .string(
+            LocalParserOptions.normalizeReasoningParser(selectedReasoningParser) ?? "auto"
+        )
         ModelOptionsStore.shared.saveOptions(options, for: model.id)
     }
 

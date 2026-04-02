@@ -1,5 +1,7 @@
 # VMLXRuntime: Native Swift Inference Engine for Osaurus
 
+> Historical implementation plan. This file is a build plan from 2026-03-29, not the current source-of-truth status document. For current branch reality, use `README.md`, `docs/ARCHITECTURE.md`, and `docs/FEATURE_COMPARISON.md`.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Replace Osaurus's entire inference backend (`mlx-swift-lm`, `MLXService`, `ModelRuntime`, `MLXGenerationEngine`, `KVCacheStore`, `StreamAccumulator`) with a from-scratch Swift inference engine porting all core VMLX features natively.

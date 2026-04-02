@@ -1401,7 +1401,11 @@ extension WorkSession: WorkEngineDelegate {
 
         // Initialize streaming processor with the assistant turn
         let turn = lastAssistantTurn()
-        deltaProcessor = StreamingDeltaProcessor(turn: turn, modelId: selectedModel ?? "default") { [weak self] in
+        deltaProcessor = StreamingDeltaProcessor(
+            turn: turn,
+            modelId: selectedModel ?? "default",
+            globalReasoningParserOverride: ServerConfigurationStore.load()?.reasoningParserOverride
+        ) { [weak self] in
             self?.notifyIfSelected(self?.activeIssue?.id)
         }
 

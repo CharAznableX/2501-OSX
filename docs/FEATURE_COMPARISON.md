@@ -1,274 +1,85 @@
-# VMLXRuntime vs VMLX Python — Feature Comparison
+# VMLXRuntime vs VMLX Python
 
-Last updated: 2026-03-29
-Build: PASSING (VMLXRuntime + OsaurusCore, zero errors)
-Tests: 28/28 passing (unit + real model inference)
-Dependencies: mlx-swift + swift-transformers only (zero mlx-swift-lm)
+Last updated: 2026-04-01
+
+This file now tracks the current branch honestly. Older versions overstated some planned or partially integrated work as fully shipped.
 
 ## Legend
-- DONE = Fully implemented and connected
-- VERIFIED = DONE + tested with real models
-- STUB = Interface exists, implementation deferred (documented why)
-- TODO = Not started
-- N/A = Not applicable (Osaurus handles this natively)
+
+- `VERIFIED`: implemented and used with good confidence on this branch
+- `IMPLEMENTED`: code is present and wired, but broader runtime validation is still in progress
+- `PARTIAL`: important pieces exist, but the end-to-end production path is still conservative or incomplete
+- `PENDING`: not done yet
 
 ---
 
-## 1. Model Loading & Detection
+## Snapshot
 
-| Feature | VMLX Python | VMLXRuntime Swift | Status | File |
-|---------|-------------|-------------------|--------|------|
-| Auto-detect JANG models | jang_loader.py | JangLoader.swift | DONE | Quantization/JangLoader.swift |
-| Parse jang_config.json (real format) | jang_loader.py | JangLoader.loadConfig() | DONE | Quantization/JangLoader.swift |
-| All 7 JANG profiles (1L/2L/2S/3M/4K/4M/4S) | jang_loader.py | JangQuantization.profile | DONE | Quantization/JangLoader.swift |
-| v2 format (MLX-native safetensors) | jang_loader.py | ModelLoader.load() | DONE | Core/ModelLoader.swift |
-| v1 format (legacy uint8 repacking) | jang_loader.py | JangLoader.loadV1Weights() | DONE | Quantization/JangLoader.swift |
-| Sharded weight loading | jang_loader.py | ModelLoader._loadShardedWeights() | DONE | Core/ModelLoader.swift |
-| model.safetensors.index.json parsing | jang_loader.py | ModelLoader._loadShardedWeights() | DONE | Core/ModelLoader.swift |
-| HuggingFace Hub download | huggingface-cli | ModelLoader.loadFromHub() | DONE | Core/ModelLoader.swift |
-| config.json parsing (top-level + text_config) | server.py | TransformerConfig.from() | DONE | Models/TransformerModel.swift |
-| Hybrid model detection (SSM) | jang_loader.py | JangLoader.isHybridModel() | DONE | Quantization/JangLoader.swift |
-| MLA detection (DeepSeek) | jang_loader.py | JangLoader.isMLA() | DONE | Quantization/JangLoader.swift |
-| Vision model detection | server.py | JangLoader/ModelDetector | DONE | Core/ModelDetector.swift |
-| Multi-directory model scanning | -- | ModelDetector.scanAvailableModels() | DONE | Core/ModelDetector.swift (5 dirs) |
-| Model family auto-detect (30+) | model_config_registry.py | ModelConfigRegistry.detect() | DONE | Core/ModelConfig.swift |
-| Gate dequantization (Nemotron) | jang_loader.py | JangLoader.applyNemotronTransforms() | DONE | Quantization/JangLoader.swift |
-| Tokenizer loading | mlx-lm | AutoTokenizer.from() | DONE | Core/ModelLoader.swift |
-| Chat template application | utils/chat_templates.py | ModelContainer.applyChatTemplate() | DONE | Core/ModelContainer.swift |
-| gen_prompt_len computation | engine/batched.py | ModelContainer.computeGenPromptLen() | DONE | Core/ModelContainer.swift |
-
-## 2. Model Architectures (Native, Zero mlx-swift-lm Dependency)
-
-| Feature | VMLX Python | VMLXRuntime Swift | Status | File |
-|---------|-------------|-------------------|--------|------|
-| **Standard Transformer (Llama/Qwen2/3/Mistral/Gemma/Phi)** | mlx-lm | StandardTransformerModel | VERIFIED | Models/StandardModel.swift |
-| **Qwen3.5 Hybrid (GatedDeltaNet+GQA+MoE)** | mlx-lm | Qwen35TopLevelModel | VERIFIED | Models/Qwen35Model.swift |
-| **Native weight loading (sanitize+quantize)** | mlx-lm Load.swift | vmlxLoadWeights() | VERIFIED | Models/WeightLoader.swift |
-| **Per-layer mixed-precision auto-quantize** | -- | Infer bits from weight/scales shapes | VERIFIED | Models/WeightLoader.swift |
-| **Model registry (model_type dispatch)** | mlx-lm registry | VMLXModelRegistry (18+ types) | VERIFIED | Models/ModelRegistry.swift |
-| VMLXKVCache protocol + KVCacheSimple | mlx-lm KVCache | VMLXKVCache/VMLXKVCacheSimple | VERIFIED | Models/Utilities/KVCache.swift |
-| MambaCache (SSM state) | mlx-lm MambaCache | VMLXMambaCache | VERIFIED | Models/Utilities/KVCache.swift |
-| GatedDeltaNet Metal kernel | mlx-lm GatedDelta.swift | vmlxGatedDeltaUpdate() | VERIFIED | Models/Utilities/GatedDelta.swift |
-| RoPE factory (default/llama3/yarn/longrope/su) | mlx-lm RoPEUtils | vmlxInitializeRope() | DONE | Models/Utilities/RoPEUtils.swift |
-| SwitchGLU (MoE experts) | mlx-lm SwitchLayers | VMLXSwitchGLU + QuantizedSwitchLinear | DONE | Models/Utilities/SwitchLayers.swift |
-| Attention mask helpers | mlx-lm AttentionUtils | vmlxCreateAttentionMask/SSMMask | DONE | Models/Utilities/KVCache.swift |
-| Tied word embeddings | mlx-lm | sanitize removes lm_head.weight | VERIFIED | Models/StandardModel.swift |
-| Qwen2 attention bias detection | -- | Model-type-aware defaults | VERIFIED | Models/StandardModel.swift |
-| Mamba/SSM layers | utils/mamba_cache.py | MambaBlock + MambaState | DONE | Models/MambaLayer.swift |
-| Hybrid transformer | -- | HybridTransformerModel | DONE | Models/HybridTransformerModel.swift |
-| MoE routing | mlx-lm | MoELayer | DONE | Models/MoELayer.swift |
-| MLA (multi-head latent attention) | mlx-lm | MLAAttention | DONE | Models/MLAAttention.swift |
-
-## 3. Cache Stack
-
-| Feature | VMLX Python | VMLXRuntime Swift | Status | File |
-|---------|-------------|-------------------|--------|------|
-| Prefix cache (token-trie LRU) | prefix_cache.py | PrefixCache | DONE | Cache/PrefixCache.swift |
-| Paged cache (block allocation, COW) | paged_cache.py | PagedCacheManager | DONE | Cache/PagedCacheManager.swift |
-| Block hash chain (SHA-256) | paged_cache.py | CacheBlock.computeBlockHash() | DONE | Cache/CacheBlock.swift |
-| Free block queue (O(1) LRU) | paged_cache.py | FreeBlockQueue | DONE | Cache/FreeBlockQueue.swift |
-| Memory-aware cache (RAM pressure) | memory_cache.py | MemoryCache | DONE | Cache/MemoryCache.swift |
-| L2 disk cache (SQLite + safetensors) | disk_cache.py | DiskCache (metadata + tensor I/O) | DONE | Cache/DiskCache.swift |
-| TQ-native disk store (26x) | tq_disk_store.py | TQDiskStore | DONE | Cache/TQDiskStore.swift |
-| Block disk store | block_disk_store.py | BlockDiskStore | DONE | Cache/BlockDiskStore.swift |
-| SSM companion cache | mllm_batch_generator.py | SSMStateCache | DONE | Cache/SSMStateCache.swift |
-| SSM checkpointing (thinking models) | -- (NEW!) | SSMCheckpoint | DONE | Core/SSMCheckpoint.swift |
-| SSM async re-deriver | -- (NEW!) | SSMReDeriver | DONE | Cache/SSMReDeriver.swift (wired to ModelForwardPass) |
-| Cache coordinator (5-layer cascade) | scheduler.py | CacheCoordinator | DONE | Cache/CacheCoordinator.swift |
-| Cache warm endpoint | server.py | CacheCoordinator.warmCache()/warmCacheCount() | DONE | Cache/CacheCoordinator.swift (adapter exists, needs Osaurus route) |
-| Cache stats endpoint | server.py | CacheCoordinatorStats | DONE | Cache/CacheCoordinator.swift |
-| Deep copy on SSM fetch | mllm_batch_generator.py | SSMStateCache.fetch() | DONE | Cache/SSMStateCache.swift |
-| Empty SSM == MISS invariant | scheduler.py | SSMStateCache.fetch() | DONE | Cache/SSMStateCache.swift |
-| Materialization before cache store | scheduler.py | HybridCache.materialized() | DONE | Core/HybridCache.swift |
-
-## 4. TurboQuant (3-bit KV Compression)
-
-| Feature | VMLX Python | VMLXRuntime Swift | Status | File |
-|---------|-------------|-------------------|--------|------|
-| TQ config (per-layer bits) | jang_loader.py | TurboQuantConfig | DONE | Quantization/TurboQuantConfig.swift |
-| Critical layer overrides | jang_loader.py | criticalLayers/criticalKeyBits | DONE | Quantization/TurboQuantConfig.swift |
-| Hybrid skip (SSM layers) | jang_loader.py | keyBits() returns nil for SSM | DONE | Quantization/TurboQuantConfig.swift |
-| MLA dimensions | jang_loader.py | mlaKeyDim/mlaValueDim | DONE | Quantization/TurboQuantConfig.swift |
-| EncodedKeys (packed indices) | tq_disk_store.py | EncodedKeys struct | DONE | Quantization/EncodedKeys.swift |
-| EncodedValues (packed indices) | tq_disk_store.py | EncodedValues struct | DONE | Quantization/EncodedValues.swift |
-| TQ KV cache (two-phase) | turboquant cache | TurboQuantKVCache | DONE | Quantization/TurboQuantKVCache.swift |
-| Fill phase (zero overhead) | turboquant cache | appendFloat() | DONE | Quantization/TurboQuantKVCache.swift |
-| Compress phase | turboquant cache | compress() | STUB | Needs Metal codebook kernels |
-| Recompress (decode delta) | turboquant cache | recompress() | STUB | Needs Metal codebook kernels |
-| Codebook quantization (encode) | turboquant | TurboQuantEncoder.encodeKeys() | STUB | Quantization/TurboQuantEncoder.swift |
-| Codebook decode | turboquant | TurboQuantEncoder.decodeKeys() | STUB | Quantization/TurboQuantEncoder.swift |
-| TQ-native serialization | tq_disk_store.py | TQDiskStore.serialize() | DONE | Cache/TQDiskStore.swift |
-| TQ-native deserialization | tq_disk_store.py | TQDiskStore.deserialize() | DONE | Cache/TQDiskStore.swift |
-
-## 5. Continuous Batching / Scheduler
-
-| Feature | VMLX Python | VMLXRuntime Swift | Status | File |
-|---------|-------------|-------------------|--------|------|
-| FCFS scheduling | scheduler.py | Scheduler.schedule() | DONE | Scheduler/Scheduler.swift |
-| Request queue (waiting/running) | scheduler.py | RequestQueue | DONE | Scheduler/RequestQueue.swift |
-| Max sequences limit | scheduler.py | maxNumSeqs | DONE | Scheduler/SchedulerConfig.swift |
-| Max batched tokens limit | scheduler.py | maxBatchedTokens | DONE | Scheduler/SchedulerConfig.swift |
-| Batch builder (padding) | scheduler.py | BatchBuilder | DONE | Scheduler/BatchBuilder.swift |
-| Decode batch (single token) | scheduler.py | buildDecodeBatch() | DONE | Scheduler/BatchBuilder.swift |
-| Batch splitting | scheduler.py | splitBatch() | DONE | Scheduler/BatchBuilder.swift |
-| MLLM scheduler (vision) | mllm_scheduler.py | MLLMScheduler | DONE | Scheduler/MLLMScheduler.swift |
-| Cache integration in schedule | scheduler.py | Scheduler.schedule() calls CacheCoordinator | DONE | Scheduler/Scheduler.swift |
-| Config auto-detect by RAM | scheduler.py | SchedulerConfig.autoDetect() | DONE | Scheduler/SchedulerConfig.swift |
-| Hybrid model config | scheduler.py | configureForModel() | DONE | Scheduler/Scheduler.swift |
-| Stop token detection | scheduler.py | isStopToken() | DONE | Scheduler/Scheduler.swift |
-| gen_prompt stripping | mllm_scheduler.py | MLLMScheduler.stripGenPrompt() | DONE | Scheduler/MLLMScheduler.swift |
-| Prompt lookup decoding (PLD) | scheduler.py | PromptLookupDecoder | DONE | Generation/PromptLookupDecoding.swift |
-
-## 6. Generation Engine
-
-| Feature | VMLX Python | VMLXRuntime Swift | Status | File |
-|---------|-------------|-------------------|--------|------|
-| Prefill + decode loop | engine/batched.py | VMLXRuntimeActor.generateStream() | DONE | Integration/VMLXRuntimeActor.swift |
-| Sampler (temperature) | scheduler.py | Sampler.sample() | DONE | Generation/Sampler.swift |
-| Top-p (nucleus) sampling | scheduler.py | Sampler.topPFilter() | DONE | Generation/Sampler.swift |
-| Top-k filtering | scheduler.py | Sampler.topKFilter() | DONE | Generation/Sampler.swift |
-| Min-p filtering | scheduler.py | Sampler.minPFilter() | DONE | Generation/Sampler.swift |
-| Repetition penalty | scheduler.py | Sampler.applyRepetitionPenalty() | DONE | Generation/Sampler.swift |
-| Greedy (argmax) | scheduler.py | Sampler.argMax() | DONE | Generation/Sampler.swift |
-| Stop sequence detection | scheduler.py | StopSequenceDetector | DONE | Generation/StopSequenceDetector.swift |
-| Cross-boundary stop detect | scheduler.py | partial match buffering | DONE | Generation/StopSequenceDetector.swift |
-| Stream accumulator | scheduler.py | StreamAccumulator | DONE | Generation/StreamAccumulator.swift |
-| Tool call extraction | tool_parsers/ | ToolCallParser protocol | DONE | Parsers/ToolCallParser.swift |
-| Reasoning extraction | reasoning/ | ReasoningParser protocol | DONE | Parsers/ReasoningParser.swift |
-| Common prefix detection | scheduler.py | GenerationEngine.commonPrefixLength() | DONE | Generation/GenerationEngine.swift |
-| Two-phase prefill (hybrid) | mllm_batch_generator.py | documented in GenerationEngine | DONE | Generation/GenerationEngine.swift |
-| Mid-prefill SSM checkpoint | -- (NEW!) | SSMCheckpoint at stable boundary | DONE | Generation/GenerationEngine.swift |
-| Think block stop skip | scheduler.py | StopSequenceDetector (think-aware) | DONE | Generation/StopSequenceDetector.swift |
-
-## 7. Power Management
-
-| Feature | VMLX Python | VMLXRuntime Swift | Status | File |
-|---------|-------------|-------------------|--------|------|
-| Soft sleep (clear caches) | server.py /admin/soft-sleep | VMLXRuntimeActor.softSleep() | DONE | Integration/VMLXRuntimeActor.swift |
-| Deep sleep (unload model) | server.py /admin/deep-sleep | VMLXRuntimeActor.deepSleep() | DONE | Integration/VMLXRuntimeActor.swift |
-| Wake (reload model) | server.py /admin/wake | VMLXRuntimeActor.wake() | DONE | Integration/VMLXRuntimeActor.swift |
-| JIT wake (auto on request) | server.py | VMLXRuntimeActor.enableJITWake() | DONE | Integration/VMLXRuntimeActor.swift |
-| JIT compilation (Metal fusion) | cli.py --enable-jit | VMLXRuntimeActor.enableJIT() | DONE | Integration/VMLXRuntimeActor.swift |
-| Power state tracking | server.py | PowerState enum | DONE | Integration/VMLXRuntimeActor.swift |
-
-## 8. Multi-Model Gateway
-
-| Feature | VMLX Python | VMLXRuntime Swift | Status | File |
-|---------|-------------|-------------------|--------|------|
-| Multiple loaded models | server.py | loadedModels dict | DONE | Integration/VMLXRuntimeActor.swift |
-| Model aliases | --served-model-name | loadModel(from:alias:) | DONE | Integration/VMLXRuntimeActor.swift |
-| Model routing by name | server.py | resolveModel() | DONE | Integration/VMLXRuntimeActor.swift |
-| Active model tracking | server.py | activeModelName | DONE | Integration/VMLXRuntimeActor.swift |
-| Per-model unload | server.py | unloadModel(name:) | DONE | Integration/VMLXRuntimeActor.swift |
-| Model list endpoint | GET /v1/models | loadedModelNames | DONE | Integration/VMLXRuntimeActor.swift |
-
-## 9. Vision-Language
-
-| Feature | VMLX Python | VMLXRuntime Swift | Status | File |
-|---------|-------------|-------------------|--------|------|
-| Image preprocessing | mllm_scheduler.py | VisionProcessor | DONE | Vision/VisionProcessor.swift |
-| Resize (max 1024x1024) | mllm_scheduler.py | _resizeDimensions() | DONE | Vision/VisionProcessor.swift |
-| Normalize (CLIP defaults) | mllm_scheduler.py | _normalize() | DONE | Vision/VisionProcessor.swift |
-| Base64 data URL parsing | mllm_scheduler.py | processImageURL() | DONE | Vision/VisionProcessor.swift |
-| Vision embedding cache | vision_embedding_cache.py | VisionEmbeddingCache | DONE | Vision/VisionEmbeddingCache.swift |
-| VLM config (7 architectures) | mllm.py | VLMConfigRegistry | DONE | Vision/VLMModelWrapper.swift |
-| Image token strategies | mllm.py | VLMImageTokenStrategy enum | DONE | Vision/VLMModelWrapper.swift |
-| VLM model protocol | mllm.py | VLMModelProtocol | DONE | Vision/VLMModelWrapper.swift |
-| Video frame extraction | mllm_scheduler.py | VisionProcessor.extractFrames() | DONE | Vision/VisionProcessor.swift |
-| Grid THW (variable resolution) | mllm.py | ProcessedImage.gridTHW | DONE | Vision/VisionProcessor.swift |
-
-## 10. Tool Call Parsers
-
-| Feature | VMLX Python | VMLXRuntime Swift | Status | File |
-|---------|-------------|-------------------|--------|------|
-| Parser protocol | abstract_tool_parser.py | ToolCallParser protocol | DONE | Parsers/ToolCallParser.swift |
-| Auto-detect from model | auto_tool_parser.py | autoDetectToolParser() | DONE | Parsers/ToolCallParser.swift |
-| Generic JSON fallback | -- | GenericToolParser | DONE | Parsers/ToolParsers/GenericToolParser.swift |
-| Qwen parser | qwen_tool_parser.py | QwenToolParser | DONE | Parsers/ToolParsers/QwenToolParser.swift |
-| Llama parser | llama_tool_parser.py | LlamaToolParser | DONE | Parsers/ToolParsers/LlamaToolParser.swift |
-| Mistral parser | mistral_tool_parser.py | MistralToolParser | DONE | Parsers/ToolParsers/MistralToolParser.swift |
-| DeepSeek parser | deepseek_tool_parser.py | DeepSeekToolParser | DONE | Parsers/ToolParsers/DeepSeekToolParser.swift |
-| Hermes parser | hermes_tool_parser.py | HermesToolParser | DONE | Parsers/ToolParsers/HermesToolParser.swift |
-| Functionary parser | functionary_tool_parser.py | FunctionaryToolParser | DONE | Parsers/ToolParsers/FunctionaryToolParser.swift |
-| Granite parser | granite_tool_parser.py | GraniteToolParser | DONE | Parsers/ToolParsers/GraniteToolParser.swift |
-| GLM parser | glm_tool_parser.py | GLMToolParser | DONE | Parsers/ToolParsers/GLMToolParser.swift |
-| MiniMax parser | minimax_tool_parser.py | MiniMaxToolParser | DONE | Parsers/ToolParsers/MiniMaxToolParser.swift |
-| Nemotron parser | nemotron_tool_parser.py | NemotronToolParser | DONE | Parsers/ToolParsers/NemotronToolParser.swift |
-| xLAM parser | xlam_tool_parser.py | XLAMToolParser | DONE | Parsers/ToolParsers/XLAMToolParser.swift |
-| Moonshot parser | moonshot_tool_parser.py | MoonshotToolParser | DONE | Parsers/ToolParsers/MoonshotToolParser.swift |
-| StepFun parser | stepfun_tool_parser.py | StepFunToolParser | DONE | Parsers/ToolParsers/StepFunToolParser.swift |
-
-## 11. Reasoning Parsers
-
-| Feature | VMLX Python | VMLXRuntime Swift | Status | File |
-|---------|-------------|-------------------|--------|------|
-| Parser protocol | base.py | ReasoningParser protocol | DONE | Parsers/ReasoningParser.swift |
-| Auto-detect from model | base.py | autoDetectReasoningParser() | DONE | Parsers/ReasoningParser.swift |
-| Think tag (Qwen3/DeepSeek) | qwen3_parser.py | ThinkTagReasoningParser | DONE | Parsers/ReasoningParsers/ThinkTagReasoningParser.swift |
-| GPT-OSS parser | gptoss_parser.py | GPTOSSReasoningParser | DONE | Parsers/ReasoningParsers/GPTOSSReasoningParser.swift |
-| Mistral parser | mistral_parser.py | MistralReasoningParser | DONE | Parsers/ReasoningParsers/MistralReasoningParser.swift |
-
-## 12. API Compatibility (via Osaurus Server)
-
-| Feature | VMLX Python | VMLXRuntime Swift | Status | Notes |
-|---------|-------------|-------------------|--------|-------|
-| OpenAI Chat Completions | POST /v1/chat/completions | Osaurus HTTPHandler | N/A | Osaurus already has this |
-| OpenAI Completions | POST /v1/completions | CompletionsAdapter | DONE | API/CompletionsAdapter.swift (adapter, needs route in Osaurus) |
-| Anthropic Messages | POST /v1/messages | AnthropicAdapter | DONE | API/AnthropicAdapter.swift (adapter, needs route in Osaurus) |
-| Ollama Chat | POST /api/chat | OllamaAdapter | DONE | API/OllamaAdapter.swift (adapter, needs routes in Osaurus) |
-| Ollama Generate | POST /api/generate | OllamaAdapter | DONE | API/OllamaAdapter.swift (adapter, needs routes in Osaurus) |
-| Health endpoint | GET /health | Osaurus has this | N/A | |
-| Model list | GET /v1/models | Osaurus has this | N/A | |
-| Image generation | POST /v1/images/generations | -- | TODO | |
-| Audio TTS | POST /v1/audio/speech | -- | TODO | |
-| Audio STT | POST /v1/audio/transcriptions | -- | TODO | |
-| Embeddings | POST /v1/embeddings | EmbeddingsService | DONE | API/EmbeddingsService.swift (adapter, needs route in Osaurus) |
-| Reranking | POST /v1/rerank | -- | TODO | |
-| Cache stats | GET /v1/cache/stats | CacheCoordinatorStats | DONE (needs route) | |
-| Cache warm | POST /v1/cache/warm | CacheCoordinator.warmCache() | DONE (needs route) | API adapter exists, needs Osaurus route |
-| Admin sleep/wake | POST /admin/* | PowerState management | DONE (needs routes) | |
-| Auth (API key) | Bearer token | Osaurus has this | N/A | |
-| Rate limiting | per-IP sliding window | Osaurus has this | N/A | |
-| CORS | configurable origins | Osaurus has this | N/A | |
-| SSE streaming | server-sent events | Osaurus has this | N/A | |
-
-## 13. Osaurus Integration
-
-| Feature | What | Status | File |
-|---------|------|--------|------|
-| VMLXServiceBridge | Adapts VMLXService to Osaurus ToolCapableService | DONE | OsaurusCore/.../VMLXServiceBridge.swift |
-| ChatEngine wiring | VMLXServiceBridge in default services array | DONE | OsaurusCore/.../ChatEngine.swift |
-| Model discovery merge | VMLX + MLX model lists combined | DONE | OsaurusCore/.../ChatEngine.swift |
-| Type mapping (ChatMessage) | Osaurus <-> VMLXRuntime conversion | DONE | OsaurusCore/.../VMLXServiceBridge.swift |
-| Type mapping (Tool) | Tool definition conversion | DONE | OsaurusCore/.../VMLXServiceBridge.swift |
-| Type mapping (ToolChoice) | ToolChoiceOption -> String | DONE | OsaurusCore/.../VMLXServiceBridge.swift |
-| Sentinel encoding | tool/args via Unicode sentinels | DONE | Integration/VMLXService.swift |
-| Sandbox inference | Via HostAPIBridgeServer -> ChatEngine | N/A | Automatic through ChatEngine |
-| Plugin inference | Via PluginHostAPI -> ChatEngine | N/A | Automatic through ChatEngine |
-| Work mode inference | Via WorkExecutionEngine -> ChatEngine | N/A | Automatic through ChatEngine |
-| Memory inference | Via ModelServiceRouter | N/A | Automatic through routing |
-| HTTP API inference | Via HTTPHandler -> ChatEngine | N/A | Automatic through ChatEngine |
-| OsaurusCore build | 3290/3290 files compile | DONE | Verified |
+| Area | Python VMLX | Swift VMLXRuntime | Status | Notes |
+|------|-------------|-------------------|--------|-------|
+| Model loading and detection | Mature | Native loader + detector + JANG support | VERIFIED | Real Osaurus integration uses this path |
+| Standard transformers | Mature | `StandardTransformerModel` | VERIFIED | Llama/Qwen paths are the most proven here |
+| Qwen 3.5 hybrid SSM | Mature | `Qwen35Model` | VERIFIED | Hybrid cache split/restore path is active |
+| NemotronH | Native in Python | `NemotronHModel` | IMPLEMENTED | Recent fixes corrected SSM scan, MoE routing, latent path, and projection dimensions |
+| Mistral Small 4 | Native in Python | `Mistral4Model` | IMPLEMENTED | Recent fixes corrected config decoding and inference alignment |
+| Cache coordinator | Mature | `CacheCoordinator` | VERIFIED | Paged + memory + prefix + disk + SSM companion |
+| Hybrid cache safety | Mature | explicit `HybridCache` / `SSMStateLayer` rules | VERIFIED | SSM remains non-truncatable |
+| `gen_prompt_len`-aware cache keys | Present | present | VERIFIED | Actor strips generation suffix before cache lookup/store |
+| SSM re-derive actor | N/A / different handling | `SSMReDeriver` | PARTIAL | Implemented, but not the main recovery branch yet |
+| TurboQuant encode/decode | Mature | `TurboQuantEncoder` + helpers | IMPLEMENTED | Swift encode/decode exists now |
+| TurboQuant runtime usage | Mature | post-prefill encode/decode-once path | PARTIAL | Used for memory reduction, not yet the full cross-turn story |
+| Continuous batching | Mature | scheduler primitives exist | PARTIAL | Actor still runs one active generation at a time |
+| Vision preprocessing | Mature | `VisionProcessor` + cache | IMPLEMENTED | Encoder inference still pending |
+| Osaurus app integration | N/A | bridge + routing + settings + discovery | VERIFIED | VMLX is wired into the app, not a side experiment |
 
 ---
 
-## Summary
+## What Changed Since The Old Doc
 
-| Category | Total Features | DONE | STUB | TODO |
-|----------|---------------|------|------|------|
-| Model Loading | 17 | 17 | 0 | 0 |
-| Transformer | 17 | 17 | 0 | 0 |
-| Cache Stack | 17 | 17 | 0 | 0 |
-| TurboQuant | 14 | 9 | 5 | 0 |
-| Scheduler | 14 | 14 | 0 | 0 |
-| Generation | 16 | 16 | 0 | 0 |
-| Power Mgmt | 6 | 6 | 0 | 0 |
-| Multi-Model | 6 | 6 | 0 | 0 |
-| Vision | 10 | 10 | 0 | 0 |
-| Tool Parsers | 16 | 16 | 0 | 0 |
-| Reasoning Parsers | 5 | 5 | 0 | 0 |
-| API Compat | 19 | 8 | 0 | 4 (7 N/A) |
-| Integration | 12 | 12 | 0 | 0 |
-| **TOTAL** | **169** | **153 (91%)** | **5 (3%)** | **4 (2%)** |
+The earlier version of this document was stale in a few important ways:
 
-(7 features marked N/A = handled by Osaurus natively)
+- It still described `TurboQuantEncoder` as a stub. It is no longer a stub.
+- It described `SSMReDeriver` as fully wired into the main recovery path. It is not.
+- It described continuous batching as if the runtime hot path were already using it. It is not.
+- It did not reflect the native NemotronH and Mistral4 work that has since landed.
+
+---
+
+## Recent Branch Fix Log
+
+These commits explain most of the current runtime shape:
+
+| Commit | Meaning |
+|--------|---------|
+| `582a6e8b` | verified audit fixes after recent hybrid-model bug hunt |
+| `5a7e1315` | corrected NemotronH and Mistral4 inference against Python reference |
+| `44506ac0` | moved hybrid models to single-phase prefill plus snapshot capture |
+| `b479140a` | fixed SSD state projection with efficient 4D matmul |
+| `b34f28ea` | replaced sequential Mamba2 prefill with SSD parallel scan |
+| `466dcc9a` | landed native NemotronH model |
+| `8a0a7d05` | landed TurboQuant decode-once lifecycle |
+
+---
+
+## Current Gaps Relative To Python
+
+| Gap | Status |
+|-----|--------|
+| Full multi-request continuous batching | PENDING |
+| `SSMReDeriver` used as the main hybrid partial-hit recovery path | PENDING |
+| Broader real-model validation for NemotronH | PENDING |
+| Broader real-model validation for Mistral4 | PENDING |
+| Full vision encoder inference | PENDING |
+| MiniMax tokenizer compatibility | PENDING |
+
+---
+
+## Source Files To Trust
+
+- `Packages/VMLXRuntime/Sources/VMLXRuntime/Integration/VMLXRuntimeActor.swift`
+- `Packages/VMLXRuntime/Sources/VMLXRuntime/Cache/CacheCoordinator.swift`
+- `Packages/VMLXRuntime/Sources/VMLXRuntime/Cache/SSMReDeriver.swift`
+- `Packages/VMLXRuntime/Sources/VMLXRuntime/Quantization/TurboQuantEncoder.swift`
+- `Packages/VMLXRuntime/Sources/VMLXRuntime/Models/NemotronHModel.swift`
+- `Packages/VMLXRuntime/Sources/VMLXRuntime/Models/Mistral4Model.swift`
+- `Packages/OsaurusCore/Services/Inference/VMLXServiceBridge.swift`

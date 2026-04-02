@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import MLX
 @testable import VMLXRuntime
 
 @Suite("DiskCache")
@@ -9,6 +10,17 @@ struct DiskCacheTests {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
+    }
+
+    private func makeHybridCache(tokenCount: Int) -> HybridCache {
+        let layers: [LayerCacheEntry] = (0..<2).map { _ in
+            .attention(KVCacheLayer(
+                keys: MLXArray.zeros([1, 2, tokenCount, 8]),
+                values: MLXArray.zeros([1, 2, tokenCount, 8]),
+                offset: tokenCount
+            ))
+        }
+        return HybridCache(layers: layers)
     }
 
     @Test("Token hashing is deterministic")
@@ -104,5 +116,26 @@ struct DiskCacheTests {
         _ = dc.store(tokens: [10, 20], numTokens: 2, metadata: "__tq_native__=true")
         let result = dc.fetch(tokens: [10, 20])
         #expect(result?.metadata == "__tq_native__=true")
+    }
+
+    @Test("clear prevents stale background writes from recreating files")
+    func clearPreventsStaleWriteCommit() async {
+        let dir = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let tokens = [11, 22, 33]
+        let hash = DiskCache.hashTokens(tokens)
+        let fileURL = dir.appendingPathComponent("\(hash).safetensors")
+
+        let dc = DiskCache(cacheDir: dir)
+        dc.testWriteDelayNanoseconds = 50_000_000
+        dc.storeCache(tokens: tokens, cache: makeHybridCache(tokenCount: tokens.count))
+        #expect(dc.pendingWriteCount == 1)
+
+        dc.clear()
+        await dc.waitForPendingWrites()
+
+        #expect(dc.entryCount == 0)
+        #expect(!FileManager.default.fileExists(atPath: fileURL.path))
     }
 }

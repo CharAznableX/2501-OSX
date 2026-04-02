@@ -567,4 +567,24 @@ struct KVCacheStoreTests {
             await task.value  // drain to avoid test leaks
         }
     }
+
+    @Test func invalidatePreventsStaleBackgroundWriteCommit() async {
+        var store = KVCacheStore()
+        let sessionId = "stale-\(UUID().uuidString)"
+        let fileURL = store.testSSDPath(sessionId: sessionId)
+
+        store.putCache(sessionId: sessionId, cache: makeCache(), tokens: nil, modelName: "m")
+        store.testWriteDelayNanoseconds = 50_000_000
+        store.saveToDisk(sessionId: sessionId, cache: makeCache(), tokens: nil, modelName: "m")
+        #expect(store.pendingSSDWriteCount == 1)
+
+        store.invalidate(sessionId: sessionId)
+
+        if let task = store.lastSaveTask {
+            await task.value
+        }
+
+        #expect(store.pendingSSDWriteCount == 0)
+        #expect(!FileManager.default.fileExists(atPath: fileURL.path))
+    }
 }

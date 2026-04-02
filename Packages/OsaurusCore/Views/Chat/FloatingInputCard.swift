@@ -134,6 +134,7 @@ struct FloatingInputCard: View {
     @State private var clipboardPulseOpacity: Double = 0.0
     // Cache picker items to prevent popover refresh during streaming
     @State private var cachedPickerItems: [ModelPickerItem] = []
+    @State private var unloadTarget: LoadedRuntimeTarget? = nil
     // MARK: - Voice Input State
     @ObservedObject private var speechService = SpeechService.shared
     @ObservedObject private var speechModelManager = SpeechModelManager.shared
@@ -327,6 +328,10 @@ struct FloatingInputCard: View {
                         showVoiceOverlay = true
                     }
                 }
+
+                Task {
+                    await refreshUnloadTarget()
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .startVoiceInputInChat)) { notification in
                 // Start voice input when triggered by VAD - enable continuous mode
@@ -365,6 +370,10 @@ struct FloatingInputCard: View {
                     isFocused = true
                 }
 
+                Task {
+                    await refreshUnloadTarget()
+                }
+
                 // When AI finishes responding and we're in continuous voice mode, restart voice input
                 if wasStreaming && !nowStreaming && isContinuousVoiceMode {
                     print("[FloatingInputCard] AI response finished in continuous mode - restarting voice")
@@ -379,6 +388,15 @@ struct FloatingInputCard: View {
                         }
                     }
                 }
+            }
+            .onChange(of: activeModelOptions) { _, newOptions in
+                guard let selectedModel else { return }
+                let normalized = ModelProfileRegistry.normalizedOptions(newOptions)
+                if normalized != newOptions {
+                    activeModelOptions = normalized
+                    return
+                }
+                ModelOptionsStore.shared.saveOptions(normalized, for: selectedModel)
             }
             .onDisappear {
                 // Stop any active voice recording, but check if we should keep continuous mode
@@ -1040,9 +1058,77 @@ extension FloatingInputCard {
 
     // MARK: - Model Selector
 
+    private enum LoadedRuntimeTarget {
+        case vmlx(String)
+        case mlx(String)
+    }
+
     private var selectedPickerItem: ModelPickerItem? {
         guard let id = selectedModel else { return nil }
         return pickerItems.first { $0.id == id }
+    }
+
+    private var selectedModelCandidates: [String] {
+        guard let selectedModel else { return [] }
+
+        var candidates = [selectedModel]
+        if let selectedPickerItem {
+            candidates.append(selectedPickerItem.displayName)
+            candidates.append(selectedPickerItem.id)
+        }
+        if let installed = ModelManager.findInstalledModel(named: selectedModel) {
+            candidates.append(installed.name)
+            candidates.append(installed.id)
+            if let tail = installed.id.split(separator: "/").last {
+                candidates.append(String(tail))
+            }
+        }
+
+        return candidates
+    }
+
+    private func normalizedModelName(_ raw: String?) -> String {
+        raw?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "_", with: "-")
+            .replacingOccurrences(of: " ", with: "-")
+            .replacingOccurrences(of: "/", with: "-")
+        ?? ""
+    }
+
+    private func modelMatchesSelection(_ runtimeName: String) -> Bool {
+        let normalizedRuntime = normalizedModelName(runtimeName)
+        guard !normalizedRuntime.isEmpty else { return false }
+
+        return selectedModelCandidates.contains { candidate in
+            let normalizedCandidate = normalizedModelName(candidate)
+            guard !normalizedCandidate.isEmpty else { return false }
+            return normalizedCandidate == normalizedRuntime
+                || normalizedCandidate.hasSuffix("-" + normalizedRuntime)
+                || normalizedRuntime.hasSuffix("-" + normalizedCandidate)
+        }
+    }
+
+    private func refreshUnloadTarget() async {
+        guard selectedModel != nil else {
+            await MainActor.run { unloadTarget = nil }
+            return
+        }
+
+        if let loadedVMLX = await VMLXServiceBridge.shared.loadedModelName,
+           modelMatchesSelection(loadedVMLX) {
+            await MainActor.run { unloadTarget = .vmlx(loadedVMLX) }
+            return
+        }
+
+        let summaries = await MLXService.shared.cachedRuntimeSummaries()
+        if let currentMLX = summaries.first(where: \.isCurrent), modelMatchesSelection(currentMLX.name) {
+            await MainActor.run { unloadTarget = .mlx(currentMLX.name) }
+            return
+        }
+
+        await MainActor.run { unloadTarget = nil }
     }
 
     private var modelSelectorChip: some View {
@@ -1094,14 +1180,20 @@ extension FloatingInputCard {
             }
         }
         .contextMenu {
-            Button(role: .destructive) {
-                Task {
-                    // Unload from both runtimes
-                    await VMLXServiceBridge.forceUnload()
-                    await ModelRuntime.shared.clearAll()
+            if let unloadTarget {
+                Button(role: .destructive) {
+                    Task {
+                        switch unloadTarget {
+                        case .vmlx:
+                            await VMLXServiceBridge.forceUnload()
+                        case .mlx(let name):
+                            await MLXService.shared.unloadRuntimeModel(named: name)
+                        }
+                        await refreshUnloadTarget()
+                    }
+                } label: {
+                    Label("Unload Model", systemImage: "eject")
                 }
-            } label: {
-                Label("Unload Model", systemImage: "eject")
             }
         }
         .popover(isPresented: $showModelPicker, arrowEdge: .top) {
@@ -1117,6 +1209,9 @@ extension FloatingInputCard {
                 // Snapshot options when popover opens to prevent refresh during streaming
                 cachedPickerItems = pickerItems
             }
+        }
+        .task(id: selectedModel) {
+            await refreshUnloadTarget()
         }
     }
 

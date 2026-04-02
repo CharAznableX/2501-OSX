@@ -103,7 +103,7 @@ public actor SSMReDeriver {
 
         // Check if already in progress (deduplicate)
         if let existingTask = activeTasks[tokenHash] {
-            if forceSync || shouldSyncReDerive(tokenCount: tokens.count) {
+            if forceSync || shouldSyncReDerive(tokenCount: stableBoundary) {
                 deduplicatedRequests += 1
                 return try await existingTask.value
             }
@@ -148,7 +148,7 @@ public actor SSMReDeriver {
 
         activeTasks[tokenHash] = task
 
-        if forceSync || shouldSyncReDerive(tokenCount: tokens.count) {
+        if forceSync || shouldSyncReDerive(tokenCount: stableBoundary) {
             syncReDerives += 1
             let checkpoint = try await task.value
             activeTasks.removeValue(forKey: tokenHash)

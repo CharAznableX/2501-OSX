@@ -23,6 +23,61 @@ private final class CacheBox: @unchecked Sendable {
     init(_ cache: [any KVCache]) { self.cache = cache }
 }
 
+private final class PendingSSDWrites: @unchecked Sendable {
+    private let lock = OSAllocatedUnfairLock()
+    private var versions: [String: UInt64] = [:]
+    private var tasks: [String: Task<Void, Never>] = [:]
+
+    #if DEBUG
+        var testWriteDelayNanoseconds: UInt64 = 0
+    #endif
+
+    func nextVersion(for sessionId: String) -> UInt64 {
+        lock.withLock {
+            let next = (versions[sessionId] ?? 0) + 1
+            versions[sessionId] = next
+            return next
+        }
+    }
+
+    func register(task: Task<Void, Never>, for sessionId: String) {
+        let previous = lock.withLock { tasks.updateValue(task, forKey: sessionId) }
+        previous?.cancel()
+    }
+
+    func invalidate(_ sessionIds: [String]) -> [Task<Void, Never>] {
+        lock.withLock {
+            var cancelled: [Task<Void, Never>] = []
+            cancelled.reserveCapacity(sessionIds.count)
+            for sessionId in sessionIds {
+                versions[sessionId, default: 0] += 1
+                if let task = tasks.removeValue(forKey: sessionId) {
+                    cancelled.append(task)
+                }
+            }
+            return cancelled
+        }
+    }
+
+    func isCurrent(sessionId: String, version: UInt64) -> Bool {
+        lock.withLock { versions[sessionId] == version }
+    }
+
+    func finish(sessionId: String, version: UInt64) {
+        lock.withLock {
+            if versions[sessionId] == version {
+                tasks.removeValue(forKey: sessionId)
+            }
+        }
+    }
+
+    #if DEBUG
+        var pendingCount: Int {
+            lock.withLock { tasks.count }
+        }
+    #endif
+}
+
 struct KVCacheStore {
 
     // MARK: - Entry
@@ -73,6 +128,22 @@ struct KVCacheStore {
 
     /// For tracking background disk writes in tests
     var lastSaveTask: Task<Void, Never>?
+    private var pendingSSDWrites = PendingSSDWrites()
+
+    #if DEBUG
+        var testWriteDelayNanoseconds: UInt64 {
+            get { pendingSSDWrites.testWriteDelayNanoseconds }
+            set { pendingSSDWrites.testWriteDelayNanoseconds = newValue }
+        }
+
+        func testSSDPath(sessionId: String) -> URL {
+            ssdCacheDir.appendingPathComponent("\(sessionId).safetensors")
+        }
+
+        var pendingSSDWriteCount: Int {
+            pendingSSDWrites.pendingCount
+        }
+    #endif
 
     // MARK: - Budget
 
@@ -198,27 +269,54 @@ struct KVCacheStore {
     /// Also calls `pruneSSDIfNeeded()` synchronously after scheduling the write.
     mutating func saveToDisk(sessionId: String, cache: [any KVCache], tokens: [Int]?, modelName: String) {
         let url = ssdCacheDir.appendingPathComponent("\(sessionId).safetensors")
+        let tempURL = ssdCacheDir.appendingPathComponent("\(sessionId).\(UUID().uuidString).tmp")
         let bytes = Self.cacheBytes(cache)
         let start = Date()
 
         let box = CacheBox(cache)
+        let version = pendingSSDWrites.nextVersion(for: sessionId)
 
         // Optimistically set the SSD path so we don't try to save it again.
         // If the write fails, we log the error; the entry retains a stale ssdPath
         // until it is re-put or evicted, at which point a fresh write will be attempted.
         self.entries[sessionId]?.ssdPath = url
 
-        let task = Task.detached(priority: .background) {
+        let task = Task.detached(priority: .background) { [tracker = pendingSSDWrites] in
             let spID = kvSignposter.makeSignpostID()
             let spState = kvSignposter.beginInterval("ssdSave", id: spID, "\(bytes / 1024, privacy: .public) KB")
             do {
+                #if DEBUG
+                    if tracker.testWriteDelayNanoseconds > 0 {
+                        try? await Task.sleep(nanoseconds: tracker.testWriteDelayNanoseconds)
+                    }
+                #endif
+
+                if Task.isCancelled { return }
+
                 var metadata = ["model": modelName]
                 if let tokens = tokens, let data = try? JSONEncoder().encode(tokens),
                     let str = String(data: data, encoding: .utf8)
                 {
                     metadata["tokens"] = str
                 }
-                try savePromptCache(url: url, cache: box.cache, metadata: metadata)
+                try savePromptCache(url: tempURL, cache: box.cache, metadata: metadata)
+
+                if Task.isCancelled {
+                    try? FileManager.default.removeItem(at: tempURL)
+                    return
+                }
+
+                if tracker.isCurrent(sessionId: sessionId, version: version) {
+                    try? FileManager.default.removeItem(at: url)
+                    try FileManager.default.moveItem(at: tempURL, to: url)
+
+                    if !tracker.isCurrent(sessionId: sessionId, version: version) {
+                        try? FileManager.default.removeItem(at: url)
+                    }
+                } else {
+                    try? FileManager.default.removeItem(at: tempURL)
+                }
+
                 let durationMs = Date().timeIntervalSince(start) * 1000
                 kvSignposter.endInterval("ssdSave", spState, "\(Int(durationMs), privacy: .public)ms ok")
                 kvLog.info(
@@ -228,6 +326,7 @@ struct KVCacheStore {
                     "[KVCacheStore] [BENCHMARK] Saved session \(sessionId.prefix(8)) to SSD (\(bytes / 1024)KB) asynchronously in \(String(format: "%.1f", durationMs))ms"
                 )
             } catch {
+                try? FileManager.default.removeItem(at: tempURL)
                 let durationMs = Date().timeIntervalSince(start) * 1000
                 kvSignposter.endInterval("ssdSave", spState, "\(Int(durationMs), privacy: .public)ms error")
                 kvLog.error(
@@ -237,7 +336,9 @@ struct KVCacheStore {
                     "[KVCacheStore] [BENCHMARK] SSD save failed for \(sessionId.prefix(8)) after \(String(format: "%.1f", durationMs))ms: \(error)"
                 )
             }
+            tracker.finish(sessionId: sessionId, version: version)
         }
+        pendingSSDWrites.register(task: task, for: sessionId)
         self.lastSaveTask = task
         pruneSSDIfNeeded()
     }
@@ -246,12 +347,14 @@ struct KVCacheStore {
 
     /// Removes a session's cache entirely (RAM + SSD).
     mutating func invalidate(sessionId: String) {
+        pendingSSDWrites.invalidate([sessionId]).forEach { $0.cancel() }
         evictEntry(sessionId: sessionId, saveSSD: false)
     }
 
     /// Removes all caches for a given model (e.g., on model unload).
     mutating func invalidateModel(_ modelName: String) {
         let toRemove = entries.filter { $0.value.modelName == modelName }.map(\.key)
+        pendingSSDWrites.invalidate(toRemove).forEach { $0.cancel() }
         for sid in toRemove {
             evictEntry(sessionId: sid, saveSSD: false)
         }
@@ -259,7 +362,9 @@ struct KVCacheStore {
 
     /// Removes all caches.
     mutating func clearAll() {
-        for sid in Array(entries.keys) {
+        let sessionIds = Array(entries.keys)
+        pendingSSDWrites.invalidate(sessionIds).forEach { $0.cancel() }
+        for sid in sessionIds {
             evictEntry(sessionId: sid, saveSSD: false)
         }
     }

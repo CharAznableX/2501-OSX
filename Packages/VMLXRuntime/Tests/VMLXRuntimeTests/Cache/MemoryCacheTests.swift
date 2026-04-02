@@ -79,4 +79,27 @@ struct MemoryCacheTests {
         // The point is it shouldn't crash
         _ = stored
     }
+
+    @Test("clear resets bookkeeping and stats")
+    func clearResetsBookkeeping() {
+        let mc = MemoryCache(config: MemoryCacheConfig(maxMemoryMB: 1024, maxEntries: 2))
+        _ = mc.store(tokens: [1, 2, 3], cache: makeCache(tokenCount: 16))
+        _ = mc.fetch(tokens: [1, 2, 3])
+        _ = mc.fetch(tokens: [9, 9, 9])
+
+        #expect(mc.count == 1)
+        #expect(mc.memoryUsed > 0)
+        #expect(mc.hits == 1)
+        #expect(mc.misses == 1)
+
+        mc.clear()
+
+        #expect(mc.count == 0)
+        #expect(mc.memoryUsed == 0)
+        #expect(mc.hits == 0)
+        #expect(mc.misses == 0)
+        #expect(mc.evictions == 0)
+        #expect(mc.debugEffectiveMemoryLimit == mc.debugBaseMemoryLimit)
+        #expect(mc.debugLastPressureCheck == 0)
+    }
 }

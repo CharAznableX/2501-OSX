@@ -72,10 +72,15 @@ struct ModelCacheInspectorView: View {
                     ForEach(items, id: \.name) { item in
                         ModelCacheRow(
                             item: item,
+                            canUnload: item.isCurrent,
                             onUnload: {
                                 Task {
-                                    await MLXService.shared.unloadRuntimeModel(named: item.name)
-                                    await VMLXServiceBridge.forceUnload()
+                                    let vmlxLoadedName = await VMLXServiceBridge.shared.loadedModelName
+                                    if vmlxLoadedName?.lowercased() == item.name.lowercased() {
+                                        await VMLXServiceBridge.forceUnload()
+                                    } else {
+                                        await MLXService.shared.unloadRuntimeModel(named: item.name)
+                                    }
                                     await refresh()
                                 }
                             }
@@ -131,8 +136,14 @@ struct ModelCacheInspectorView: View {
         // Include VMLX-loaded model if any
         let vmlxLoaded = await VMLXServiceBridge.shared.isModelLoaded
         if vmlxLoaded, let name = await VMLXServiceBridge.shared.loadedModelName {
-            // Add VMLX model to the list (avoid duplicates)
-            if !allItems.contains(where: { $0.name == name }) {
+            if let existingIndex = allItems.firstIndex(where: { $0.name == name }) {
+                let existing = allItems[existingIndex]
+                allItems[existingIndex] = ModelRuntime.ModelCacheSummary(
+                    name: existing.name,
+                    bytes: existing.bytes,
+                    isCurrent: true
+                )
+            } else {
                 allItems.append(ModelRuntime.ModelCacheSummary(name: name, bytes: 0, isCurrent: true))
             }
         }
@@ -207,6 +218,7 @@ private struct RefreshButton: View {
 private struct ModelCacheRow: View {
     @Environment(\.theme) private var theme
     let item: ModelRuntime.ModelCacheSummary
+    let canUnload: Bool
     let onUnload: () -> Void
 
     @State private var isHovered = false
@@ -250,37 +262,48 @@ private struct ModelCacheRow: View {
 
             Spacer()
 
-            // Unload button
-            Button(action: onUnload) {
-                Text("Unload")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(isUnloadHovered ? theme.errorColor : theme.secondaryText)
-                    .padding(.horizontal, 10)
+            if canUnload {
+                Button(action: onUnload) {
+                    Text("Unload")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(isUnloadHovered ? theme.errorColor : theme.secondaryText)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(theme.buttonBackground.opacity(isUnloadHovered ? 0.95 : 0.7))
+
+                                if isUnloadHovered {
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(theme.errorColor.opacity(0.08))
+                                }
+                            }
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(
+                                    isUnloadHovered ? theme.errorColor.opacity(0.3) : theme.buttonBorder.opacity(0.5),
+                                    lineWidth: 1
+                                )
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .onHover { hovering in
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        isUnloadHovered = hovering
+                    }
+                }
+            } else {
+                Text("Cached")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(theme.tertiaryText)
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 5)
                     .background(
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(theme.buttonBackground.opacity(isUnloadHovered ? 0.95 : 0.7))
-
-                            if isUnloadHovered {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(theme.errorColor.opacity(0.08))
-                            }
-                        }
+                        Capsule()
+                            .fill(theme.buttonBackground.opacity(0.55))
                     )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .strokeBorder(
-                                isUnloadHovered ? theme.errorColor.opacity(0.3) : theme.buttonBorder.opacity(0.5),
-                                lineWidth: 1
-                            )
-                    )
-            }
-            .buttonStyle(PlainButtonStyle())
-            .onHover { hovering in
-                withAnimation(.easeOut(duration: 0.15)) {
-                    isUnloadHovered = hovering
-                }
             }
         }
         .padding(10)

@@ -150,20 +150,23 @@ Canonical reference for all Osaurus features, their status, and documentation.
 
 **Components:**
 
-- `Services/Inference/MLXService.swift` — MLX model loading, warm-up orchestration
-- `Services/ModelRuntime/` — Generation engine, streaming, KV cache management, tool detection
+- `Services/Inference/VMLXServiceBridge.swift` — primary local-runtime bridge into Osaurus service routing
+- `Packages/VMLXRuntime/...` — native Swift runtime, model loading, generation, cache stack
+- `Services/Inference/MLXService.swift` — legacy fallback path for models still using MLXService
+- `Services/ModelRuntime/` — legacy MLX runtime, streaming, KV cache management, tool detection
 - `Services/ModelRuntime/KVCacheStore.swift` — Tiered KV cache (hot RAM + cold SSD) with LRU eviction
 - `Services/Inference/ModelService.swift` — Model lifecycle management
 
 **Runtime behavior:**
 
-- **Window-scoped warm-up** — Models are loaded and prefix-cached when a chat window opens, not at app launch. Each window warms its own model independently, using the window's agent context (system prompt, memory, tools) for the prefix cache.
-- **Smart unloading** — When a user switches to a remote model or closes a window, a GC pass checks all open windows and unloads any local model no longer referenced. The warm-up indicator (yellow dot) signals when a model is loading.
-- **GPU memory pinning** — Model weights are pinned in GPU memory via `WiredMemoryTicket` on load to prevent paging during generation, with a budget policy that includes a workspace margin for activations.
-- **Auto-tuned generation** — Prefill step size, max KV cache size, and KV cache quantization bits are automatically selected based on system RAM and model size when not explicitly configured in Settings. User overrides always take precedence.
-- **Tiered KV cache** — Active session caches live in RAM (hot tier). When the memory budget is exceeded, least-recently-used sessions are evicted to SSD as `.safetensors` files and restored on demand. Prefix caches are content-hashed so changes to the system prompt or tools automatically invalidate them.
-- **Error recovery** — If a stale KV cache causes a shape mismatch during generation, the cache is automatically invalidated and the request is retried with a fresh prefill, avoiding a crash.
-- **Model eviction policy** — Configurable in Settings > Local Inference > Model Management. "Strict (One Model)" keeps only one model loaded (default). "Flexible (Multi Model)" allows concurrent models for high-RAM systems.
+- **Runtime routing** — Osaurus now prefers `VMLXServiceBridge` for local models and falls back to `MLXService` only when needed.
+- **On-demand model load** — Models load when first requested, not at app launch.
+- **Smart unloading** — When a user switches to a remote model or closes a window, Osaurus can unload local models no longer referenced by any active window.
+- **Auto-tuned generation** — Prefill step size, max context length, and KV-related settings default from system RAM unless explicitly overridden in Settings.
+- **Hybrid-aware cache stack** — The VMLX path uses paged KV reuse, memory cache, prefix cache, disk cache, and SSM companion state with hybrid-safe rules.
+- **Conservative hybrid recovery** — If a hybrid cache hit restores attention KV but not matching SSM state, the current runtime falls back to full prefill for correctness.
+- **Error recovery** — If cached state is stale or shape-mismatched, the request falls back to a fresh prefill instead of crashing.
+- **Model eviction policy** — Settings still control how aggressively local models are unloaded, but exact behavior differs between the VMLX and legacy MLX paths.
 
 **Configuration:**
 
