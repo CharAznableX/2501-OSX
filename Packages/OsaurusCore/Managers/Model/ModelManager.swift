@@ -157,10 +157,7 @@ final class ModelManager: NSObject, ObservableObject {
         for sm in suggestedModels {
             downloadStates[sm.id] = sm.isDownloaded ? .completed : .notStarted
         }
-        // Merge MLX registry-supported models into All
-        let registry = Self.registryModels()
-        mergeAvailable(with: registry)
-        // Also surface any locally-downloaded models even if not on the SDK allowlist
+        // Surface locally-downloaded models
         let localModels = Self.discoverLocalModels()
         mergeAvailable(with: localModels)
 
@@ -681,19 +678,6 @@ final class ModelManager: NSObject, ObservableObject {
     }
 
     // MARK: - Private Methods
-
-    /// Compute the set of SDK-supported model ids.
-    /// With the vmlx Python engine, any MLX-format model is supported.
-    /// Returns an empty set — all installed models are allowed.
-    static func sdkSupportedModelIds() -> Set<String> {
-        return []
-    }
-
-    /// Registry models — no longer sourced from MLXLLM registry.
-    /// Returns empty; models are discovered from the local filesystem.
-    static func registryModels() -> [MLXModel] {
-        return []
-    }
 
     private func copyContents(of sourceDirectory: URL, to destinationDirectory: URL) throws {
         let fileManager = FileManager.default

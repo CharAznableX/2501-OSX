@@ -186,7 +186,12 @@ struct LocalMLXThinkingProfile: ModelProfile {
         )
     ]
 
-    static let defaults: [String: ModelOptionValue] = [:]
+    // Default: disableThinking = true (thinking OFF by default).
+    // User can toggle ON via the Thinking chip.
+    // This ensures enable_thinking is ALWAYS sent explicitly in the request body.
+    static let defaults: [String: ModelOptionValue] = [
+        "disableThinking": .bool(true)
+    ]
 
     static let thinkingOption: (id: String, inverted: Bool)? = ("disableThinking", true)
 }

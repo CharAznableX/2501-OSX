@@ -29,18 +29,24 @@ actor VMLXGateway {
     // MARK: - Registration
 
     /// Register a newly launched engine instance.
+    /// Registers under both the model name and full path for reliable lookup.
     func register(_ instance: VMLXInstance) {
         instances[instance.modelName] = instance
+        // Also register under the full path so lookups by path succeed
+        if !instance.modelPath.isEmpty && instance.modelPath != instance.modelName {
+            instances[instance.modelPath] = instance
+        }
     }
 
-    /// Unregister an instance by model name.
+    /// Unregister an instance by model name (removes all aliases).
     func unregister(model: String) {
-        instances.removeValue(forKey: model)
-    }
-
-    /// Unregister all instances.
-    func unregisterAll() {
-        instances.removeAll()
+        // Find the instance first so we can remove all keys pointing to it
+        if let instance = instances[model] {
+            let port = instance.port
+            instances = instances.filter { $0.value.port != port }
+        } else {
+            instances.removeValue(forKey: model)
+        }
     }
 
     // MARK: - Routing
@@ -69,38 +75,9 @@ actor VMLXGateway {
         return nil
     }
 
-    /// Get the instance for a model.
-    func instance(for model: String) -> VMLXInstance? {
-        if let instance = instances[model] {
-            return instance
-        }
-        // Fallback: case-insensitive
-        for (key, instance) in instances {
-            if key.caseInsensitiveCompare(model) == .orderedSame {
-                return instance
-            }
-        }
-        return nil
-    }
-
-    /// List all available (running) model names.
-    func availableModels() -> [String] {
-        Array(instances.keys)
-    }
-
     /// List all running instances.
     func allInstances() -> [VMLXInstance] {
         Array(instances.values)
-    }
-
-    /// Check if any instance is running.
-    func hasRunningInstances() -> Bool {
-        !instances.isEmpty
-    }
-
-    /// Get the first running instance (for single-model mode).
-    func firstInstance() -> VMLXInstance? {
-        instances.values.first
     }
 
     /// Number of running instances.

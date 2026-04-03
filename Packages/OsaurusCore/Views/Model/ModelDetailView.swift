@@ -329,6 +329,7 @@ struct ModelDetailView: View, Identifiable {
                         Text("GLM-4.7").tag("glm47")
                         Text("Step 3.5").tag("step3p5")
                         Text("xLAM").tag("xlam")
+                        Text("Gemma 4").tag("gemma4")
                     }
                     .labelsHidden()
                     .onChange(of: selectedToolParser) { _, newVal in

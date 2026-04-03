@@ -110,10 +110,17 @@ actor VMLXService: ToolCapableService {
         toolChoice: ToolChoiceOption?,
         requestedModel: String?
     ) async throws -> AsyncThrowingStream<String, Error> {
+        let t0 = CFAbsoluteTimeGetCurrent()
+
         // Resolve model and port
         let resolved = try resolveModel(requestedModel)
         let modelName = resolved.name
+        let t1 = CFAbsoluteTimeGetCurrent()
+        logger.info("[timing] resolveModel: \(String(format: "%.0f", (t1-t0)*1000))ms")
+
         let port = try await ensureEngineRunning(for: requestedModel ?? modelName)
+        let t2 = CFAbsoluteTimeGetCurrent()
+        logger.info("[timing] ensureEngineRunning: \(String(format: "%.0f", (t2-t1)*1000))ms")
 
         // Build the HTTP request
         let url = URL(string: "http://127.0.0.1:\(port)/v1/chat/completions")!
@@ -129,11 +136,17 @@ actor VMLXService: ToolCapableService {
             toolChoice: toolChoice,
             stream: true
         )
+        let t3 = CFAbsoluteTimeGetCurrent()
+        logger.info("[timing] buildRequestBody: \(String(format: "%.0f", (t3-t2)*1000))ms")
 
         // Reset idle timer after stream completes (not before — prevents sleep during generation)
         let config = await MainActor.run { ServerConfigurationStore.load() ?? .default }
+        let t4 = CFAbsoluteTimeGetCurrent()
+        logger.info("[timing] loadConfig: \(String(format: "%.0f", (t4-t3)*1000))ms")
 
         let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        let t5 = CFAbsoluteTimeGetCurrent()
+        logger.info("[timing] URLSession.bytes: \(String(format: "%.0f", (t5-t4)*1000))ms, total: \(String(format: "%.0f", (t5-t0)*1000))ms")
 
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0

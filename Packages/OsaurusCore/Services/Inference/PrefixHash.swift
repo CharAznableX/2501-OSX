@@ -3,7 +3,7 @@
 //  osaurus
 //
 //  Computes a stable hash from system prompt + tool names for prefix cache keying.
-//  Extracted from the deleted ModelRuntime.swift.
+//  Stable hash for prefix cache keying.
 //
 
 import CryptoKit

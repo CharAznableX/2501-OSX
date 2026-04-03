@@ -84,6 +84,8 @@ struct ConfigurationView: View {
     // Default generation params
     @State private var tempDefaultTemperature: String = ""
     @State private var tempDefaultTopP: String = ""
+    // Stats
+    @State private var tempShowStats: Bool = UserDefaults.standard.bool(forKey: "showInferenceStats")
 
     // Toast settings state
     @State private var tempToastPosition: ToastPosition = .topRight
@@ -720,16 +722,15 @@ struct ConfigurationView: View {
                                     // MARK: Stats Display
                                     SettingsSubsection(label: "Stats Display") {
                                         VStack(alignment: .leading, spacing: 8) {
-                                            Toggle("Show Inference Stats", isOn: Binding(
-                                                get: { InferenceProgressManager.shared.showStats },
-                                                set: { _ in
+                                            Toggle("Show Inference Stats", isOn: $tempShowStats)
+                                                .font(.system(size: 12))
+                                                .onChange(of: tempShowStats) { _, newVal in
+                                                    UserDefaults.standard.set(newVal, forKey: "showInferenceStats")
                                                     Task { @MainActor in
-                                                        InferenceProgressManager.shared.toggleStats()
+                                                        InferenceProgressManager.shared.showStats = newVal
                                                     }
                                                 }
-                                            ))
-                                            .font(.system(size: 12))
-                                            Text("Show tokens/sec, TTFT, cache hits, and token counts during generation.")
+                                            Text("Show tokens/sec, TTFT, cache hits, and token counts during and after generation.")
                                                 .font(.system(size: 11))
                                                 .foregroundColor(theme.tertiaryText)
                                         }
