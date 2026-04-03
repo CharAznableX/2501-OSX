@@ -854,7 +854,11 @@ final class ChatSession: ObservableObject {
                 let preflight: PreflightResult
                 if !toolsDisabled {
                     let preflightMode = chatCfg.preflightSearchMode ?? .balanced
-                    preflight = await PreflightCapabilitySearch.search(query: trimmed, mode: preflightMode)
+                    preflight = await PreflightCapabilitySearch.search(
+                        query: trimmed,
+                        attachments: turns.flatMap(\.attachments),
+                        mode: preflightMode
+                    )
                 } else {
                     preflight = PreflightResult(toolSpecs: [], contextSnippet: "", items: [])
                 }

@@ -147,20 +147,48 @@ enum PreflightCapabilitySearch {
         }
     }
 
-    static func search(query: String, mode: PreflightSearchMode = .balanced) async -> PreflightResult {
+    static func search(
+        query: String,
+        attachments: [Attachment] = [],
+        mode: PreflightSearchMode = .balanced
+    ) async -> PreflightResult {
         let empty = PreflightResult(toolSpecs: [], contextSnippet: "", items: [])
 
         guard mode != .off else { return empty }
-        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return empty
+
+        // Check for visualizable attachments
+        var proactiveItems: [PreflightCapabilityItem] = []
+        var proactiveContext = ""
+        var proactiveTools: [String] = []
+
+        for attachment in attachments {
+            if ChartabilityService.shared.isChartable(attachment) {
+                if let skill: Skill = await MainActor.run(resultType: Skill?.self, body: {
+                    SkillManager.shared.skill(named: "Data Visualization")
+                }), skill.enabled {
+                    proactiveItems.append(.init(type: .skill, name: skill.name, description: skill.description))
+                    proactiveContext += "\n\n## Proactive Insight: Visualizable Data Detected\n"
+                    proactiveContext += "The attachment '\(attachment.id)' appears to contain data suitable for visualization.\n"
+                    proactiveContext += "### Skill: \(skill.name)\n"
+                    proactiveContext += skill.instructions + "\n"
+                    proactiveTools.append("visualize_data")
+                }
+            }
         }
-        guard let searchQuery = await extractSearchTerms(from: query) else {
+
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !proactiveItems.isEmpty else {
             return empty
         }
 
-        let hits = await CapabilitySearch.search(query: searchQuery, topK: mode.topKValues)
+        // If query is empty but we have proactive items, we can still proceed
+        let searchQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "" : (await extractSearchTerms(from: query) ?? "")
 
-        if hits.isEmpty {
+        let hits = searchQuery.isEmpty
+            ? CapabilitySearchResults(methods: [], tools: [], skills: [])
+            : await CapabilitySearch.search(query: searchQuery, topK: mode.topKValues)
+
+        if hits.isEmpty && proactiveItems.isEmpty {
             guard await CapabilitySearch.canCreatePlugins() else { return empty }
             let skill = await MainActor.run {
                 SkillManager.shared.skill(named: "Sandbox Plugin Creator")
@@ -201,10 +229,17 @@ enum PreflightCapabilitySearch {
                     names.append(name)
                 }
             }
+            for name in proactiveTools
+            where enabled.contains(name) && seen.insert(name).inserted {
+                names.append(name)
+            }
             return ToolRegistry.shared.specs(forTools: names)
         }
 
         var sections: [String] = []
+        if !proactiveContext.isEmpty {
+            sections.append(proactiveContext)
+        }
         if !hits.methods.isEmpty {
             sections.append("## Pre-loaded Methods\n")
             for result in hits.methods {
@@ -226,7 +261,8 @@ enum PreflightCapabilitySearch {
         }
 
         let items: [PreflightCapabilityItem] =
-            hits.methods.map { .init(type: .method, name: $0.method.name, description: $0.method.description) }
+            proactiveItems
+            + hits.methods.map { .init(type: .method, name: $0.method.name, description: $0.method.description) }
             + hits.tools.map { .init(type: .tool, name: $0.entry.name, description: $0.entry.description) }
             + hits.skills.map { .init(type: .skill, name: $0.skill.name, description: $0.skill.description) }
 

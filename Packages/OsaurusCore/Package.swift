@@ -19,6 +19,7 @@ let package = Package(
         .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.13.4"),
         .package(url: "https://github.com/rryam/VecturaKit", branch: "main"),
         .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.21.1"),
+        .package(url: "https://github.com/AAChartModel/AAChartKit-Swift.git", from: "9.5.0"),
         .package(path: "../OsaurusRepository"),
         .package(url: "https://github.com/mgriebling/SwiftMath", from: "1.7.3"),
     ],
@@ -45,6 +46,7 @@ let package = Package(
                 .product(name: "SwiftMath", package: "SwiftMath"),
                 .product(name: "Containerization", package: "containerization"),
                 .product(name: "ContainerizationExtras", package: "containerization"),
+                .product(name: "AAInfographics", package: "AAChartKit-Swift")
             ],
             path: ".",
             exclude: ["Tests"]

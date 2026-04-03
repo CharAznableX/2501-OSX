@@ -649,6 +649,85 @@ private final class UserMessageInlineEditView: NSView, NSTextViewDelegate {
     }
 }
 
+// MARK: - User document chip
+
+private final class UserDocumentChipNativeView: NSView {
+    private let iconView = NSImageView()
+    private let nameLabel = NSTextField(labelWithString: "")
+    private let sizeLabel = NSTextField(labelWithString: "")
+    private let stack = NSStackView()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        translatesAutoresizingMaskIntoConstraints = false
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        layer?.masksToBounds = true
+
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.imageScaling = .scaleProportionallyDown
+        iconView.contentTintColor = .labelColor
+
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        nameLabel.isEditable = false
+        nameLabel.isBordered = false
+        nameLabel.backgroundColor = .clear
+        nameLabel.lineBreakMode = .byTruncatingMiddle
+        nameLabel.maximumNumberOfLines = 1
+        nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        sizeLabel.translatesAutoresizingMaskIntoConstraints = false
+        sizeLabel.isEditable = false
+        sizeLabel.isBordered = false
+        sizeLabel.backgroundColor = .clear
+        sizeLabel.font = NSFont.systemFont(ofSize: 9)
+
+        stack.orientation = .horizontal
+        stack.spacing = 5
+        stack.alignment = .centerY
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(iconView)
+        stack.addArrangedSubview(nameLabel)
+        stack.addArrangedSubview(sizeLabel)
+
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 5),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -5),
+            iconView.widthAnchor.constraint(equalToConstant: 14),
+            iconView.heightAnchor.constraint(equalToConstant: 14),
+            nameLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 220),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func configure(attachment: Attachment, theme: any ThemeProtocol) {
+        let symbol = NSImage(systemSymbolName: attachment.fileIcon, accessibilityDescription: nil)
+        iconView.image = symbol
+        iconView.contentTintColor = NSColor(theme.accentColor)
+
+        nameLabel.stringValue = attachment.filename ?? "document"
+        nameLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        nameLabel.textColor = NSColor(theme.primaryText)
+
+        if let sizeStr = attachment.fileSizeFormatted {
+            sizeLabel.stringValue = sizeStr
+            sizeLabel.textColor = NSColor(theme.tertiaryText)
+            sizeLabel.isHidden = false
+        } else {
+            sizeLabel.stringValue = ""
+            sizeLabel.isHidden = true
+        }
+
+        layer?.backgroundColor = NSColor(theme.secondaryBackground).withAlphaComponent(0.75).cgColor
+        layer?.borderWidth = 0.5
+        layer?.borderColor = NSColor(theme.primaryBorder).withAlphaComponent(0.2).cgColor
+    }
+}
+
 // MARK: - NativeMessageCellView
 
 final class NativeMessageCellView: NSTableCellView {
@@ -666,10 +745,12 @@ final class NativeMessageCellView: NSTableCellView {
     private var userTextView: NativeMarkdownView?
     private var userInlineEditView: UserMessageInlineEditView?
     private var userImageStack: NSStackView?
+    private var userDocumentStack: NSStackView?
     private var nativePendingView: NativePendingToolCallView?
     private var nativeTypingView: NativeTypingIndicatorView?
     private var nativeArtifactView: NativeArtifactCardView?
     private var nativePreflightView: NativePreflightCapabilitiesView?
+    private var nativeChartView: NativeChartView?
 
     /// inset stroke so rounded corners are not clipped by ancestor views
     private var userBubbleBorderLayer: CAShapeLayer?
@@ -684,6 +765,10 @@ final class NativeMessageCellView: NSTableCellView {
 
     /// tracks inline edit vs read-only markdown so we rebuild when edit mode toggles (same block kind)
     private var userMessageInlineEditActive: Bool = false
+
+    /// cell reuse: same `.userMessage` kind tag must still rebuild when the row’s turn or attachments change
+    private var lastConfiguredUserTurnId: UUID?
+    private var lastConfiguredUserAttachments: [Attachment]?
 
     /// last width from CellRenderingContext — used for systemLayoutSizeFitting when reporting row height
     private var lastContextWidth: CGFloat = 400
@@ -753,6 +838,11 @@ final class NativeMessageCellView: NSTableCellView {
         currentKindTag = tag
         currentBlockId = block.id
 
+        if tag != .userMessage {
+            lastConfiguredUserTurnId = nil
+            lastConfiguredUserAttachments = nil
+        }
+
         switch block.kind {
         case .groupSpacer:
             configureAsSpacer(sameKind: sameKind)
@@ -808,6 +898,9 @@ final class NativeMessageCellView: NSTableCellView {
 
         case let .preflightCapabilities(items):
             configureAsPreflight(block: block, items: items, context: context, sameKind: sameKind)
+
+        case let .chart(config):
+            configureAsChart(block: block, config: config, context: context, sameKind: sameKind)
 
         default:
             // last resort: no hosted fallback — render a compact unsupported-block placeholder
@@ -1011,6 +1104,7 @@ final class NativeMessageCellView: NSTableCellView {
         sameKind: Bool
     ) {
         let images = attachments.filter(\.isImage)
+        let documents = attachments.documents
         let theme = context.theme
         let innerWidth = max(context.width - 32, 100)
 
@@ -1020,8 +1114,14 @@ final class NativeMessageCellView: NSTableCellView {
             && context.onConfirmEdit != nil
             && context.onCancelEdit != nil
 
+        let userRowChanged =
+            lastConfiguredUserTurnId != block.turnId || lastConfiguredUserAttachments != attachments
+        lastConfiguredUserTurnId = block.turnId
+        lastConfiguredUserAttachments = attachments
+
         let needsUserMessageRebuild =
             !sameKind || userMessageContainer == nil || userMessageInlineEditActive != wantsInlineEdit
+            || userRowChanged
 
         if needsUserMessageRebuild {
             removeAllContentViews()
@@ -1071,7 +1171,26 @@ final class NativeMessageCellView: NSTableCellView {
                 userInlineEditView = nil
 
                 var anchorBelowHeader = hv.bottomAnchor
-                let topGapAfterHeader: CGFloat = 6
+                var gapBelowPrevious: CGFloat = 6
+
+                if !documents.isEmpty {
+                    let docStack = NSStackView()
+                    docStack.orientation = .horizontal
+                    docStack.spacing = 8
+                    docStack.alignment = .centerY
+                    docStack.translatesAutoresizingMaskIntoConstraints = false
+                    container.addSubview(docStack)
+                    NSLayoutConstraint.activate([
+                        docStack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+                        docStack.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12),
+                        docStack.topAnchor.constraint(equalTo: anchorBelowHeader, constant: gapBelowPrevious),
+                    ])
+                    userDocumentStack = docStack
+                    anchorBelowHeader = docStack.bottomAnchor
+                    gapBelowPrevious = 8
+                } else {
+                    userDocumentStack = nil
+                }
 
                 if !images.isEmpty {
                     let stack = NSStackView()
@@ -1082,12 +1201,13 @@ final class NativeMessageCellView: NSTableCellView {
                     NSLayoutConstraint.activate([
                         stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
                         stack.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12),
-                        stack.topAnchor.constraint(equalTo: anchorBelowHeader, constant: topGapAfterHeader),
+                        stack.topAnchor.constraint(equalTo: anchorBelowHeader, constant: gapBelowPrevious),
                         stack.heightAnchor.constraint(equalToConstant: 96),
                     ])
                     stack.alignment = .top
                     userImageStack = stack
                     anchorBelowHeader = stack.bottomAnchor
+                    gapBelowPrevious = 8
                 } else {
                     userImageStack = nil
                 }
@@ -1096,7 +1216,8 @@ final class NativeMessageCellView: NSTableCellView {
                     let mv = NativeMarkdownView()
                     mv.translatesAutoresizingMaskIntoConstraints = false
                     container.addSubview(mv)
-                    let gapBeforeText: CGFloat = images.isEmpty ? 4 : 8
+                    let gapBeforeText: CGFloat =
+                        (images.isEmpty && documents.isEmpty) ? 4 : 8
                     NSLayoutConstraint.activate([
                         mv.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
                         mv.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
@@ -1114,6 +1235,10 @@ final class NativeMessageCellView: NSTableCellView {
                 } else if userImageStack != nil, let stack = userImageStack {
                     NSLayoutConstraint.activate([
                         container.bottomAnchor.constraint(equalTo: stack.bottomAnchor, constant: 16)
+                    ])
+                } else if userDocumentStack != nil, let ds = userDocumentStack {
+                    NSLayoutConstraint.activate([
+                        container.bottomAnchor.constraint(equalTo: ds.bottomAnchor, constant: 16)
                     ])
                 } else {
                     NSLayoutConstraint.activate([
@@ -1201,6 +1326,23 @@ final class NativeMessageCellView: NSTableCellView {
                 cacheKey: block.id,
                 isStreaming: context.isStreaming
             )
+        }
+
+        if let docStack = userDocumentStack {
+            while docStack.arrangedSubviews.count < documents.count {
+                let chip = UserDocumentChipNativeView()
+                chip.translatesAutoresizingMaskIntoConstraints = false
+                docStack.addArrangedSubview(chip)
+            }
+            while docStack.arrangedSubviews.count > documents.count {
+                let last = docStack.arrangedSubviews.last!
+                docStack.removeArrangedSubview(last)
+                last.removeFromSuperview()
+            }
+            for (index, attachment) in documents.enumerated() {
+                guard let chip = docStack.arrangedSubviews[index] as? UserDocumentChipNativeView else { continue }
+                chip.configure(attachment: attachment, theme: theme)
+            }
         }
 
         if let stack = userImageStack {
@@ -1353,6 +1495,38 @@ final class NativeMessageCellView: NSTableCellView {
         context.onHeightMeasured?(h, block.id)
     }
 
+    // MARK: - Chart
+
+    private func configureAsChart(
+        block: ContentBlock,
+        config: ChartConfiguration,
+        context: CellRenderingContext,
+        sameKind: Bool
+    ) {
+        if !sameKind || nativeChartView == nil {
+            removeAllContentViews()
+            let cv = NativeChartView()
+            cv.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(cv)
+            NSLayoutConstraint.activate([
+                cv.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+                cv.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+                cv.topAnchor.constraint(equalTo: topAnchor, constant: 4),
+                cv.heightAnchor.constraint(equalToConstant: 320),
+            ])
+            nativeChartView = cv
+        }
+        let blockId = block.id
+        nativeChartView?.onHeightChanged = { [weak self] in
+            guard let self, let cv = self.nativeChartView else { return }
+            context.onHeightMeasured?(cv.measuredHeight() + 8, blockId)
+        }
+        nativeChartView?.configure(config: config, theme: context.theme)
+        if let cv = nativeChartView {
+            context.onHeightMeasured?(cv.measuredHeight() + 8, block.id)
+        }
+    }
+
     // MARK: - Unsupported (should never appear; zero-height placeholder)
 
     private func configureAsUnsupported(sameKind: Bool) {
@@ -1402,10 +1576,12 @@ final class NativeMessageCellView: NSTableCellView {
         nativeTypingView?.removeFromSuperview(); nativeTypingView = nil
         nativeArtifactView?.removeFromSuperview(); nativeArtifactView = nil
         nativePreflightView?.removeFromSuperview(); nativePreflightView = nil
+        nativeChartView?.removeFromSuperview(); nativeChartView = nil
         userMessageContainer?.removeFromSuperview(); userMessageContainer = nil
         userTextView = nil
         userInlineEditView = nil
         userImageStack = nil
+        userDocumentStack = nil
         userMessageInlineEditActive = false
         userBubbleBorderLayer = nil
         userBubbleBorderWidth = 0
@@ -1499,7 +1675,7 @@ private final class UserAttachmentThumbnailView: NSView {
 /// Lightweight discriminator used to detect kind changes without comparing full associated values.
 enum ContentBlockKindTag: Equatable {
     case header, paragraph, toolCallGroup, thinking, userMessage, pendingToolCall
-    case typingIndicator, groupSpacer, sharedArtifact, preflightCapabilities, other
+    case typingIndicator, groupSpacer, sharedArtifact, preflightCapabilities, chart, other
 }
 
 extension ContentBlockKind {
@@ -1515,6 +1691,7 @@ extension ContentBlockKind {
         case .groupSpacer: return .groupSpacer
         case .sharedArtifact: return .sharedArtifact
         case .preflightCapabilities: return .preflightCapabilities
+        case .chart: return .chart
         }
     }
 }
@@ -1570,6 +1747,16 @@ enum NativeCellHeightEstimator {
             // "You" header
             var h: CGFloat = 38
             let innerW = max(width - 32, 100)
+            let docs = attachments.documents
+            let imageCount = attachments.filter(\.isImage).count
+            if !docs.isEmpty {
+                h += 6 + 32
+                if imageCount == 0 && text.isEmpty {
+                    h += 16
+                } else {
+                    h += 8
+                }
+            }
             if !text.isEmpty {
                 let textW = innerW - 24
                 let cacheKey = "\(block.id)-w\(Int(textW))"
@@ -1590,6 +1777,9 @@ enum NativeCellHeightEstimator {
 
         case let .preflightCapabilities(items):
             return 8 + PreflightCapabilitiesRowHeight.estimated(items: items, tableWidth: width)
+
+        case .chart:
+            return 320 + 8
 
         case let .sharedArtifact(artifact):
             // matches NativeArtifactCardView: inner padding + title row + gaps + footer + cell margins

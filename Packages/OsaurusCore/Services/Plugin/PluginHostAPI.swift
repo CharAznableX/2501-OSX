@@ -596,7 +596,11 @@ final class PluginHostContext: @unchecked Sendable {
             return (mode, tools)
         }
 
-        let preflight = await PreflightCapabilitySearch.search(query: query, mode: preflightMode)
+        let preflight = await PreflightCapabilitySearch.search(
+            query: query,
+            attachments: [],
+            mode: preflightMode
+        )
 
         // Store result for this session so all subsequent turns reuse the same tool set.
         if let sid = inference.request.session_id {

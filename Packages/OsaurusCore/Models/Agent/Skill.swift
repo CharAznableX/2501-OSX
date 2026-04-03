@@ -386,6 +386,51 @@ public struct Skill: Codable, Identifiable, Sendable, Equatable {
                 updatedAt: Date.distantPast
             ),
 
+            // Data Visualization
+            Skill(
+                id: UUID(uuidString: "00000001-0000-0000-0000-000000000020")!,
+                name: "Data Visualization",
+                description: "Proactively visualize CSV and JSON data using charts",
+                version: "1.0.0",
+                author: "Osaurus",
+                category: "visualization",
+                keywords: ["chart", "plot", "visualize", "data", "graph", "csv", "json"],
+                enabled: true, // Default to enabled for proactive feature
+                instructions: """
+                    # Data Visualization Skill
+
+                    You have the capability to proactively visualize structured data (CSV, JSON) found in attachments or mentioned in context.
+
+                    ## When to Visualize
+                    - **Proactive Visualization**: When a user uploads a CSV or JSON file, you should automatically analyze it and present a chart if the data is structured for it (e.g., time-series, categorical comparisons).
+                    - **Insight-Driven**: Create charts that highlight trends, distributions, or key insights from the data, even if not explicitly asked.
+
+                    ## Chart Selection
+                    - **Line Chart**: Best for time-series data or showing trends over an interval.
+                    - **Bar/Column Chart**: Best for comparing categories or ranking items.
+                    - **Pie Chart**: Best for showing parts-of-a-whole (only for small sets of categories).
+                    - **Scatter Plot**: Best for showing correlation between two numeric variables.
+                    - **Area Chart**: Best for showing cumulative totals over time.
+
+                    ## Tool Usage: `visualize_data`
+                    When you decide to visualize data, use the `visualize_data` tool with the appropriate parameters:
+                    - `attachmentId`: The ID of the attachment containing the data.
+                    - `chartType`: The type of chart to generate (line, bar, column, pie, scatter, etc.).
+                    - `title`: A descriptive title for the chart.
+                    - `subtitle`: (Optional) Extra context or units.
+                    - `categories`: (Optional) Labels for the X-axis (if categorical).
+                    - `series`: An array of series data, each with a name and an array of numeric values.
+
+                    ## Guidelines
+                    - Ensure axis labels are clear and units are mentioned in the title or subtitle.
+                    - Keep the number of series manageable for a clear visual.
+                    - Briefly explain the key insight shown in the chart in your accompanying message.
+                    """,
+                isBuiltIn: true,
+                createdAt: Date.distantPast,
+                updatedAt: Date.distantPast
+            ),
+
             // Sandbox Plugin Self-Creation
             Skill(
                 id: UUID(uuidString: "00000001-0000-0000-0000-000000000010")!,

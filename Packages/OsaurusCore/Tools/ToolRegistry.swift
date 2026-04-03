@@ -95,6 +95,7 @@ final class ToolRegistry: ObservableObject {
             SearchConversationsTool(),
             SearchSummariesTool(),
             SearchGraphTool(),
+            VisualizeDataTool(),
         ]
         for tool in builtIns {
             register(tool)

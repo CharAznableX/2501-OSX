@@ -777,7 +777,11 @@ public final class WorkSession: ObservableObject {
         // Pre-flight RAG: search capabilities based on issue
         let preflightMode = ChatConfigurationStore.load().preflightSearchMode ?? .balanced
         let preflightQuery = [issue.title, issue.description].compactMap { $0 }.joined(separator: " ")
-        let preflight = await PreflightCapabilitySearch.search(query: preflightQuery, mode: preflightMode)
+        let preflight = await PreflightCapabilitySearch.search(
+            query: preflightQuery,
+            attachments: currentTurns.flatMap(\.attachments),
+            mode: preflightMode
+        )
         pendingPreflightCapabilities = preflight.items.isEmpty ? nil : preflight.items
 
         for spec in preflight.toolSpecs
@@ -1318,7 +1322,11 @@ public final class WorkSession: ObservableObject {
 
         let preflightMode = ChatConfigurationStore.load().preflightSearchMode ?? .balanced
         let preflightQuery = [issue.title, issue.description].compactMap { $0 }.joined(separator: " ")
-        let preflight = await PreflightCapabilitySearch.search(query: preflightQuery, mode: preflightMode)
+        let preflight = await PreflightCapabilitySearch.search(
+            query: preflightQuery,
+            attachments: currentTurns.flatMap(\.attachments),
+            mode: preflightMode
+        )
         pendingPreflightCapabilities = preflight.items.isEmpty ? nil : preflight.items
 
         for spec in preflight.toolSpecs

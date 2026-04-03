@@ -35,6 +35,7 @@ enum ContentBlockKind: Equatable {
     case sharedArtifact(artifact: SharedArtifact)
     case pendingToolCall(toolName: String, argPreview: String?, argSize: Int)
     case preflightCapabilities(items: [PreflightCapabilityItem])
+    case chart(config: ChartConfiguration)
     case typingIndicator
     case groupSpacer
 
@@ -75,6 +76,9 @@ enum ContentBlockKind: Equatable {
         case let (.preflightCapabilities(lItems), .preflightCapabilities(rItems)):
             return lItems == rItems
 
+        case let (.chart(lConfig), .chart(rConfig)):
+            return lConfig == rConfig
+
         case (.typingIndicator, .typingIndicator):
             return true
 
@@ -101,7 +105,7 @@ struct ContentBlock: Identifiable, Equatable, Hashable {
         case let .header(role, _, _): return role
         case let .paragraph(_, _, _, role): return role
         case .toolCallGroup, .thinking, .sharedArtifact, .pendingToolCall, .preflightCapabilities,
-            .typingIndicator, .groupSpacer:
+            .chart, .typingIndicator, .groupSpacer:
             return .assistant
         case .userMessage: return .user
         }
@@ -197,6 +201,15 @@ struct ContentBlock: Identifiable, Equatable, Hashable {
             id: "pending-tool-\(turnId.uuidString)",
             turnId: turnId,
             kind: .pendingToolCall(toolName: toolName, argPreview: argPreview, argSize: argSize),
+            position: position
+        )
+    }
+
+    static func chart(turnId: UUID, config: ChartConfiguration, position: BlockPosition) -> ContentBlock {
+        ContentBlock(
+            id: "chart-\(turnId.uuidString)",
+            turnId: turnId,
+            kind: .chart(config: config),
             position: position
         )
     }
@@ -356,6 +369,15 @@ extension ContentBlock {
                             regularItems = []
                         }
                         turnBlocks.append(.sharedArtifact(turnId: turn.id, artifact: artifact, position: .middle))
+                    } else if call.function.name == "visualize_data",
+                        let result,
+                        let config = Self.parseChartConfigurationFromResult(result)
+                    {
+                        if !regularItems.isEmpty {
+                            turnBlocks.append(.toolCallGroup(turnId: turn.id, calls: regularItems, position: .middle))
+                            regularItems = []
+                        }
+                        turnBlocks.append(.chart(turnId: turn.id, config: config, position: .middle))
                     } else {
                         regularItems.append(ToolCallItem(call: call, result: result))
                     }
@@ -366,15 +388,29 @@ extension ContentBlock {
             }
 
             if isStreaming, let pendingName = turn.pendingToolName {
-                turnBlocks.append(
-                    .pendingToolCall(
-                        turnId: turn.id,
-                        toolName: pendingName,
-                        argPreview: turn.pendingToolArgPreview,
-                        argSize: turn.pendingToolArgSize,
-                        position: .middle
+                if pendingName == "visualize_data" {
+                    // during streaming of a chart tool call, we don't show a card yet
+                    // but we might want a placeholder. For now, just show the tool call group.
+                    turnBlocks.append(
+                        .pendingToolCall(
+                            turnId: turn.id,
+                            toolName: pendingName,
+                            argPreview: turn.pendingToolArgPreview,
+                            argSize: turn.pendingToolArgSize,
+                            position: .middle
+                        )
                     )
-                )
+                } else {
+                    turnBlocks.append(
+                        .pendingToolCall(
+                            turnId: turn.id,
+                            toolName: pendingName,
+                            argPreview: turn.pendingToolArgPreview,
+                            argSize: turn.pendingToolArgSize,
+                            position: .middle
+                        )
+                    )
+                }
             }
 
             blocks.append(contentsOf: assignPositions(to: turnBlocks))
@@ -388,6 +424,12 @@ extension ContentBlock {
     /// Reconstructs a SharedArtifact from an enriched share_artifact tool result.
     private static func parseSharedArtifactFromResult(_ result: String) -> SharedArtifact? {
         SharedArtifact.fromEnrichedToolResult(result)
+    }
+
+    /// Reconstructs a ChartConfiguration from a visualize_data tool result.
+    private static func parseChartConfigurationFromResult(_ result: String) -> ChartConfiguration? {
+        guard let data = result.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(ChartConfiguration.self, from: data)
     }
 
     private static func assignPositions(to blocks: [ContentBlock]) -> [ContentBlock] {
