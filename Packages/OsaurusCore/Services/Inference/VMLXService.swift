@@ -142,6 +142,9 @@ actor VMLXService: ToolCapableService {
 
         return AsyncThrowingStream { continuation in
             Task {
+                // Signal generation started for stats tracking
+                InferenceProgressManager.shared.generationDidStartAsync()
+
                 var hasEmittedThinkOpen = false
                 do {
                     // Accumulate tool calls across chunks:
@@ -173,6 +176,16 @@ actor VMLXService: ToolCapableService {
                                             hasEmittedThinkOpen = false
                                         }
                                         continuation.yield(content)
+                                    }
+
+                                    // Update inference stats from usage data
+                                    if let usage = chunk.usage {
+                                        InferenceProgressManager.shared.updateStatsAsync(
+                                            prompt: usage.promptTokens,
+                                            completion: usage.completionTokens,
+                                            cached: usage.cachedTokens,
+                                            detail: usage.cacheDetail
+                                        )
                                     }
 
                                     // Accumulate tool call deltas (incremental arguments)
@@ -219,6 +232,7 @@ actor VMLXService: ToolCapableService {
                     }
                     // Reset idle timer now that generation is done
                     await VMLXProcessManager.shared.resetIdleTimer(for: modelName, config: config)
+                    InferenceProgressManager.shared.generationDidFinishAsync()
                     continuation.finish()
                 } catch {
                     if hasEmittedThinkOpen {
@@ -226,6 +240,7 @@ actor VMLXService: ToolCapableService {
                     }
                     // Reset idle timer even on error (engine is still running)
                     await VMLXProcessManager.shared.resetIdleTimer(for: modelName, config: config)
+                    InferenceProgressManager.shared.generationDidFinishAsync()
                     continuation.finish(throwing: error)
                 }
             }

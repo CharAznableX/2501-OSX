@@ -125,6 +125,7 @@ struct FloatingInputCard: View {
     @State private var showModelPicker = false
     @State private var showModelOptionsPicker = false
     @State private var showParserPicker = false
+    @ObservedObject private var inferenceStats = InferenceProgressManager.shared
     @State private var showContextBreakdown = false
     @State private var contextHoverTask: Task<Void, Never>?
     @State private var isSandboxHovered = false
@@ -968,11 +969,76 @@ extension FloatingInputCard {
 
             Spacer()
 
+            // Inference stats (right-aligned, shown when enabled and generating or has recent stats)
+            if inferenceStats.showStats && (inferenceStats.isGenerating || inferenceStats.completionTokens > 0) {
+                inferenceStatsChip
+            }
+
             // Context size indicator (right-aligned)
             if displayContextTokens > 0 || (cumulativeTokens ?? 0) > 0 {
                 contextIndicatorChip
             }
         }
+    }
+
+    // MARK: - Inference Stats Chip
+
+    @ViewBuilder
+    private var inferenceStatsChip: some View {
+        HStack(spacing: 8) {
+            // Tokens per second
+            if inferenceStats.tokensPerSecond > 0 {
+                HStack(spacing: 3) {
+                    Text(String(format: "%.1f", inferenceStats.tokensPerSecond))
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundColor(inferenceStats.isGenerating ? theme.accentColor : theme.secondaryText)
+                    Text("t/s")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(theme.tertiaryText)
+                }
+            }
+
+            // TTFT
+            if let ttft = inferenceStats.timeToFirstToken {
+                HStack(spacing: 2) {
+                    Text(String(format: "%.1fs", ttft))
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(theme.secondaryText)
+                    Text("TTFT")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(theme.tertiaryText)
+                }
+            }
+
+            // Cache hit
+            if inferenceStats.cachedTokens > 0 {
+                HStack(spacing: 2) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 8))
+                        .foregroundColor(.green)
+                    Text("\(inferenceStats.cachedTokens)")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(theme.secondaryText)
+                }
+            }
+
+            // Token counts (compact)
+            if inferenceStats.completionTokens > 0 {
+                Text("\(inferenceStats.promptTokens)→\(inferenceStats.completionTokens)")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundColor(theme.tertiaryText)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(theme.cardBackground.opacity(0.6))
+                .overlay(
+                    Capsule()
+                        .strokeBorder(theme.cardBorder.opacity(0.3), lineWidth: 0.5)
+                )
+        )
     }
 
     // MARK: - Context Indicator
@@ -1157,8 +1223,11 @@ extension FloatingInputCard {
         if let model = selectedModel,
             let thinkingOpt = ModelProfileRegistry.profile(for: model)?.thinkingOption
         {
+            // When the key is nil (never toggled), show as OFF (auto-detect mode).
+            // Only show as ON when user explicitly toggled it.
+            let hasExplicitValue = activeModelOptions[thinkingOpt.id] != nil
             let isCurrentlyEnabled = activeModelOptions[thinkingOpt.id]?.boolValue ?? false
-            let isEnabled = thinkingOpt.inverted ? !isCurrentlyEnabled : isCurrentlyEnabled
+            let isEnabled = hasExplicitValue ? (thinkingOpt.inverted ? !isCurrentlyEnabled : isCurrentlyEnabled) : false
 
             SelectorChip(isActive: isEnabled) {
                 toggleThinking(id: thinkingOpt.id)

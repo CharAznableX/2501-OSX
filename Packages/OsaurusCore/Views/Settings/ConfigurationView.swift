@@ -717,8 +717,25 @@ struct ConfigurationView: View {
 
                                     SettingsDivider()
 
-                                    // Thinking/Reasoning toggle is in the chat UI (per-conversation),
-                                    // not in global settings.
+                                    // MARK: Stats Display
+                                    SettingsSubsection(label: "Stats Display") {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Toggle("Show Inference Stats", isOn: Binding(
+                                                get: { InferenceProgressManager.shared.showStats },
+                                                set: { _ in
+                                                    Task { @MainActor in
+                                                        InferenceProgressManager.shared.toggleStats()
+                                                    }
+                                                }
+                                            ))
+                                            .font(.system(size: 12))
+                                            Text("Show tokens/sec, TTFT, cache hits, and token counts during generation.")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(theme.tertiaryText)
+                                        }
+                                    }
+
+                                    SettingsDivider()
 
                                     // MARK: Model Management
                                     SettingsSubsection(label: "Model Management") {

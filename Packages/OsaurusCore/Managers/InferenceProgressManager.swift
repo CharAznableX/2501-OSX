@@ -54,4 +54,94 @@ final class InferenceProgressManager: ObservableObject, @unchecked Sendable {
     func prefillDidFinishAsync() {
         Task { @MainActor in self.prefillDidFinish() }
     }
+
+    // MARK: - Generation Stats (vmlx engine)
+
+    /// Whether stats display is enabled (user preference)
+    @MainActor @Published var showStats: Bool = UserDefaults.standard.bool(forKey: "showInferenceStats")
+
+    /// Prompt tokens for the current/last generation
+    @MainActor @Published var promptTokens: Int = 0
+    /// Completion tokens generated so far
+    @MainActor @Published var completionTokens: Int = 0
+    /// Cached tokens from prefix cache
+    @MainActor @Published var cachedTokens: Int = 0
+    /// Cache detail string (e.g. "paged", "disk")
+    @MainActor @Published var cacheDetail: String?
+    /// Tokens per second (computed from deltas)
+    @MainActor @Published var tokensPerSecond: Double = 0
+    /// Time to first token in seconds
+    @MainActor @Published var timeToFirstToken: Double? = nil
+    /// Whether generation is active
+    @MainActor @Published var isGenerating: Bool = false
+
+    /// Internal: timestamp when generation started
+    private var generationStartTime: Date?
+    /// Internal: timestamp of first content token
+    private var firstTokenTime: Date?
+    /// Internal: completion token count at last TPS calculation
+    private var lastTokenCount: Int = 0
+    /// Internal: time of last TPS calculation
+    private var lastTPSTime: Date?
+
+    @MainActor func toggleStats() {
+        showStats.toggle()
+        UserDefaults.standard.set(showStats, forKey: "showInferenceStats")
+    }
+
+    @MainActor func generationDidStart() {
+        isGenerating = true
+        promptTokens = 0
+        completionTokens = 0
+        cachedTokens = 0
+        cacheDetail = nil
+        tokensPerSecond = 0
+        timeToFirstToken = nil
+        generationStartTime = Date()
+        firstTokenTime = nil
+        lastTokenCount = 0
+        lastTPSTime = Date()
+    }
+
+    @MainActor func updateStats(prompt: Int, completion: Int, cached: Int, detail: String?) {
+        promptTokens = prompt
+        cachedTokens = cached
+        cacheDetail = detail
+
+        // Calculate TPS from completion token count growth
+        if completion > completionTokens {
+            let now = Date()
+            if firstTokenTime == nil, let start = generationStartTime {
+                firstTokenTime = now
+                timeToFirstToken = now.timeIntervalSince(start)
+            }
+            if let lastTime = lastTPSTime, completion > lastTokenCount {
+                let elapsed = now.timeIntervalSince(lastTime)
+                if elapsed > 0.1 {  // Update TPS at most 10x/sec
+                    let newTokens = completion - lastTokenCount
+                    tokensPerSecond = Double(newTokens) / elapsed
+                    lastTokenCount = completion
+                    lastTPSTime = now
+                }
+            }
+            completionTokens = completion
+        }
+    }
+
+    @MainActor func generationDidFinish() {
+        isGenerating = false
+        // Keep final stats visible until next generation
+    }
+
+    func generationDidStartAsync() {
+        Task { @MainActor in self.generationDidStart() }
+    }
+
+    func updateStatsAsync(prompt: Int, completion: Int, cached: Int, detail: String?) {
+        Task { @MainActor in self.updateStats(prompt: prompt, completion: completion, cached: cached, detail: detail) }
+    }
+
+    func generationDidFinishAsync() {
+        Task { @MainActor in self.generationDidFinish() }
+    }
 }

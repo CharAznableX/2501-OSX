@@ -65,12 +65,18 @@ actor ChatEngine: Sendable, ChatEngineProtocol {
             if let pp = request.presence_penalty, pp > 0 { return 1.0 + pp }
             return nil
         }()
+        // Merge enable_thinking from API request into modelOptions
+        var mergedOptions = request.modelOptions ?? [:]
+        if let enableThinking = request.enable_thinking, mergedOptions["disableThinking"] == nil {
+            mergedOptions["disableThinking"] = .bool(!enableThinking)
+        }
+
         let params = GenerationParameters(
             temperature: temperature,
             maxTokens: maxTokens,
             topPOverride: request.top_p,
             repetitionPenalty: repPenalty,
-            modelOptions: request.modelOptions ?? [:],
+            modelOptions: mergedOptions,
             sessionId: request.session_id,
             cacheHint: request.cache_hint
         )
@@ -277,12 +283,17 @@ actor ChatEngine: Sendable, ChatEngineProtocol {
             if let pp = request.presence_penalty, pp > 0 { return 1.0 + pp }
             return nil
         }()
+        var mergedOptions2 = request.modelOptions ?? [:]
+        if let enableThinking = request.enable_thinking, mergedOptions2["disableThinking"] == nil {
+            mergedOptions2["disableThinking"] = .bool(!enableThinking)
+        }
+
         let params = GenerationParameters(
             temperature: temperature,
             maxTokens: maxTokens,
             topPOverride: request.top_p,
             repetitionPenalty: repPenalty2,
-            modelOptions: request.modelOptions ?? [:],
+            modelOptions: mergedOptions2,
             sessionId: request.session_id,
             cacheHint: request.cache_hint
         )

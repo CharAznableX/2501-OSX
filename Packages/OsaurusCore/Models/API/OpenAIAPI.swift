@@ -353,13 +353,15 @@ struct ChatCompletionRequest: Codable, Sendable {
     var session_id: String? = nil
     /// Optional prefix cache hint for sharing a cached KV prefix across requests
     var cache_hint: String? = nil
+    /// Enable/disable reasoning for thinking models (from external API requests)
+    var enable_thinking: Bool? = nil
     /// Model-specific options from the active ModelProfile (not serialized to JSON).
     var modelOptions: [String: ModelOptionValue]? = nil
 
     private enum CodingKeys: String, CodingKey {
         case model, messages, temperature, max_tokens, stream, top_p
         case frequency_penalty, presence_penalty, stop, n
-        case tools, tool_choice, session_id, cache_hint
+        case tools, tool_choice, session_id, cache_hint, enable_thinking
     }
 
     func withModel(_ newModel: String) -> ChatCompletionRequest {
