@@ -151,79 +151,72 @@ actor VMLXService: ToolCapableService {
                     // Chunk 1: tool_calls data with finish_reason=null
                     // Chunk 2: empty delta with finish_reason="tool_calls"
                     var accumulatedToolCalls: [AccumulatedToolCall] = []
-                    var lineBuffer = ""
 
-                    for try await byte in bytes {
-                        let char = Character(UnicodeScalar(byte))
-                        if char == "\n" {
-                            if !lineBuffer.isEmpty {
-                                if let chunk = VMLXSSEParser.parse(line: lineBuffer) {
-                                    if chunk.isDone { break }
+                    // Use .lines for efficient line-buffered reading instead of
+                    // byte-by-byte iteration. At 80+ tok/s, byte-by-byte causes
+                    // ~3000+ async suspensions/sec; .lines batches internally.
+                    for try await line in bytes.lines {
+                        guard !line.isEmpty else { continue }
 
-                                    // Emit reasoning wrapped in <think> tags so
-                                    // StreamingDeltaProcessor routes it to appendThinking()
-                                    if let reasoning = chunk.reasoningContent, !reasoning.isEmpty {
-                                        if !hasEmittedThinkOpen {
-                                            continuation.yield("<think>")
-                                            hasEmittedThinkOpen = true
-                                        }
-                                        continuation.yield(reasoning)
-                                    }
-                                    // When we transition from reasoning to content, close the think tag
-                                    if let content = chunk.content, !content.isEmpty {
-                                        if hasEmittedThinkOpen {
-                                            continuation.yield("</think>")
-                                            hasEmittedThinkOpen = false
-                                        }
-                                        continuation.yield(content)
-                                    }
+                        guard let chunk = VMLXSSEParser.parse(line: line) else { continue }
+                        if chunk.isDone { break }
 
-                                    // Update inference stats from usage data
-                                    if let usage = chunk.usage {
-                                        InferenceProgressManager.shared.updateStatsAsync(
-                                            prompt: usage.promptTokens,
-                                            completion: usage.completionTokens,
-                                            cached: usage.cachedTokens,
-                                            detail: usage.cacheDetail
-                                        )
-                                    }
+                        // Emit reasoning wrapped in <think> tags so
+                        // StreamingDeltaProcessor routes it to appendThinking()
+                        if let reasoning = chunk.reasoningContent, !reasoning.isEmpty {
+                            if !hasEmittedThinkOpen {
+                                continuation.yield("<think>")
+                                hasEmittedThinkOpen = true
+                            }
+                            continuation.yield(reasoning)
+                        }
+                        // When we transition from reasoning to content, close the think tag
+                        if let content = chunk.content, !content.isEmpty {
+                            if hasEmittedThinkOpen {
+                                continuation.yield("</think>")
+                                hasEmittedThinkOpen = false
+                            }
+                            continuation.yield(content)
+                        }
 
-                                    // Accumulate tool call deltas (incremental arguments)
-                                    if let toolDeltas = chunk.toolCalls {
-                                        for delta in toolDeltas {
-                                            if delta.index < accumulatedToolCalls.count {
-                                                // Continuation chunk — append arguments
-                                                accumulatedToolCalls[delta.index].arguments += delta.arguments
-                                            } else {
-                                                // First chunk for this tool — has id and name
-                                                accumulatedToolCalls.append(AccumulatedToolCall(
-                                                    id: delta.id,
-                                                    name: delta.functionName,
-                                                    arguments: delta.arguments
-                                                ))
-                                            }
-                                        }
-                                    }
+                        // Update inference stats from usage data
+                        if let usage = chunk.usage {
+                            InferenceProgressManager.shared.updateStatsAsync(
+                                prompt: usage.promptTokens,
+                                completion: usage.completionTokens,
+                                cached: usage.cachedTokens,
+                                detail: usage.cacheDetail
+                            )
+                        }
 
-                                    // When finish_reason is "tool_calls", emit accumulated tools
-                                    if chunk.finishReason == "tool_calls" && !accumulatedToolCalls.isEmpty {
-                                        for tc in accumulatedToolCalls {
-                                            continuation.yield(StreamingToolHint.encode(tc.name))
-                                            continuation.yield(StreamingToolHint.encodeArgs(tc.arguments))
-                                        }
-                                        let first = accumulatedToolCalls[0]
-                                        continuation.finish(throwing: ServiceToolInvocation(
-                                            toolName: first.name,
-                                            jsonArguments: first.arguments,
-                                            toolCallId: first.id
-                                        ))
-                                        return
-                                    }
+                        // Accumulate tool call deltas (incremental arguments)
+                        if let toolDeltas = chunk.toolCalls {
+                            for delta in toolDeltas {
+                                if delta.index < accumulatedToolCalls.count {
+                                    accumulatedToolCalls[delta.index].arguments += delta.arguments
+                                } else {
+                                    accumulatedToolCalls.append(AccumulatedToolCall(
+                                        id: delta.id,
+                                        name: delta.functionName,
+                                        arguments: delta.arguments
+                                    ))
                                 }
                             }
-                            lineBuffer = ""
-                        } else {
-                            lineBuffer.append(char)
+                        }
+
+                        // When finish_reason is "tool_calls", emit accumulated tools
+                        if chunk.finishReason == "tool_calls" && !accumulatedToolCalls.isEmpty {
+                            for tc in accumulatedToolCalls {
+                                continuation.yield(StreamingToolHint.encode(tc.name))
+                                continuation.yield(StreamingToolHint.encodeArgs(tc.arguments))
+                            }
+                            let first = accumulatedToolCalls[0]
+                            continuation.finish(throwing: ServiceToolInvocation(
+                                toolName: first.name,
+                                jsonArguments: first.arguments,
+                                toolCallId: first.id
+                            ))
+                            return
                         }
                     }
                     // Close unclosed think tag
@@ -452,12 +445,4 @@ actor VMLXService: ToolCapableService {
         return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    // MARK: - Cache Stats (for ModelCacheInspectorView)
-
-    static func cachedRuntimeSummaries() async -> [String] {
-        let instances = await VMLXGateway.shared.allInstances()
-        return instances.map { inst in
-            "\(inst.modelName) — port \(inst.port), started \(inst.startedAt)"
-        }
-    }
 }

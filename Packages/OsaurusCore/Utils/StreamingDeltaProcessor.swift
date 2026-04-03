@@ -42,6 +42,9 @@ final class StreamingDeltaProcessor {
     private var flushIntervalMs: Double = 50
     private var maxBufferSize: Int = 256
     private var longestFlushMs: Double = 0
+    /// Delta counter for cheap time-check skipping (avoid Date() syscall on every delta)
+    private var deltasSinceLastCheck = 0
+    private static let deltasPerTimeCheck = 4  // Only check time every Nth delta
 
     /// Sync batching — flush parses tags and appends to turn,
     /// sync triggers UI update at a slower cadence to prevent churn.
@@ -76,13 +79,27 @@ final class StreamingDeltaProcessor {
         guard !processed.isEmpty else { return }
         deltaBuffer += processed
 
-        let now = Date()
-        let timeSinceFlush = now.timeIntervalSince(lastFlushTime) * 1000
-        recomputeFlushTuning()
-
-        if deltaBuffer.count >= maxBufferSize || timeSinceFlush >= flushIntervalMs {
+        // Fast path: check buffer size without Date() syscall
+        if deltaBuffer.count >= maxBufferSize {
+            recomputeFlushTuning()
             flush()
+            let now = Date()
             syncIfNeeded(now: now)
+            deltasSinceLastCheck = 0
+            return
+        }
+
+        // Slow path: only check time every Nth delta to avoid syscall overhead
+        deltasSinceLastCheck += 1
+        if deltasSinceLastCheck >= Self.deltasPerTimeCheck {
+            deltasSinceLastCheck = 0
+            let now = Date()
+            let timeSinceFlush = now.timeIntervalSince(lastFlushTime) * 1000
+            recomputeFlushTuning()
+            if timeSinceFlush >= flushIntervalMs {
+                flush()
+                syncIfNeeded(now: now)
+            }
         }
 
         // Fallback timer in case no more deltas arrive
@@ -151,6 +168,7 @@ final class StreamingDeltaProcessor {
         lastSyncTime = Date()
         lastFlushTime = Date()
         syncCount = 0
+        deltasSinceLastCheck = 0
         middleware = StreamingMiddlewareResolver.resolve(for: modelId, modelOptions: modelOptions)
     }
 
