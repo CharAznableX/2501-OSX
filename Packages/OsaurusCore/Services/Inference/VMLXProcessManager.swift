@@ -59,7 +59,7 @@ actor VMLXProcessManager {
         guard !launching.contains(model) else {
             logger.info("Engine launch already in progress for \(model), waiting...")
             // Poll until the other launch completes and registers with gateway
-            for _ in 0..<60 {
+            for _ in 0 ..< 60 {
                 try await Task.sleep(for: .seconds(2))
                 if let port = await VMLXGateway.shared.port(for: model) {
                     return port
@@ -73,7 +73,9 @@ actor VMLXProcessManager {
         let port = try findFreePort()
         let args = VMLXEngineConfig.buildArgs(model: modelPath, port: port, config: config, modelOptions: modelOptions)
 
-        let pythonPath = Self.bundledPythonPath()
+        guard let pythonPath = Self.pythonPath() else {
+            throw PythonEnvError.pythonNotProvisioned
+        }
         logger.info("Launching vmlx-engine: \(pythonPath) -m vmlx_engine.cli \(args.joined(separator: " "))")
 
         // Check for orphaned engine on this port before launching
@@ -81,32 +83,29 @@ actor VMLXProcessManager {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: pythonPath)
-        // Flag 1: -s suppresses user site-packages for full isolation
         process.arguments = ["-s", "-m", "vmlx_engine.cli"] + args
 
-        // Flag 1: Process env isolation — only bundled Python, no user packages
+        // Env isolation: only venv packages, no user site-packages
         var env: [String: String] = [:]
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         env["PYTHONNOUSERSITE"] = "1"
-        env["PYTHONPATH"] = ""  // No external paths
-        // Set PYTHONHOME to the bundled Python root
-        let bundleDir = (pythonPath as NSString).deletingLastPathComponent
-        let libDir = (bundleDir as NSString)
-            .deletingLastPathComponent  // bin -> python
-        env["PYTHONHOME"] = libDir
-        // Inherit minimal system env for dyld/Metal
+        env["PYTHONPATH"] = ""
+        let venvRoot =
+            ((pythonPath as NSString)
+            .deletingLastPathComponent as NSString)
+            .deletingLastPathComponent
+        env["VIRTUAL_ENV"] = venvRoot
         env["HOME"] = ProcessInfo.processInfo.environment["HOME"]
         env["PATH"] = "/usr/bin:/bin"
         env["DYLD_FRAMEWORK_PATH"] = ProcessInfo.processInfo.environment["DYLD_FRAMEWORK_PATH"]
         env["TMPDIR"] = ProcessInfo.processInfo.environment["TMPDIR"]
         env["METAL_DEVICE_WRAPPER_TYPE"] = ProcessInfo.processInfo.environment["METAL_DEVICE_WRAPPER_TYPE"]
-        // Pass HuggingFace token for gated models (Llama 3, Gemma, etc.)
-        if let hfToken = ProcessInfo.processInfo.environment["HF_TOKEN"] ?? ProcessInfo.processInfo.environment["HUGGING_FACE_HUB_TOKEN"] {
+        if let hfToken = ProcessInfo.processInfo.environment["HF_TOKEN"]
+            ?? ProcessInfo.processInfo.environment["HUGGING_FACE_HUB_TOKEN"]
+        {
             env["HF_TOKEN"] = hfToken
         }
         process.environment = env
-
-        // Flag 4: Capture stdout/stderr — stderr last line is surfaced on crash
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
         process.standardOutput = stdoutPipe
@@ -350,7 +349,9 @@ actor VMLXProcessManager {
                     logger.error("Engine for \(model) crashed \(count) times — giving up (OOM or bad model?)")
                 } else {
                     let delay = min(Double(count) * 2.0, 10.0)  // 2s, 4s, 6s backoff
-                    logger.info("Auto-restarting engine for \(model) (attempt \(count)/\(Self.maxRestarts), delay \(delay)s)")
+                    logger.info(
+                        "Auto-restarting engine for \(model) (attempt \(count)/\(Self.maxRestarts), delay \(delay)s)"
+                    )
                     try? await Task.sleep(for: .seconds(delay))
                     guard !Task.isCancelled else { return }
                     do {
@@ -411,36 +412,18 @@ actor VMLXProcessManager {
 
     // MARK: - Python Path
 
-    /// Path to the bundled Python binary.
-    /// Search order: app bundle → project Resources → vmlx repo bundled python → system python
-    static func bundledPythonPath() -> String {
-        // 1. Packaged app: Resources/bundled-python/python/bin/python3
-        if let resourcePath = Bundle.main.resourcePath {
-            let bundled = (resourcePath as NSString)
-                .appendingPathComponent("bundled-python/python/bin/python3")
-            if FileManager.default.fileExists(atPath: bundled) {
-                return bundled
-            }
-        }
-        // 2. Dev mode: project root Resources/bundled-python/
-        let devPath = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()  // Inference/
-            .deletingLastPathComponent()  // Services/
-            .deletingLastPathComponent()  // OsaurusCore/
-            .deletingLastPathComponent()  // Packages/
-            .appendingPathComponent("Resources/bundled-python/python/bin/python3")
-            .path
-        if FileManager.default.fileExists(atPath: devPath) {
-            return devPath
-        }
-        // 3. Dev mode: reuse vmlx Electron app's bundled Python (has all deps)
-        let vmlxBundled = NSString(string: NSHomeDirectory())
-            .appendingPathComponent("mlx/vllm-mlx/panel/bundled-python/python/bin/python3")
-        if FileManager.default.fileExists(atPath: vmlxBundled) {
-            return vmlxBundled
-        }
-        // 4. Last resort: system Python (likely won't have vmlx_engine)
-        return "/usr/bin/python3"
+    /// Resolves the Python binary for vmlx-engine.
+    /// Returns the uv-provisioned venv path if it exists, otherwise nil.
+    static func pythonPath() -> String? {
+        let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first!
+        let path =
+            appSupport
+            .appendingPathComponent("Osaurus/python/bin/python3").path
+        guard FileManager.default.fileExists(atPath: path) else { return nil }
+        return path
     }
 }
 

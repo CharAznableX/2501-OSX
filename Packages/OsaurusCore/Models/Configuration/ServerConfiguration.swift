@@ -155,30 +155,40 @@ public struct ServerConfiguration: Codable, Equatable, Sendable {
         self.exposeToNetwork = try container.decodeIfPresent(Bool.self, forKey: .exposeToNetwork) ?? d.exposeToNetwork
         self.startAtLogin = try container.decodeIfPresent(Bool.self, forKey: .startAtLogin) ?? d.startAtLogin
         self.hideDockIcon = try container.decodeIfPresent(Bool.self, forKey: .hideDockIcon) ?? d.hideDockIcon
-        self.appearanceMode = try container.decodeIfPresent(AppearanceMode.self, forKey: .appearanceMode) ?? d.appearanceMode
+        self.appearanceMode =
+            try container.decodeIfPresent(AppearanceMode.self, forKey: .appearanceMode) ?? d.appearanceMode
         self.numberOfThreads = try container.decodeIfPresent(Int.self, forKey: .numberOfThreads) ?? d.numberOfThreads
         self.backlog = try container.decodeIfPresent(Int32.self, forKey: .backlog) ?? d.backlog
         self.genTopP = try container.decodeIfPresent(Float.self, forKey: .genTopP) ?? d.genTopP
         self.maxTokens = try container.decodeIfPresent(Int.self, forKey: .maxTokens) ?? d.maxTokens
         self.allowedOrigins = try container.decodeIfPresent([String].self, forKey: .allowedOrigins) ?? d.allowedOrigins
-        self.modelEvictionPolicy = try container.decodeIfPresent(ModelEvictionPolicy.self, forKey: .modelEvictionPolicy) ?? d.modelEvictionPolicy
+        self.modelEvictionPolicy =
+            try container.decodeIfPresent(ModelEvictionPolicy.self, forKey: .modelEvictionPolicy)
+            ?? d.modelEvictionPolicy
         // vmlx engine
-        self.continuousBatching = try container.decodeIfPresent(Bool.self, forKey: .continuousBatching) ?? d.continuousBatching
+        self.continuousBatching =
+            try container.decodeIfPresent(Bool.self, forKey: .continuousBatching) ?? d.continuousBatching
         self.maxNumSeqs = try container.decodeIfPresent(Int.self, forKey: .maxNumSeqs) ?? d.maxNumSeqs
         self.streamInterval = try container.decodeIfPresent(Int.self, forKey: .streamInterval) ?? d.streamInterval
-        self.enablePrefixCache = try container.decodeIfPresent(Bool.self, forKey: .enablePrefixCache) ?? d.enablePrefixCache
+        self.enablePrefixCache =
+            try container.decodeIfPresent(Bool.self, forKey: .enablePrefixCache) ?? d.enablePrefixCache
         self.prefixCacheSize = try container.decodeIfPresent(Int.self, forKey: .prefixCacheSize) ?? d.prefixCacheSize
-        self.cacheMemoryPercent = try container.decodeIfPresent(Float.self, forKey: .cacheMemoryPercent) ?? d.cacheMemoryPercent
+        self.cacheMemoryPercent =
+            try container.decodeIfPresent(Float.self, forKey: .cacheMemoryPercent) ?? d.cacheMemoryPercent
         self.cacheMemoryMB = try container.decodeIfPresent(Int.self, forKey: .cacheMemoryMB)
         self.cacheTTLMinutes = try container.decodeIfPresent(Float.self, forKey: .cacheTTLMinutes) ?? d.cacheTTLMinutes
         self.usePagedCache = try container.decodeIfPresent(Bool.self, forKey: .usePagedCache) ?? d.usePagedCache
-        self.pagedCacheBlockSize = try container.decodeIfPresent(Int.self, forKey: .pagedCacheBlockSize) ?? d.pagedCacheBlockSize
+        self.pagedCacheBlockSize =
+            try container.decodeIfPresent(Int.self, forKey: .pagedCacheBlockSize) ?? d.pagedCacheBlockSize
         self.maxCacheBlocks = try container.decodeIfPresent(Int.self, forKey: .maxCacheBlocks) ?? d.maxCacheBlocks
         self.enableDiskCache = try container.decodeIfPresent(Bool.self, forKey: .enableDiskCache) ?? d.enableDiskCache
         self.diskCacheMaxGB = try container.decodeIfPresent(Float.self, forKey: .diskCacheMaxGB) ?? d.diskCacheMaxGB
-        self.enableBlockDiskCache = try container.decodeIfPresent(Bool.self, forKey: .enableBlockDiskCache) ?? d.enableBlockDiskCache
-        self.blockDiskCacheMaxGB = try container.decodeIfPresent(Float.self, forKey: .blockDiskCacheMaxGB) ?? d.blockDiskCacheMaxGB
-        self.kvCacheQuantization = try container.decodeIfPresent(String.self, forKey: .kvCacheQuantization) ?? d.kvCacheQuantization
+        self.enableBlockDiskCache =
+            try container.decodeIfPresent(Bool.self, forKey: .enableBlockDiskCache) ?? d.enableBlockDiskCache
+        self.blockDiskCacheMaxGB =
+            try container.decodeIfPresent(Float.self, forKey: .blockDiskCacheMaxGB) ?? d.blockDiskCacheMaxGB
+        self.kvCacheQuantization =
+            try container.decodeIfPresent(String.self, forKey: .kvCacheQuantization) ?? d.kvCacheQuantization
         self.kvCacheGroupSize = try container.decodeIfPresent(Int.self, forKey: .kvCacheGroupSize) ?? d.kvCacheGroupSize
         self.toolCallParser = try container.decodeIfPresent(String.self, forKey: .toolCallParser) ?? d.toolCallParser
         self.reasoningParser = try container.decodeIfPresent(String.self, forKey: .reasoningParser) ?? d.reasoningParser
@@ -248,28 +258,49 @@ public struct ServerConfiguration: Codable, Equatable, Sendable {
 
     // Memberwise init
     public init(
-        port: Int, exposeToNetwork: Bool, startAtLogin: Bool,
-        hideDockIcon: Bool = false, appearanceMode: AppearanceMode = .system,
-        numberOfThreads: Int, backlog: Int32,
-        genTopP: Float, maxTokens: Int = 32768,
+        port: Int,
+        exposeToNetwork: Bool,
+        startAtLogin: Bool,
+        hideDockIcon: Bool = false,
+        appearanceMode: AppearanceMode = .system,
+        numberOfThreads: Int,
+        backlog: Int32,
+        genTopP: Float,
+        maxTokens: Int = 32768,
         allowedOrigins: [String] = [],
         modelEvictionPolicy: ModelEvictionPolicy = .strictSingleModel,
         continuousBatching: Bool = true,
-        maxNumSeqs: Int = 256, streamInterval: Int = 3,
-        enablePrefixCache: Bool = true, prefixCacheSize: Int = 100,
-        cacheMemoryPercent: Float = 0.30, cacheMemoryMB: Int? = nil, cacheTTLMinutes: Float = 0,
-        usePagedCache: Bool = true, pagedCacheBlockSize: Int = 64, maxCacheBlocks: Int = 1000,
-        enableDiskCache: Bool = true, diskCacheMaxGB: Float = 10.0,
-        enableBlockDiskCache: Bool = true, blockDiskCacheMaxGB: Float = 10.0,
-        kvCacheQuantization: String = "none", kvCacheGroupSize: Int = 64,
-        toolCallParser: String = "auto", reasoningParser: String = "auto",
+        maxNumSeqs: Int = 256,
+        streamInterval: Int = 3,
+        enablePrefixCache: Bool = true,
+        prefixCacheSize: Int = 100,
+        cacheMemoryPercent: Float = 0.30,
+        cacheMemoryMB: Int? = nil,
+        cacheTTLMinutes: Float = 0,
+        usePagedCache: Bool = true,
+        pagedCacheBlockSize: Int = 64,
+        maxCacheBlocks: Int = 1000,
+        enableDiskCache: Bool = true,
+        diskCacheMaxGB: Float = 10.0,
+        enableBlockDiskCache: Bool = true,
+        blockDiskCacheMaxGB: Float = 10.0,
+        kvCacheQuantization: String = "none",
+        kvCacheGroupSize: Int = 64,
+        toolCallParser: String = "auto",
+        reasoningParser: String = "auto",
         enableJIT: Bool = true,
-        idleSleepMode: String = "deep", idleSleepMinutes: Int = 30,
-        enableSoftSleep: Bool = true, softSleepMinutes: Int = 10,
-        enableDeepSleep: Bool = true, deepSleepMinutes: Int = 30,
+        idleSleepMode: String = "deep",
+        idleSleepMinutes: Int = 30,
+        enableSoftSleep: Bool = true,
+        softSleepMinutes: Int = 10,
+        enableDeepSleep: Bool = true,
+        deepSleepMinutes: Int = 30,
         defaultEnableThinking: String? = nil,
-        defaultTemperature: Float? = nil, defaultTopP: Float? = nil,
-        speculativeModel: String? = nil, numDraftTokens: Int = 3, enablePLD: Bool = false
+        defaultTemperature: Float? = nil,
+        defaultTopP: Float? = nil,
+        speculativeModel: String? = nil,
+        numDraftTokens: Int = 3,
+        enablePLD: Bool = false
     ) {
         self.port = port
         self.exposeToNetwork = exposeToNetwork

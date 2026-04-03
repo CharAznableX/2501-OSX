@@ -1247,12 +1247,26 @@ struct ChatView: View {
     @State private var userImagePreview: NSImage?
     // Bonjour agent connection
     @State private var pendingDiscoveredAgent: DiscoveredAgent? = nil
+    // Python environment setup
+    @ObservedObject private var pythonEnvManager = PythonEnvironmentManager.shared
+    @State private var pythonSetupDismissed: Bool = false
 
     /// Convenience accessor for the window's theme
     private var theme: ThemeProtocol { windowState.theme }
 
     /// Convenience accessor for the window ID
     private var windowId: UUID { windowState.windowId }
+
+    /// Whether the currently selected model is a local MLX model (requires Python env).
+    private var selectedModelIsLocal: Bool {
+        guard let modelId = session.selectedModel else { return false }
+        let trimmed = modelId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if trimmed.isEmpty || trimmed == "default" || trimmed == "foundation" { return false }
+        if let item = session.pickerItems.first(where: { $0.id == modelId }) {
+            return item.source == .local
+        }
+        return false
+    }
 
     /// Picker items filtered to the active Bonjour provider, or all items when no Bonjour agent is selected.
     private var filteredPickerItems: [ModelPickerItem] {
@@ -1335,6 +1349,16 @@ struct ChatView: View {
                     promptState.cancel()
                     session.pendingSecretPrompt = nil
                 }
+            }
+        }
+        .overlay {
+            if !pythonSetupDismissed && pythonEnvManager.shouldShowOverlay && selectedModelIsLocal {
+                PythonSetupOverlay(
+                    manager: pythonEnvManager,
+                    onSkip: {
+                        pythonSetupDismissed = true
+                    }
+                )
             }
         }
     }

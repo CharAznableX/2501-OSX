@@ -425,10 +425,25 @@ struct ConfigurationView: View {
 
                         // MARK: - Local Inference Section
                         if matchesSearch(
-                            "Local Inference", "Inference", "Sampling", "Top P",
-                            "Cache", "Prefix", "Paged", "Disk", "Quantization",
-                            "Parser", "Tool", "Reasoning", "JIT", "Speculative",
-                            "Sleep", "Idle", "Thinking", "Engine", "Batching"
+                            "Local Inference",
+                            "Inference",
+                            "Sampling",
+                            "Top P",
+                            "Cache",
+                            "Prefix",
+                            "Paged",
+                            "Disk",
+                            "Quantization",
+                            "Parser",
+                            "Tool",
+                            "Reasoning",
+                            "JIT",
+                            "Speculative",
+                            "Sleep",
+                            "Idle",
+                            "Thinking",
+                            "Engine",
+                            "Batching"
                         ) {
                             SettingsSection(title: "Local Inference", icon: "bolt") {
                                 VStack(alignment: .leading, spacing: 20) {
@@ -450,7 +465,7 @@ struct ConfigurationView: View {
                                                 label: "Max Concurrent Sequences",
                                                 help: "Max simultaneous requests (requires batching)",
                                                 text: $tempMaxNumSeqs,
-                                                range: 1...1024,
+                                                range: 1 ... 1024,
                                                 step: 32,
                                                 defaultValue: 256
                                             )
@@ -458,7 +473,7 @@ struct ConfigurationView: View {
                                                 label: "Stream Interval",
                                                 help: "Tokens per SSE update (1 = every token)",
                                                 text: $tempStreamInterval,
-                                                range: 1...16,
+                                                range: 1 ... 16,
                                                 step: 1,
                                                 defaultValue: 1
                                             )
@@ -474,7 +489,7 @@ struct ConfigurationView: View {
                                                 label: "Top P",
                                                 help: "Default sampling diversity (0–1)",
                                                 text: $tempTopP,
-                                                range: 0...1,
+                                                range: 0 ... 1,
                                                 step: 0.05,
                                                 defaultValue: 1.0,
                                                 formatString: "%.2f"
@@ -483,7 +498,7 @@ struct ConfigurationView: View {
                                                 label: "Default Temperature",
                                                 help: "Server-wide default (0–2). Empty = 0.7",
                                                 text: $tempDefaultTemperature,
-                                                range: 0...2,
+                                                range: 0 ... 2,
                                                 step: 0.1,
                                                 defaultValue: 0.7,
                                                 formatString: "%.1f"
@@ -492,7 +507,7 @@ struct ConfigurationView: View {
                                                 label: "Default Top P",
                                                 help: "Server-wide default. Empty = model default",
                                                 text: $tempDefaultTopP,
-                                                range: 0...1,
+                                                range: 0 ... 1,
                                                 step: 0.05,
                                                 defaultValue: 1.0,
                                                 formatString: "%.2f"
@@ -515,7 +530,7 @@ struct ConfigurationView: View {
                                                     label: "Prefix Cache Entries",
                                                     help: "Max cached prefixes (legacy count mode)",
                                                     text: $tempPrefixCacheSize,
-                                                    range: 10...1000,
+                                                    range: 10 ... 1000,
                                                     step: 10,
                                                     defaultValue: 100
                                                 )
@@ -525,7 +540,7 @@ struct ConfigurationView: View {
                                                 label: "Cache Memory %",
                                                 help: "Fraction of RAM for cache (10%–80%)",
                                                 text: $tempCacheMemoryPercent,
-                                                range: 0.1...0.8,
+                                                range: 0.1 ... 0.8,
                                                 step: 0.05,
                                                 defaultValue: 0.30,
                                                 formatString: "%.2f"
@@ -535,7 +550,7 @@ struct ConfigurationView: View {
                                                 label: "Cache Memory MB",
                                                 help: "Fixed MB budget (overrides %). Empty = auto",
                                                 text: $tempCacheMemoryMB,
-                                                range: 512...65536,
+                                                range: 512 ... 65536,
                                                 step: 512,
                                                 defaultValue: 4096
                                             )
@@ -544,7 +559,7 @@ struct ConfigurationView: View {
                                                 label: "Cache TTL (minutes)",
                                                 help: "Evict entries after this many minutes. 0 = never",
                                                 text: $tempCacheTTLMinutes,
-                                                range: 0...1440,
+                                                range: 0 ... 1440,
                                                 step: 5,
                                                 defaultValue: 0
                                             )
@@ -562,7 +577,7 @@ struct ConfigurationView: View {
                                                     label: "Block Size",
                                                     help: "Tokens per cache block",
                                                     text: $tempPagedCacheBlockSize,
-                                                    range: 16...512,
+                                                    range: 16 ... 512,
                                                     step: 16,
                                                     defaultValue: 64
                                                 )
@@ -570,7 +585,7 @@ struct ConfigurationView: View {
                                                     label: "Max Blocks",
                                                     help: "Maximum cache blocks in memory",
                                                     text: $tempMaxCacheBlocks,
-                                                    range: 100...10000,
+                                                    range: 100 ... 10000,
                                                     step: 100,
                                                     defaultValue: 1000
                                                 )
@@ -581,7 +596,7 @@ struct ConfigurationView: View {
                                                         label: "Block Disk Max GB",
                                                         help: "Max SSD space for block cache",
                                                         text: $tempBlockDiskCacheMaxGB,
-                                                        range: 1...100,
+                                                        range: 1 ... 100,
                                                         step: 1,
                                                         defaultValue: 10
                                                     )
@@ -600,7 +615,7 @@ struct ConfigurationView: View {
                                                     label: "Disk Cache Max GB",
                                                     help: "Maximum SSD space for prompt cache",
                                                     text: $tempDiskCacheMaxGB,
-                                                    range: 1...100,
+                                                    range: 1 ... 100,
                                                     step: 1,
                                                     defaultValue: 10
                                                 )
@@ -624,7 +639,7 @@ struct ConfigurationView: View {
                                                     label: "Group Size",
                                                     help: "Quantization group size",
                                                     text: $tempKVCacheGroupSize,
-                                                    range: 16...256,
+                                                    range: 16 ... 256,
                                                     step: 16,
                                                     defaultValue: 64
                                                 )
@@ -670,7 +685,7 @@ struct ConfigurationView: View {
                                                         label: "Draft Tokens",
                                                         help: "Tokens proposed per step (2–5 typical)",
                                                         text: $tempNumDraftTokens,
-                                                        range: 1...10,
+                                                        range: 1 ... 10,
                                                         step: 1,
                                                         defaultValue: 3
                                                     )
@@ -685,14 +700,17 @@ struct ConfigurationView: View {
                                     // MARK: Power
                                     SettingsSubsection(label: "Power Management") {
                                         VStack(alignment: .leading, spacing: 12) {
-                                            Toggle("Soft Sleep (clear caches, model stays loaded)", isOn: $tempEnableSoftSleep)
-                                                .font(.system(size: 12))
+                                            Toggle(
+                                                "Soft Sleep (clear caches, model stays loaded)",
+                                                isOn: $tempEnableSoftSleep
+                                            )
+                                            .font(.system(size: 12))
                                             if tempEnableSoftSleep {
                                                 SettingsStepperField(
                                                     label: "Soft Sleep After (minutes)",
                                                     help: "Clear GPU caches after this idle time",
                                                     text: $tempSoftSleepMinutes,
-                                                    range: 1...480,
+                                                    range: 1 ... 480,
                                                     step: 5,
                                                     defaultValue: 10
                                                 )
@@ -705,7 +723,7 @@ struct ConfigurationView: View {
                                                     label: "Deep Sleep After (minutes)",
                                                     help: "Unload model after this idle time",
                                                     text: $tempDeepSleepMinutes,
-                                                    range: 1...480,
+                                                    range: 1 ... 480,
                                                     step: 5,
                                                     defaultValue: 30
                                                 )
@@ -730,9 +748,11 @@ struct ConfigurationView: View {
                                                         InferenceProgressManager.shared.showStats = newVal
                                                     }
                                                 }
-                                            Text("Show tokens/sec, TTFT, cache hits, and token counts during and after generation.")
-                                                .font(.system(size: 11))
-                                                .foregroundColor(theme.tertiaryText)
+                                            Text(
+                                                "Show tokens/sec, TTFT, cache hits, and token counts during and after generation."
+                                            )
+                                            .font(.system(size: 11))
+                                            .foregroundColor(theme.tertiaryText)
                                         }
                                     }
 
@@ -944,38 +964,54 @@ struct ConfigurationView: View {
         // Engine
         tempContinuousBatching = configuration.continuousBatching
         tempMaxNumSeqs = configuration.maxNumSeqs == defaults.maxNumSeqs ? "" : String(configuration.maxNumSeqs)
-        tempStreamInterval = configuration.streamInterval == defaults.streamInterval ? "" : String(configuration.streamInterval)
+        tempStreamInterval =
+            configuration.streamInterval == defaults.streamInterval ? "" : String(configuration.streamInterval)
         // Cache
         tempEnablePrefixCache = configuration.enablePrefixCache
-        tempPrefixCacheSize = configuration.prefixCacheSize == defaults.prefixCacheSize ? "" : String(configuration.prefixCacheSize)
-        tempCacheMemoryPercent = configuration.cacheMemoryPercent == defaults.cacheMemoryPercent ? "" : String(configuration.cacheMemoryPercent)
+        tempPrefixCacheSize =
+            configuration.prefixCacheSize == defaults.prefixCacheSize ? "" : String(configuration.prefixCacheSize)
+        tempCacheMemoryPercent =
+            configuration.cacheMemoryPercent == defaults.cacheMemoryPercent
+            ? "" : String(configuration.cacheMemoryPercent)
         tempCacheMemoryMB = configuration.cacheMemoryMB.map(String.init) ?? ""
-        tempCacheTTLMinutes = configuration.cacheTTLMinutes == defaults.cacheTTLMinutes ? "" : String(configuration.cacheTTLMinutes)
+        tempCacheTTLMinutes =
+            configuration.cacheTTLMinutes == defaults.cacheTTLMinutes ? "" : String(configuration.cacheTTLMinutes)
         tempUsePagedCache = configuration.usePagedCache
-        tempPagedCacheBlockSize = configuration.pagedCacheBlockSize == defaults.pagedCacheBlockSize ? "" : String(configuration.pagedCacheBlockSize)
-        tempMaxCacheBlocks = configuration.maxCacheBlocks == defaults.maxCacheBlocks ? "" : String(configuration.maxCacheBlocks)
+        tempPagedCacheBlockSize =
+            configuration.pagedCacheBlockSize == defaults.pagedCacheBlockSize
+            ? "" : String(configuration.pagedCacheBlockSize)
+        tempMaxCacheBlocks =
+            configuration.maxCacheBlocks == defaults.maxCacheBlocks ? "" : String(configuration.maxCacheBlocks)
         tempEnableDiskCache = configuration.enableDiskCache
-        tempDiskCacheMaxGB = configuration.diskCacheMaxGB == defaults.diskCacheMaxGB ? "" : String(configuration.diskCacheMaxGB)
+        tempDiskCacheMaxGB =
+            configuration.diskCacheMaxGB == defaults.diskCacheMaxGB ? "" : String(configuration.diskCacheMaxGB)
         tempEnableBlockDiskCache = configuration.enableBlockDiskCache
-        tempBlockDiskCacheMaxGB = configuration.blockDiskCacheMaxGB == defaults.blockDiskCacheMaxGB ? "" : String(configuration.blockDiskCacheMaxGB)
+        tempBlockDiskCacheMaxGB =
+            configuration.blockDiskCacheMaxGB == defaults.blockDiskCacheMaxGB
+            ? "" : String(configuration.blockDiskCacheMaxGB)
         // KV Quantization
         tempKVCacheQuantization = configuration.kvCacheQuantization
-        tempKVCacheGroupSize = configuration.kvCacheGroupSize == defaults.kvCacheGroupSize ? "" : String(configuration.kvCacheGroupSize)
+        tempKVCacheGroupSize =
+            configuration.kvCacheGroupSize == defaults.kvCacheGroupSize ? "" : String(configuration.kvCacheGroupSize)
         // Parsers
         tempToolCallParser = configuration.toolCallParser
         tempReasoningParser = configuration.reasoningParser
         // Performance
         tempEnableJIT = configuration.enableJIT
         tempSpeculativeModel = configuration.speculativeModel ?? ""
-        tempNumDraftTokens = configuration.numDraftTokens == defaults.numDraftTokens ? "" : String(configuration.numDraftTokens)
+        tempNumDraftTokens =
+            configuration.numDraftTokens == defaults.numDraftTokens ? "" : String(configuration.numDraftTokens)
         tempEnablePLD = configuration.enablePLD
         // Power
         tempIdleSleepMode = configuration.idleSleepMode
-        tempIdleSleepMinutes = configuration.idleSleepMinutes == defaults.idleSleepMinutes ? "" : String(configuration.idleSleepMinutes)
+        tempIdleSleepMinutes =
+            configuration.idleSleepMinutes == defaults.idleSleepMinutes ? "" : String(configuration.idleSleepMinutes)
         tempEnableSoftSleep = configuration.enableSoftSleep
-        tempSoftSleepMinutes = configuration.softSleepMinutes == defaults.softSleepMinutes ? "" : String(configuration.softSleepMinutes)
+        tempSoftSleepMinutes =
+            configuration.softSleepMinutes == defaults.softSleepMinutes ? "" : String(configuration.softSleepMinutes)
         tempEnableDeepSleep = configuration.enableDeepSleep
-        tempDeepSleepMinutes = configuration.deepSleepMinutes == defaults.deepSleepMinutes ? "" : String(configuration.deepSleepMinutes)
+        tempDeepSleepMinutes =
+            configuration.deepSleepMinutes == defaults.deepSleepMinutes ? "" : String(configuration.deepSleepMinutes)
         // Thinking
         tempDefaultEnableThinking = configuration.defaultEnableThinking ?? ""
         // Default generation params
@@ -1094,21 +1130,26 @@ struct ConfigurationView: View {
         let tMaxSeqs = tempMaxNumSeqs.trimmingCharacters(in: .whitespacesAndNewlines)
         configuration.maxNumSeqs = tMaxSeqs.isEmpty ? defaults.maxNumSeqs : (Int(tMaxSeqs) ?? defaults.maxNumSeqs)
         let tStreamInt = tempStreamInterval.trimmingCharacters(in: .whitespacesAndNewlines)
-        configuration.streamInterval = tStreamInt.isEmpty ? defaults.streamInterval : (Int(tStreamInt) ?? defaults.streamInterval)
+        configuration.streamInterval =
+            tStreamInt.isEmpty ? defaults.streamInterval : (Int(tStreamInt) ?? defaults.streamInterval)
 
         // Cache
         configuration.enablePrefixCache = tempEnablePrefixCache
         let tPCS = tempPrefixCacheSize.trimmingCharacters(in: .whitespacesAndNewlines)
-        configuration.prefixCacheSize = tPCS.isEmpty ? defaults.prefixCacheSize : (Int(tPCS) ?? defaults.prefixCacheSize)
+        configuration.prefixCacheSize =
+            tPCS.isEmpty ? defaults.prefixCacheSize : (Int(tPCS) ?? defaults.prefixCacheSize)
         let tCMP = tempCacheMemoryPercent.trimmingCharacters(in: .whitespacesAndNewlines)
-        configuration.cacheMemoryPercent = tCMP.isEmpty ? defaults.cacheMemoryPercent : (Float(tCMP) ?? defaults.cacheMemoryPercent)
+        configuration.cacheMemoryPercent =
+            tCMP.isEmpty ? defaults.cacheMemoryPercent : (Float(tCMP) ?? defaults.cacheMemoryPercent)
         let tCMB = tempCacheMemoryMB.trimmingCharacters(in: .whitespacesAndNewlines)
         configuration.cacheMemoryMB = tCMB.isEmpty ? nil : Int(tCMB)
         let tTTL = tempCacheTTLMinutes.trimmingCharacters(in: .whitespacesAndNewlines)
-        configuration.cacheTTLMinutes = tTTL.isEmpty ? defaults.cacheTTLMinutes : (Float(tTTL) ?? defaults.cacheTTLMinutes)
+        configuration.cacheTTLMinutes =
+            tTTL.isEmpty ? defaults.cacheTTLMinutes : (Float(tTTL) ?? defaults.cacheTTLMinutes)
         configuration.usePagedCache = tempUsePagedCache
         let tPBS = tempPagedCacheBlockSize.trimmingCharacters(in: .whitespacesAndNewlines)
-        configuration.pagedCacheBlockSize = tPBS.isEmpty ? defaults.pagedCacheBlockSize : (Int(tPBS) ?? defaults.pagedCacheBlockSize)
+        configuration.pagedCacheBlockSize =
+            tPBS.isEmpty ? defaults.pagedCacheBlockSize : (Int(tPBS) ?? defaults.pagedCacheBlockSize)
         let tMCB = tempMaxCacheBlocks.trimmingCharacters(in: .whitespacesAndNewlines)
         configuration.maxCacheBlocks = tMCB.isEmpty ? defaults.maxCacheBlocks : (Int(tMCB) ?? defaults.maxCacheBlocks)
         configuration.enableDiskCache = tempEnableDiskCache
@@ -1116,12 +1157,14 @@ struct ConfigurationView: View {
         configuration.diskCacheMaxGB = tDMG.isEmpty ? defaults.diskCacheMaxGB : (Float(tDMG) ?? defaults.diskCacheMaxGB)
         configuration.enableBlockDiskCache = tempEnableBlockDiskCache
         let tBDG = tempBlockDiskCacheMaxGB.trimmingCharacters(in: .whitespacesAndNewlines)
-        configuration.blockDiskCacheMaxGB = tBDG.isEmpty ? defaults.blockDiskCacheMaxGB : (Float(tBDG) ?? defaults.blockDiskCacheMaxGB)
+        configuration.blockDiskCacheMaxGB =
+            tBDG.isEmpty ? defaults.blockDiskCacheMaxGB : (Float(tBDG) ?? defaults.blockDiskCacheMaxGB)
 
         // KV Quantization
         configuration.kvCacheQuantization = tempKVCacheQuantization
         let tKVG = tempKVCacheGroupSize.trimmingCharacters(in: .whitespacesAndNewlines)
-        configuration.kvCacheGroupSize = tKVG.isEmpty ? defaults.kvCacheGroupSize : (Int(tKVG) ?? defaults.kvCacheGroupSize)
+        configuration.kvCacheGroupSize =
+            tKVG.isEmpty ? defaults.kvCacheGroupSize : (Int(tKVG) ?? defaults.kvCacheGroupSize)
 
         // Parsers
         configuration.toolCallParser = tempToolCallParser
@@ -1139,24 +1182,30 @@ struct ConfigurationView: View {
         // Derive idleSleepMode from checkboxes for backward compatibility
         if tempEnableDeepSleep {
             configuration.idleSleepMode = "deep"
-            configuration.idleSleepMinutes = tempDeepSleepMinutes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            configuration.idleSleepMinutes =
+                tempDeepSleepMinutes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? defaults.deepSleepMinutes
-                : (Int(tempDeepSleepMinutes.trimmingCharacters(in: .whitespacesAndNewlines)) ?? defaults.deepSleepMinutes)
+                : (Int(tempDeepSleepMinutes.trimmingCharacters(in: .whitespacesAndNewlines))
+                    ?? defaults.deepSleepMinutes)
         } else if tempEnableSoftSleep {
             configuration.idleSleepMode = "soft"
-            configuration.idleSleepMinutes = tempSoftSleepMinutes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            configuration.idleSleepMinutes =
+                tempSoftSleepMinutes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? defaults.softSleepMinutes
-                : (Int(tempSoftSleepMinutes.trimmingCharacters(in: .whitespacesAndNewlines)) ?? defaults.softSleepMinutes)
+                : (Int(tempSoftSleepMinutes.trimmingCharacters(in: .whitespacesAndNewlines))
+                    ?? defaults.softSleepMinutes)
         } else {
             configuration.idleSleepMode = "none"
             configuration.idleSleepMinutes = defaults.idleSleepMinutes
         }
         configuration.enableSoftSleep = tempEnableSoftSleep
         let tSSM = tempSoftSleepMinutes.trimmingCharacters(in: .whitespacesAndNewlines)
-        configuration.softSleepMinutes = tSSM.isEmpty ? defaults.softSleepMinutes : (Int(tSSM) ?? defaults.softSleepMinutes)
+        configuration.softSleepMinutes =
+            tSSM.isEmpty ? defaults.softSleepMinutes : (Int(tSSM) ?? defaults.softSleepMinutes)
         configuration.enableDeepSleep = tempEnableDeepSleep
         let tDSM = tempDeepSleepMinutes.trimmingCharacters(in: .whitespacesAndNewlines)
-        configuration.deepSleepMinutes = tDSM.isEmpty ? defaults.deepSleepMinutes : (Int(tDSM) ?? defaults.deepSleepMinutes)
+        configuration.deepSleepMinutes =
+            tDSM.isEmpty ? defaults.deepSleepMinutes : (Int(tDSM) ?? defaults.deepSleepMinutes)
 
         // Thinking
         let tDET = tempDefaultEnableThinking.trimmingCharacters(in: .whitespacesAndNewlines)

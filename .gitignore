@@ -139,5 +139,5 @@ benchmarks/
 # Generated benchmark/test output
 results/
 
-# Bundled Python runtime (built by scripts/bundle-python.sh, ~400-640 MB)
-Resources/bundled-python/
+# uv binary (arm64 macOS, ~45 MB, downloaded from astral.sh)
+Resources/uv

@@ -37,7 +37,7 @@ struct VMLXSSEChunk: Sendable {
 /// First chunk has id + name + partial args. Continuation chunks have only index + args.
 struct VMLXToolCallDelta: Sendable {
     let index: Int
-    let id: String        // Empty string for continuation chunks
+    let id: String  // Empty string for continuation chunks
     let functionName: String  // Empty string for continuation chunks
     let arguments: String
 }
@@ -71,9 +71,10 @@ enum VMLXSSEParser {
 
         // Parse JSON
         guard let data = payload.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choices = json["choices"] as? [[String: Any]],
-              let firstChoice = choices.first else {
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let choices = json["choices"] as? [[String: Any]],
+            let firstChoice = choices.first
+        else {
             return nil
         }
 

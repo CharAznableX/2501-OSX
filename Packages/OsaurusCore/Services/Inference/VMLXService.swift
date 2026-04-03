@@ -195,11 +195,13 @@ actor VMLXService: ToolCapableService {
                                 if delta.index < accumulatedToolCalls.count {
                                     accumulatedToolCalls[delta.index].arguments += delta.arguments
                                 } else {
-                                    accumulatedToolCalls.append(AccumulatedToolCall(
-                                        id: delta.id,
-                                        name: delta.functionName,
-                                        arguments: delta.arguments
-                                    ))
+                                    accumulatedToolCalls.append(
+                                        AccumulatedToolCall(
+                                            id: delta.id,
+                                            name: delta.functionName,
+                                            arguments: delta.arguments
+                                        )
+                                    )
                                 }
                             }
                         }
@@ -211,11 +213,13 @@ actor VMLXService: ToolCapableService {
                                 continuation.yield(StreamingToolHint.encodeArgs(tc.arguments))
                             }
                             let first = accumulatedToolCalls[0]
-                            continuation.finish(throwing: ServiceToolInvocation(
-                                toolName: first.name,
-                                jsonArguments: first.arguments,
-                                toolCallId: first.id
-                            ))
+                            continuation.finish(
+                                throwing: ServiceToolInvocation(
+                                    toolName: first.name,
+                                    jsonArguments: first.arguments,
+                                    toolCallId: first.id
+                                )
+                            )
                             return
                         }
                     }
@@ -265,9 +269,11 @@ actor VMLXService: ToolCapableService {
                 var m: [String: Any] = ["role": msg.role]
 
                 // Multimodal: if contentParts has images, send as array
-                if let parts = msg.contentParts, parts.contains(where: {
-                    if case .imageUrl = $0 { return true }; return false
-                }) {
+                if let parts = msg.contentParts,
+                    parts.contains(where: {
+                        if case .imageUrl = $0 { return true }; return false
+                    })
+                {
                     m["content"] = parts.map { part -> [String: Any] in
                         switch part {
                         case .text(let text):
@@ -292,7 +298,8 @@ actor VMLXService: ToolCapableService {
                 if let toolCalls = msg.tool_calls {
                     let encoder = JSONEncoder()
                     if let tcData = try? encoder.encode(toolCalls),
-                       let tcArray = try? JSONSerialization.jsonObject(with: tcData) {
+                        let tcArray = try? JSONSerialization.jsonObject(with: tcData)
+                    {
                         m["tool_calls"] = tcArray
                     }
                 }
@@ -390,6 +397,10 @@ actor VMLXService: ToolCapableService {
     /// Ensure an engine is running for the model, launching if needed.
     /// `requestedModel` is the raw model identifier from the chat view (may be filesystem path or display name).
     private func ensureEngineRunning(for requestedModel: String) async throws -> Int {
+        let pyReady = await MainActor.run { PythonEnvironmentManager.shared.isReady }
+        if !pyReady {
+            throw PythonEnvError.pythonNotProvisioned
+        }
         let resolved = try resolveModel(requestedModel)
 
         // Check if already running (match by path or name)
@@ -433,13 +444,15 @@ actor VMLXService: ToolCapableService {
         // Remove complete <think>...</think> blocks (including multiline)
         var result = text
         while let startRange = result.range(of: "<think>"),
-              let endRange = result.range(of: "</think>", range: startRange.upperBound..<result.endIndex) {
-            result.removeSubrange(startRange.lowerBound..<endRange.upperBound)
+            let endRange = result.range(of: "</think>", range: startRange.upperBound ..< result.endIndex)
+        {
+            result.removeSubrange(startRange.lowerBound ..< endRange.upperBound)
         }
         // Also remove [THINK]...[/THINK] (Mistral format)
         while let startRange = result.range(of: "[THINK]"),
-              let endRange = result.range(of: "[/THINK]", range: startRange.upperBound..<result.endIndex) {
-            result.removeSubrange(startRange.lowerBound..<endRange.upperBound)
+            let endRange = result.range(of: "[/THINK]", range: startRange.upperBound ..< result.endIndex)
+        {
+            result.removeSubrange(startRange.lowerBound ..< endRange.upperBound)
         }
         // Trim leading whitespace left by removed blocks
         return result.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -24,13 +24,17 @@ SwiftNIO gateway (port 1337) → ChatEngine → VMLXService → HTTP POST → Py
 | ServerConfiguration | Models/Configuration/ServerConfiguration.swift | All settings with defaults (28+ engine fields) |
 | ConfigurationView | Views/Settings/ConfigurationView.swift | Settings UI for all engine options + stats toggle |
 | ModelDetailView | Views/Model/ModelDetailView.swift | Model info card with per-model parser configuration |
+| PythonEnvironmentManager | Services/Inference/PythonEnvironmentManager.swift | On-demand Python provisioning via uv: check → install Python → create venv → install deps → patch → verify |
+| PythonSetupOverlay | Views/Chat/PythonSetupOverlay.swift | Blocking setup UI shown on first local model use when Python env is missing |
 | FloatingInputCard | Views/Chat/FloatingInputCard.swift | Chat input bar: model picker, thinking toggle, parser config chip, stats display |
 
-### Python Engine Source
+### Python Engine Source & Runtime
 
 - `Resources/vmlx_engine/` — stripped engine source (no audio/mcp/image_gen/gradio/commands)
-- `scripts/bundle-python.sh` — builds relocatable Python 3.12 + all deps
-- `Resources/bundled-python/` — output of bundle script (gitignored, ~400-640MB)
+- `Resources/vmlx_engine/requirements.txt` — pinned Python dependencies
+- `Resources/vmlx_engine/post_install_patches.py` — patches for torch-free MLX environment
+- `Resources/uv` — Astral's `uv` binary (arm64 macOS, gitignored) for on-demand Python provisioning
+- Python environment provisioned on first use to `~/Library/Application Support/Osaurus/python/` via `PythonEnvironmentManager`
 
 ### Process Lifecycle
 
@@ -115,12 +119,11 @@ Includes Qwen 3.5 (4B-397B), Gemma 4, Mistral Small 4, MiniMax M2.5, Nemotron Ca
 ### Build
 
 ```bash
-scripts/bundle-python.sh    # Build bundled Python (once, ~10 min)
 xcodebuild -workspace osaurus.xcworkspace -scheme osaurus -configuration Debug \
   CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build
 ```
 
-Dev mode: Falls back to `~/mlx/vllm-mlx/panel/bundled-python/python/bin/python3` if bundled Python not built.
+Python runtime is provisioned automatically on first launch via `PythonEnvironmentManager` (uses the bundled `uv` binary).
 
 ## Known Issues / TODO
 
@@ -154,9 +157,12 @@ Dev mode: Falls back to `~/mlx/vllm-mlx/panel/bundled-python/python/bin/python3`
 - `Services/Inference/VMLXEngineConfig.swift`
 - `Services/Inference/VMLXSSEParser.swift`
 - `Services/Inference/PrefixHash.swift`
+- `Services/Inference/PythonEnvironmentManager.swift`
+- `Views/Chat/PythonSetupOverlay.swift`
 - `Resources/vmlx_engine/` (full engine source, stripped)
 - `Resources/vmlx_engine/pyproject.toml`
-- `scripts/bundle-python.sh`
+- `Resources/vmlx_engine/requirements.txt`
+- `Resources/vmlx_engine/post_install_patches.py`
 
 ### Modified
 - `Package.swift` — removed mlx-swift, mlx-swift-lm deps; kept swift-transformers for Hub

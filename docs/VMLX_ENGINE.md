@@ -160,8 +160,8 @@ When `stream_options.include_usage: true`, the final chunk includes:
 ## Process Management
 
 ### Spawning
-- Python binary: bundled (`Resources/bundled-python/python/bin/python3`) or dev fallback
-- Environment: `PYTHONNOUSERSITE=1`, `PYTHONPATH=""`, `PYTHONHOME=<bundle>`, `-s` flag
+- Python binary: uv-provisioned (`~/Library/Application Support/Osaurus/python/bin/python3`) via `PythonEnvironmentManager`
+- Environment: `PYTHONNOUSERSITE=1`, `PYTHONPATH=""`, `PYTHONHOME=<venv>`, `-s` flag
 - `HF_TOKEN` passed through for gated models (Llama 3, Gemma)
 
 ### Health Checks
@@ -183,15 +183,19 @@ When `stream_options.include_usage: true`, the final chunk includes:
 - Per-engine: SIGTERM → 1.5s grace → SIGKILL
 - Orphaned process cleanup via `lsof -ti :<port>` before each launch
 
-## Building the Python Bundle
+## Python Environment Provisioning
 
-```bash
-./scripts/bundle-python.sh
-```
+The Python runtime is provisioned on-demand at first launch via `PythonEnvironmentManager`, which uses the bundled `uv` binary (Astral, ~45MB). No pre-built Python bundle ships with the app.
 
-Downloads Astral's python-build-standalone 3.12, installs all dependencies (mlx, mlx-lm, mlx-vlm, transformers, fastapi, uvicorn, etc.), applies patches for torch-free environment, cleans up to ~400-640MB.
+**Provisioning steps** (automated, shown to user via `PythonSetupOverlay`):
+1. Install Python 3.12 via `uv python install`
+2. Create virtual environment via `uv venv`
+3. Install dependencies from `Resources/vmlx_engine/requirements.txt`
+4. Apply post-install patches (`Resources/vmlx_engine/post_install_patches.py`)
+5. Install vmlx-engine source (`pip install -e Resources/vmlx_engine`)
+6. Verify import
 
-Output: `Resources/bundled-python/python/`
+**Output**: `~/Library/Application Support/Osaurus/python/`
 
 ### Patches Applied
 1. `transformers/processing_utils.py` — Allow None sub-processors for VLM without torchvision
@@ -220,8 +224,11 @@ Output: `Resources/bundled-python/python/`
 - `Services/Inference/VMLXEngineConfig.swift`
 - `Services/Inference/VMLXSSEParser.swift`
 - `Services/Inference/PrefixHash.swift`
+- `Services/Inference/PythonEnvironmentManager.swift`
+- `Views/Chat/PythonSetupOverlay.swift`
 - `Resources/vmlx_engine/` (engine Python source)
-- `scripts/bundle-python.sh`
+- `Resources/vmlx_engine/requirements.txt`
+- `Resources/vmlx_engine/post_install_patches.py`
 - `docs/VMLX_ENGINE.md`
 
 ### Modified
@@ -234,15 +241,16 @@ Output: `Resources/bundled-python/python/`
 - `ModelManager.swift` — Removed MLX registry references
 - `ModelCacheInspectorView.swift` — Shows running engine instances
 - `FloatingInputCard.swift` — Engine status indicator, right-click unload
-- `Makefile` — `bundle-python` target, app embeds Python bundle
-- `.gitignore` — Excludes `Resources/bundled-python/`
+- `ChatView.swift` — PythonSetupOverlay integration
+- `Makefile` — App embeds uv binary + vmlx_engine resources
+- `.gitignore` — Excludes `Resources/uv` binary
 
 ## Status
 
 ### Done
 - [x] MLX-swift removal — all imports, deps, files deleted
 - [x] Python engine source copy (`Resources/vmlx_engine/`) with excluded modules (audio, mcp, image_gen, gradio, commands)
-- [x] Bundle script (`scripts/bundle-python.sh`) — downloads Python 3.12, installs all deps, applies 6 patches
+- [x] On-demand Python provisioning via uv (`PythonEnvironmentManager`) — installs Python 3.12, deps, patches
 - [x] VMLXService — HTTP bridge to Python engine, SSE streaming, tool call accumulation
 - [x] VMLXSSEParser — parses content, reasoning_content, tool_calls, usage stats
 - [x] VMLXProcessManager — process spawning, health polling, crash restart (max 3 with backoff), SIGTERM→SIGKILL, orphan cleanup
@@ -261,7 +269,7 @@ Output: `Resources/bundled-python/python/`
 - [x] Engine status indicator (green dot = running, gray = not loaded)
 - [x] Idle sleep checkboxes (separate soft/deep with individual timeouts)
 - [x] HF_TOKEN passthrough for gated models
-- [x] Dev fallback to vmlx repo bundled Python
+- [x] PythonSetupOverlay — blocking UI for first-launch Python provisioning
 
 ### Not Done
 - [ ] **Inference stats display** (TTFT, TPS, cache hit, pp/s) — VMLXSSEParser already extracts `VMLXUsage` but it's not surfaced in the chat UI. Needs a stats overlay component.

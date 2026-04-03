@@ -19,7 +19,12 @@ enum VMLXEngineConfig {
     ///   - port: Port to bind the engine on
     ///   - config: Current server configuration
     /// - Returns: Array of CLI arguments (not including `python3 -m vmlx_engine.cli`)
-    static func buildArgs(model: String, port: Int, config: ServerConfiguration, modelOptions: [String: ModelOptionValue]? = nil) -> [String] {
+    static func buildArgs(
+        model: String,
+        port: Int,
+        config: ServerConfiguration,
+        modelOptions: [String: ModelOptionValue]? = nil
+    ) -> [String] {
         var args = ["serve", model, "--port", String(port)]
 
         // Host: always localhost (Swift gateway handles external exposure)
@@ -114,7 +119,8 @@ enum VMLXEngineConfig {
 
         // Speculative decoding
         if let specModel = config.speculativeModel,
-           !specModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            !specModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
             args += ["--speculative-model", specModel]
             args += ["--num-draft-tokens", String(config.numDraftTokens)]
         }

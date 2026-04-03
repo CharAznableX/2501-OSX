@@ -1224,24 +1224,27 @@ extension ModelManager {
         func isValidModel(_ dir: URL) -> Bool {
             guard exists(dir, "config.json") else { return false }
             let hasTokenizerJSON = exists(dir, "tokenizer.json")
-            let hasBPE = exists(dir, "merges.txt")
+            let hasBPE =
+                exists(dir, "merges.txt")
                 && (exists(dir, "vocab.json") || exists(dir, "vocab.txt"))
             let hasSentencePiece = exists(dir, "tokenizer.model") || exists(dir, "spiece.model")
             // Also accept tokenizer_config.json (JANG models may only have this)
             let hasTokenizerConfig = exists(dir, "tokenizer_config.json")
             guard hasTokenizerJSON || hasBPE || hasSentencePiece || hasTokenizerConfig else { return false }
             guard let items = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil),
-                  items.contains(where: { $0.pathExtension == "safetensors" })
+                items.contains(where: { $0.pathExtension == "safetensors" })
             else { return false }
             return true
         }
 
         for root in roots {
-            guard let entries = try? fm.contentsOfDirectory(
-                at: root,
-                includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
-                options: [.skipsHiddenFiles]
-            ) else { continue }
+            guard
+                let entries = try? fm.contentsOfDirectory(
+                    at: root,
+                    includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
+                    options: [.skipsHiddenFiles]
+                )
+            else { continue }
 
             for entryURL in entries {
                 guard let resolvedEntry = resolvedDirectory(entryURL) else { continue }
@@ -1251,22 +1254,26 @@ extension ModelManager {
                     let name = entryURL.lastPathComponent
                     // Use the real filesystem path as the ID so the engine can load it
                     let realPath = resolvedEntry.path
-                    models.append(MLXModel(
-                        id: realPath,
-                        name: friendlyName(from: name),
-                        description: "Local model (detected)",
-                        downloadURL: "",
-                        rootDirectory: resolvedEntry.deletingLastPathComponent()
-                    ))
+                    models.append(
+                        MLXModel(
+                            id: realPath,
+                            name: friendlyName(from: name),
+                            description: "Local model (detected)",
+                            downloadURL: "",
+                            rootDirectory: resolvedEntry.deletingLastPathComponent()
+                        )
+                    )
                     continue
                 }
 
                 // Otherwise treat as org directory (org/repo structure)
-                guard let repos = try? fm.contentsOfDirectory(
-                    at: resolvedEntry,
-                    includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
-                    options: [.skipsHiddenFiles]
-                ) else { continue }
+                guard
+                    let repos = try? fm.contentsOfDirectory(
+                        at: resolvedEntry,
+                        includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
+                        options: [.skipsHiddenFiles]
+                    )
+                else { continue }
 
                 for repoURL in repos {
                     guard let resolvedRepo = resolvedDirectory(repoURL) else { continue }
@@ -1276,13 +1283,15 @@ extension ModelManager {
                     let repo = repoURL.lastPathComponent
                     // Use real filesystem path as ID for engine loading
                     let realPath = resolvedRepo.path
-                    models.append(MLXModel(
-                        id: realPath,
-                        name: friendlyName(from: "\(org)/\(repo)"),
-                        description: "Local model (detected)",
-                        downloadURL: "https://huggingface.co/\(org)/\(repo)",
-                        rootDirectory: resolvedRepo.deletingLastPathComponent().deletingLastPathComponent()
-                    ))
+                    models.append(
+                        MLXModel(
+                            id: realPath,
+                            name: friendlyName(from: "\(org)/\(repo)"),
+                            description: "Local model (detected)",
+                            downloadURL: "https://huggingface.co/\(org)/\(repo)",
+                            rootDirectory: resolvedRepo.deletingLastPathComponent().deletingLastPathComponent()
+                        )
+                    )
                 }
             }
         }

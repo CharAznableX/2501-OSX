@@ -1000,11 +1000,13 @@ extension FloatingInputCard {
 
             // TTFT
             if let ttft = inferenceStats.timeToFirstToken {
-                Text(ttft < 1.0
-                    ? "\(String(format: "%.0f", ttft * 1000))ms"
-                    : "\(String(format: "%.1f", ttft))s")
-                    .font(statFont)
-                    .foregroundColor(valueColor)
+                Text(
+                    ttft < 1.0
+                        ? "\(String(format: "%.0f", ttft * 1000))ms"
+                        : "\(String(format: "%.1f", ttft))s"
+                )
+                .font(statFont)
+                .foregroundColor(valueColor)
             }
 
             // Cache hit
@@ -1309,15 +1311,18 @@ extension FloatingInputCard {
                 Text("Tool Call Parser")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(theme.secondaryText)
-                Picker("", selection: Binding(
-                    get: { currentToolParser },
-                    set: { newVal in
-                        activeModelOptions["toolParser"] = .string(newVal)
-                        if let model = selectedModel {
-                            ModelOptionsStore.shared.saveOptions(activeModelOptions, for: model)
+                Picker(
+                    "",
+                    selection: Binding(
+                        get: { currentToolParser },
+                        set: { newVal in
+                            activeModelOptions["toolParser"] = .string(newVal)
+                            if let model = selectedModel {
+                                ModelOptionsStore.shared.saveOptions(activeModelOptions, for: model)
+                            }
                         }
-                    }
-                )) {
+                    )
+                ) {
                     Text("Auto-detect").tag("auto")
                     Text("None").tag("none")
                     Divider()
@@ -1344,15 +1349,18 @@ extension FloatingInputCard {
                 Text("Reasoning Parser")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(theme.secondaryText)
-                Picker("", selection: Binding(
-                    get: { currentReasoningParser },
-                    set: { newVal in
-                        activeModelOptions["reasoningParser"] = .string(newVal)
-                        if let model = selectedModel {
-                            ModelOptionsStore.shared.saveOptions(activeModelOptions, for: model)
+                Picker(
+                    "",
+                    selection: Binding(
+                        get: { currentReasoningParser },
+                        set: { newVal in
+                            activeModelOptions["reasoningParser"] = .string(newVal)
+                            if let model = selectedModel {
+                                ModelOptionsStore.shared.saveOptions(activeModelOptions, for: model)
+                            }
                         }
-                    }
-                )) {
+                    )
+                ) {
                     Text("Auto-detect").tag("auto")
                     Text("None").tag("none")
                     Divider()
