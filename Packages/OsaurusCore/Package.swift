@@ -16,7 +16,7 @@ let package = Package(
         .package(url: "https://github.com/osaurus-ai/mlx-swift", branch: "main"),
         .package(url: "https://github.com/osaurus-ai/mlx-swift-lm", branch: "main"),
         .package(url: "https://github.com/huggingface/swift-transformers", from: "1.1.6"),
-        .package(url: "https://github.com/huggingface/swift-huggingface.git", from: "0.8.0"),
+        .package(url: "https://github.com/huggingface/swift-huggingface.git", from: "0.9.0"),
         .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.13.4"),
         .package(url: "https://github.com/rryam/VecturaKit", branch: "main"),
         .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.21.1"),
