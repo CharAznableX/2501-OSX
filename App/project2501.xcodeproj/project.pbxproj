@@ -16,14 +16,14 @@
 			containerPortal = F0BB3C1E2E51FBCC00895593 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = F0BB3C252E51FBCC00895593;
-			remoteInfo = osaurus;
+			remoteInfo = project2501;
 		};
 		F0BB3C3F2E51FBCD00895593 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F0BB3C1E2E51FBCC00895593 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = F0BB3C252E51FBCC00895593;
-			remoteInfo = osaurus;
+			remoteInfo = project2501;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -41,33 +41,33 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		F0BB3C262E51FBCC00895593 /* osaurus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = osaurus.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		F0BB3C342E51FBCD00895593 /* osaurusTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = osaurusTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		F0BB3C3E2E51FBCD00895593 /* osaurusUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = osaurusUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0BB3C262E51FBCC00895593 /* project2501.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = project2501.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0BB3C342E51FBCD00895593 /* project2501Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = project2501Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0BB3C3E2E51FBCD00895593 /* project2501UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = project2501UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		F025D88A2E86B24100A507DE /* Exceptions for "osaurus" folder in "osaurus" target */ = {
+		F025D88A2E86B24100A507DE /* Exceptions for "project2501" folder in "project2501" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = F0BB3C252E51FBCC00895593 /* osaurus */;
+			target = F0BB3C252E51FBCC00895593 /* project2501 */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		F0BB3C282E51FBCC00895593 /* osaurus */ = {
+		F0BB3C282E51FBCC00895593 /* project2501 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				F025D88A2E86B24100A507DE /* Exceptions for "osaurus" folder in "osaurus" target */,
+				F025D88A2E86B24100A507DE /* Exceptions for "project2501" folder in "project2501" target */,
 			);
-			path = osaurus;
+			path = project2501;
 			sourceTree = "<group>";
 		};
-		F0BB3C412E51FBCD00895593 /* osaurusUITests */ = {
+		F0BB3C412E51FBCD00895593 /* project2501UITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = osaurusUITests;
+			path = project2501UITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -101,8 +101,8 @@
 		F0BB3C1D2E51FBCC00895593 = {
 			isa = PBXGroup;
 			children = (
-				F0BB3C282E51FBCC00895593 /* osaurus */,
-				F0BB3C412E51FBCD00895593 /* osaurusUITests */,
+				F0BB3C282E51FBCC00895593 /* project2501 */,
+				F0BB3C412E51FBCD00895593 /* project2501UITests */,
 				F0C60E852E54A26A0028ED4F /* Frameworks */,
 				F0BB3C272E51FBCC00895593 /* Products */,
 			);
@@ -111,9 +111,9 @@
 		F0BB3C272E51FBCC00895593 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				F0BB3C262E51FBCC00895593 /* osaurus.app */,
-				F0BB3C342E51FBCD00895593 /* osaurusTests.xctest */,
-				F0BB3C3E2E51FBCD00895593 /* osaurusUITests.xctest */,
+				F0BB3C262E51FBCC00895593 /* project2501.app */,
+				F0BB3C342E51FBCD00895593 /* project2501Tests.xctest */,
+				F0BB3C3E2E51FBCD00895593 /* project2501UITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -128,9 +128,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		F0BB3C252E51FBCC00895593 /* osaurus */ = {
+		F0BB3C252E51FBCC00895593 /* project2501 */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F0BB3C482E51FBCD00895593 /* Build configuration list for PBXNativeTarget "osaurus" */;
+			buildConfigurationList = F0BB3C482E51FBCD00895593 /* Build configuration list for PBXNativeTarget "project2501" */;
 			buildPhases = (
 				F0BB3C222E51FBCC00895593 /* Sources */,
 				F0BB3C232E51FBCC00895593 /* Frameworks */,
@@ -142,19 +142,19 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				F0BB3C282E51FBCC00895593 /* osaurus */,
+				F0BB3C282E51FBCC00895593 /* project2501 */,
 			);
-			name = osaurus;
+			name = project2501;
 			packageProductDependencies = (
 				05576F742F72E7D800EF3CD3 /* Project2501Core */,
 			);
-			productName = osaurus;
-			productReference = F0BB3C262E51FBCC00895593 /* osaurus.app */;
+			productName = project2501;
+			productReference = F0BB3C262E51FBCC00895593 /* project2501.app */;
 			productType = "com.apple.product-type.application";
 		};
-		F0BB3C332E51FBCD00895593 /* osaurusTests */ = {
+		F0BB3C332E51FBCD00895593 /* project2501Tests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F0BB3C4B2E51FBCD00895593 /* Build configuration list for PBXNativeTarget "osaurusTests" */;
+			buildConfigurationList = F0BB3C4B2E51FBCD00895593 /* Build configuration list for PBXNativeTarget "project2501Tests" */;
 			buildPhases = (
 				F0BB3C302E51FBCD00895593 /* Sources */,
 				F0BB3C312E51FBCD00895593 /* Frameworks */,
@@ -165,16 +165,16 @@
 			dependencies = (
 				F0BB3C362E51FBCD00895593 /* PBXTargetDependency */,
 			);
-			name = osaurusTests;
+			name = project2501Tests;
 			packageProductDependencies = (
 			);
-			productName = osaurusTests;
-			productReference = F0BB3C342E51FBCD00895593 /* osaurusTests.xctest */;
+			productName = project2501Tests;
+			productReference = F0BB3C342E51FBCD00895593 /* project2501Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		F0BB3C3D2E51FBCD00895593 /* osaurusUITests */ = {
+		F0BB3C3D2E51FBCD00895593 /* project2501UITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F0BB3C4E2E51FBCD00895593 /* Build configuration list for PBXNativeTarget "osaurusUITests" */;
+			buildConfigurationList = F0BB3C4E2E51FBCD00895593 /* Build configuration list for PBXNativeTarget "project2501UITests" */;
 			buildPhases = (
 				F0BB3C3A2E51FBCD00895593 /* Sources */,
 				F0BB3C3B2E51FBCD00895593 /* Frameworks */,
@@ -186,13 +186,13 @@
 				F0BB3C402E51FBCD00895593 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				F0BB3C412E51FBCD00895593 /* osaurusUITests */,
+				F0BB3C412E51FBCD00895593 /* project2501UITests */,
 			);
-			name = osaurusUITests;
+			name = project2501UITests;
 			packageProductDependencies = (
 			);
-			productName = osaurusUITests;
-			productReference = F0BB3C3E2E51FBCD00895593 /* osaurusUITests.xctest */;
+			productName = project2501UITests;
+			productReference = F0BB3C3E2E51FBCD00895593 /* project2501UITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -218,7 +218,7 @@
 					};
 				};
 			};
-			buildConfigurationList = F0BB3C212E51FBCC00895593 /* Build configuration list for PBXProject "osaurus" */;
+			buildConfigurationList = F0BB3C212E51FBCC00895593 /* Build configuration list for PBXProject "project2501" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -237,9 +237,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				F0BB3C252E51FBCC00895593 /* osaurus */,
-				F0BB3C332E51FBCD00895593 /* osaurusTests */,
-				F0BB3C3D2E51FBCD00895593 /* osaurusUITests */,
+				F0BB3C252E51FBCC00895593 /* project2501 */,
+				F0BB3C332E51FBCD00895593 /* project2501Tests */,
+				F0BB3C3D2E51FBCD00895593 /* project2501UITests */,
 			);
 		};
 /* End PBXProject section */
@@ -295,12 +295,12 @@
 /* Begin PBXTargetDependency section */
 		F0BB3C362E51FBCD00895593 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = F0BB3C252E51FBCC00895593 /* osaurus */;
+			target = F0BB3C252E51FBCC00895593 /* project2501 */;
 			targetProxy = F0BB3C352E51FBCD00895593 /* PBXContainerItemProxy */;
 		};
 		F0BB3C402E51FBCD00895593 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = F0BB3C252E51FBCC00895593 /* osaurus */;
+			target = F0BB3C252E51FBCC00895593 /* project2501 */;
 			targetProxy = F0BB3C3F2E51FBCD00895593 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -436,7 +436,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				AUTOMATION_APPLE_EVENTS = YES;
-				CODE_SIGN_ENTITLEMENTS = osaurus/osaurus.entitlements;
+				CODE_SIGN_ENTITLEMENTS = project2501/project2501.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -454,7 +454,7 @@
 				ENABLE_RESOURCE_ACCESS_LOCATION = YES;
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = osaurus/Info.plist;
+				INFOPLIST_FILE = project2501/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Osaurus;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -474,7 +474,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dinoki.osaurus;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuadralabs.project2501;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
@@ -484,7 +484,7 @@
 				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
 				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = YES;
 				SPARKLE_PUBLIC_ED_KEY = REPLACE_WITH_PUBLIC_ED_KEY;
-				SU_FEED_URL = "https://dinoki.github.io/osaurus/appcast.xml";
+				SU_FEED_URL = "https://cuadralabs.github.io/project2501/appcast.xml";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.2;
@@ -497,7 +497,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				AUTOMATION_APPLE_EVENTS = YES;
-				CODE_SIGN_ENTITLEMENTS = osaurus/osaurus.entitlements;
+				CODE_SIGN_ENTITLEMENTS = project2501/project2501.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -515,7 +515,7 @@
 				ENABLE_RESOURCE_ACCESS_LOCATION = YES;
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = osaurus/Info.plist;
+				INFOPLIST_FILE = project2501/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Osaurus;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -535,7 +535,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dinoki.osaurus;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuadralabs.project2501;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
@@ -545,7 +545,7 @@
 				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
 				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = YES;
 				SPARKLE_PUBLIC_ED_KEY = REPLACE_WITH_PUBLIC_ED_KEY;
-				SU_FEED_URL = "https://dinoki.github.io/osaurus/appcast.xml";
+				SU_FEED_URL = "https://cuadralabs.github.io/project2501/appcast.xml";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.2;
@@ -563,12 +563,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dinoki.osaurusTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuadralabs.project2501Tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.2;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/osaurus.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/osaurus";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/project2501.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/project2501";
 			};
 			name = Debug;
 		};
@@ -583,12 +583,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dinoki.osaurusTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuadralabs.project2501Tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.2;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/osaurus.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/osaurus";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/project2501.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/project2501";
 			};
 			name = Release;
 		};
@@ -601,12 +601,12 @@
 				DEVELOPMENT_TEAM = 4W8QF9VR2F;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dinoki.osaurusUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuadralabs.project2501UITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.2;
-				TEST_TARGET_NAME = osaurus;
+				TEST_TARGET_NAME = project2501;
 			};
 			name = Debug;
 		};
@@ -619,19 +619,19 @@
 				DEVELOPMENT_TEAM = 4W8QF9VR2F;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dinoki.osaurusUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cuadralabs.project2501UITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.2;
-				TEST_TARGET_NAME = osaurus;
+				TEST_TARGET_NAME = project2501;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F0BB3C212E51FBCC00895593 /* Build configuration list for PBXProject "osaurus" */ = {
+		F0BB3C212E51FBCC00895593 /* Build configuration list for PBXProject "project2501" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F0BB3C462E51FBCD00895593 /* Debug */,
@@ -640,7 +640,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F0BB3C482E51FBCD00895593 /* Build configuration list for PBXNativeTarget "osaurus" */ = {
+		F0BB3C482E51FBCD00895593 /* Build configuration list for PBXNativeTarget "project2501" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F0BB3C492E51FBCD00895593 /* Debug */,
@@ -649,7 +649,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F0BB3C4B2E51FBCD00895593 /* Build configuration list for PBXNativeTarget "osaurusTests" */ = {
+		F0BB3C4B2E51FBCD00895593 /* Build configuration list for PBXNativeTarget "project2501Tests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F0BB3C4C2E51FBCD00895593 /* Debug */,
@@ -658,7 +658,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F0BB3C4E2E51FBCD00895593 /* Build configuration list for PBXNativeTarget "osaurusUITests" */ = {
+		F0BB3C4E2E51FBCD00895593 /* Build configuration list for PBXNativeTarget "project2501UITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F0BB3C4F2E51FBCD00895593 /* Debug */,

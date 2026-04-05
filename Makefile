@@ -1,11 +1,11 @@
 SHELL := /bin/bash
 
 # Default configuration
-# The scheme for the CLI package is typically "osaurus-cli" (the package name)
-SCHEME_CLI := osaurus-cli
-SCHEME_APP := osaurus
+# The scheme for the CLI package is typically "project2501-cli" (the package name)
+SCHEME_CLI := project2501-cli
+SCHEME_APP := project2501
 CONFIG := Release
-PROJECT := App/osaurus.xcodeproj
+PROJECT := App/project2501.xcodeproj
 DERIVED := build/DerivedData
 
 .PHONY: help cli app install-cli serve status test clean bench-setup bench-ingest bench-ingest-chunks bench-run bench
@@ -14,7 +14,7 @@ help:
 	@echo "Targets:"
 	@echo "  cli            Build CLI ($(SCHEME_CLI)) into $(DERIVED)"
 	@echo "  app            Build app ($(SCHEME_APP)) and embed CLI"
-	@echo "  install-cli    Install/update /usr/local/bin/osaurus symlink"
+	@echo "  install-cli    Install/update /usr/local/bin/project2501 symlink"
 	@echo "  serve          Build CLI and start server (use PORT=XXXX, EXPOSE=1)"
 	@echo "  status         Check if server is running"
 	@echo "  bench-setup         Clone EasyLocomo + apply patches + install deps"
@@ -22,7 +22,7 @@ help:
 	@echo "  bench-ingest-chunks Fast chunk-only backfill (no LLM, ~minutes)"
 	@echo "  bench-run           Run LOCOMO benchmark only (skip ingestion)"
 	@echo "  bench               Full ingest + run LOCOMO benchmark"
-	@echo "  test           Run OsaurusCore package tests"
+	@echo "  test           Run Project2501Core package tests"
 	@echo "  clean          Remove DerivedData build output"
 
 cli:
@@ -33,31 +33,31 @@ app: cli
 	@echo "Building app ($(SCHEME_APP))…"
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME_APP) -configuration $(CONFIG) -derivedDataPath $(DERIVED) build -quiet
 	@echo "Embedding CLI into App Bundle (Helpers)…"
-	# Copy osaurus-cli to osaurus.app/Contents/Helpers/osaurus
-	mkdir -p "$(DERIVED)/Build/Products/$(CONFIG)/osaurus.app/Contents/Helpers"
-	cp "$(DERIVED)/Build/Products/$(CONFIG)/osaurus-cli" "$(DERIVED)/Build/Products/$(CONFIG)/osaurus.app/Contents/Helpers/osaurus"
-	chmod +x "$(DERIVED)/Build/Products/$(CONFIG)/osaurus.app/Contents/Helpers/osaurus"
+	# Copy project2501-cli to project2501.app/Contents/Helpers/project2501
+	mkdir -p "$(DERIVED)/Build/Products/$(CONFIG)/project2501.app/Contents/Helpers"
+	cp "$(DERIVED)/Build/Products/$(CONFIG)/project2501-cli" "$(DERIVED)/Build/Products/$(CONFIG)/project2501.app/Contents/Helpers/project2501"
+	chmod +x "$(DERIVED)/Build/Products/$(CONFIG)/project2501.app/Contents/Helpers/project2501"
 
 install-cli: cli
 	@echo "Installing CLI symlink…"
 	./scripts/release/install_cli_symlink.sh --dev
 
 serve: install-cli
-	@echo "Starting Osaurus server…"
+	@echo "Starting Project 2501 server…"
 	@if [[ -n "$(PORT)" ]]; then \
 		ARGS="$$ARGS --port $(PORT)"; \
 	fi; \
 	if [[ "$(EXPOSE)" == "1" ]]; then \
 		ARGS="$$ARGS --expose"; \
 	fi; \
-	osaurus serve $$ARGS
+	project2501 serve $$ARGS
 
 status:
-	osaurus status
+	project2501 status
 
 test:
-	@echo "Running OsaurusCore tests…"
-	swift test --package-path Packages/OsaurusCore
+	@echo "Running Project2501Core tests…"
+	swift test --package-path Packages/Project2501Core
 
 ## ── LOCOMO Benchmark ──────────────────────────────────────────────
 
@@ -76,14 +76,14 @@ bench-setup:
 	else \
 		echo "EasyLocomo already cloned."; \
 	fi
-	@echo "Applying Osaurus patches…"
+	@echo "Applying Project 2501 patches…"
 	cd $(EASYLOCOMO_DIR) && git checkout -- . && git apply ../../scripts/benchmark/easylocomo.patch
 	@echo "Installing Python dependencies…"
 	cd $(EASYLOCOMO_DIR) && python -m venv .venv && .venv/bin/pip install -q -r requirements.txt
 	@echo "Done. Run 'make bench-ingest' then 'make bench-run'."
 
 bench-ingest:
-	@echo "Ingesting LOCOMO conversations into Osaurus memory…"
+	@echo "Ingesting LOCOMO conversations into Project 2501 memory…"
 	$(BENCH_PYTHON) scripts/benchmark/ingest_locomo.py --base-url $(BENCH_BASE_URL)
 
 bench-ingest-chunks:
