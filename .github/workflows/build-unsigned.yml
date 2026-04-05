@@ -1,12 +1,12 @@
 name: Build Unsigned DMG
 
 on:
-  push:
-    branches:
-      - main
-      - master
-  pull_request:
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger only - use when you need a release build
+  # push:
+  #   branches:
+  #     - main
+  #     - master
+  # pull_request:
 
 permissions:
   contents: write
