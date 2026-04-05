@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "F0BB3C252E51FBCC00895593"
-               BuildableName = "osaurus.app"
-               BlueprintName = "osaurus"
-               ReferencedContainer = "container:osaurus.xcodeproj">
+               BuildableName = "project2501.app"
+               BlueprintName = "project2501"
+               ReferencedContainer = "container:project2501.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -29,10 +29,10 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "OsaurusCoreTests"
-               BuildableName = "OsaurusCoreTests"
-               BlueprintName = "OsaurusCoreTests"
-               ReferencedContainer = "container:../Packages/OsaurusCore">
+               BlueprintIdentifier = "Project2501CoreTests"
+               BuildableName = "Project2501CoreTests"
+               BlueprintName = "Project2501CoreTests"
+               ReferencedContainer = "container:../Packages/Project2501Core">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -49,10 +49,10 @@
             parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "OsaurusCoreTests"
-               BuildableName = "OsaurusCoreTests"
-               BlueprintName = "OsaurusCoreTests"
-               ReferencedContainer = "container:../Packages/OsaurusCore">
+               BlueprintIdentifier = "Project2501CoreTests"
+               BuildableName = "Project2501CoreTests"
+               BlueprintName = "Project2501CoreTests"
+               ReferencedContainer = "container:../Packages/Project2501Core">
             </BuildableReference>
          </TestableReference>
          <TestableReference
@@ -61,9 +61,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "F0BB3C332E51FBCD00895593"
-               BuildableName = "osaurusTests.xctest"
-               BlueprintName = "osaurusTests"
-               ReferencedContainer = "container:osaurus.xcodeproj">
+               BuildableName = "project2501Tests.xctest"
+               BlueprintName = "project2501Tests"
+               ReferencedContainer = "container:project2501.xcodeproj">
             </BuildableReference>
          </TestableReference>
          <TestableReference
@@ -72,9 +72,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "F0BB3C3D2E51FBCD00895593"
-               BuildableName = "osaurusUITests.xctest"
-               BlueprintName = "osaurusUITests"
-               ReferencedContainer = "container:osaurus.xcodeproj">
+               BuildableName = "project2501UITests.xctest"
+               BlueprintName = "project2501UITests"
+               ReferencedContainer = "container:project2501.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -94,9 +94,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F0BB3C252E51FBCC00895593"
-            BuildableName = "osaurus.app"
-            BlueprintName = "osaurus"
-            ReferencedContainer = "container:osaurus.xcodeproj">
+            BuildableName = "project2501.app"
+            BlueprintName = "project2501"
+            ReferencedContainer = "container:project2501.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -111,9 +111,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F0BB3C252E51FBCC00895593"
-            BuildableName = "osaurus.app"
-            BlueprintName = "osaurus"
-            ReferencedContainer = "container:osaurus.xcodeproj">
+            BuildableName = "project2501.app"
+            BlueprintName = "project2501"
+            ReferencedContainer = "container:project2501.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

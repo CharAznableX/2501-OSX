@@ -15,10 +15,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "OsaurusCore"
-               BuildableName = "OsaurusCore"
-               BlueprintName = "OsaurusCore"
-               ReferencedContainer = "container:Packages/OsaurusCore">
+               BlueprintIdentifier = "Project2501CLICore"
+               BuildableName = "Project2501CLICore"
+               BlueprintName = "Project2501CLICore"
+               ReferencedContainer = "container:Packages/Project2501CLI">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -29,10 +29,10 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "OsaurusCoreTests"
-               BuildableName = "OsaurusCoreTests"
-               BlueprintName = "OsaurusCoreTests"
-               ReferencedContainer = "container:Packages/OsaurusCore">
+               BlueprintIdentifier = "Project2501CLITests"
+               BuildableName = "Project2501CLITests"
+               BlueprintName = "Project2501CLITests"
+               ReferencedContainer = "container:Packages/Project2501CLI">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -49,10 +49,10 @@
             parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "OsaurusCoreTests"
-               BuildableName = "OsaurusCoreTests"
-               BlueprintName = "OsaurusCoreTests"
-               ReferencedContainer = "container:Packages/OsaurusCore">
+               BlueprintIdentifier = "Project2501CLITests"
+               BuildableName = "Project2501CLITests"
+               BlueprintName = "Project2501CLITests"
+               ReferencedContainer = "container:Packages/Project2501CLI">
             </BuildableReference>
          </TestableReference>
       </Testables>
