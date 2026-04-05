@@ -17,6 +17,7 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
     case xai
     case venice
     case openrouter
+    case ollama
     case custom
 
     var id: String { rawValue }
@@ -30,6 +31,7 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
         case .xai: return "xAI"
         case .venice: return "Venice AI"
         case .openrouter: return "OpenRouter"
+        case .ollama: return "Ollama"
         case .custom: return "Custom"
         }
     }
@@ -43,6 +45,7 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
         case .xai: return "Grok models"
         case .venice: return "Privacy-first AI"
         case .openrouter: return "Multi-provider"
+        case .ollama: return "Local models"
         case .custom: return "Custom endpoint"
         }
     }
@@ -56,6 +59,7 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
         case .xai: return "bolt.fill"
         case .venice: return "lock.shield.fill"
         case .openrouter: return "arrow.triangle.branch"
+        case .ollama: return "server.rack"
         case .custom: return "slider.horizontal.3"
         }
     }
@@ -69,6 +73,7 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
         case .xai: return [Color(red: 0.1, green: 0.1, blue: 0.1), Color(red: 0.2, green: 0.2, blue: 0.2)]
         case .venice: return [Color(red: 0.83, green: 0.66, blue: 0.33), Color(red: 0.72, green: 0.53, blue: 0.17)]
         case .openrouter: return [Color(red: 0.95, green: 0.55, blue: 0.25), Color(red: 0.85, green: 0.4, blue: 0.2)]
+        case .ollama: return [Color(red: 0.2, green: 0.6, blue: 0.8), Color(red: 0.1, green: 0.4, blue: 0.6)]
         case .custom: return [Color(red: 0.55, green: 0.55, blue: 0.6), Color(red: 0.4, green: 0.4, blue: 0.45)]
         }
     }
@@ -82,6 +87,7 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
         case .xai: return "https://console.x.ai/"
         case .venice: return "https://venice.ai/settings/api"
         case .openrouter: return "https://openrouter.ai/keys"
+        case .ollama: return "http://localhost:11434"
         case .custom: return ""
         }
     }
@@ -202,6 +208,16 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
                 port: nil,
                 basePath: "/api/v1",
                 authType: .apiKey,
+                providerType: .openai
+            )
+        case .ollama:
+            return ProviderPresetConfiguration(
+                name: "Ollama",
+                host: "localhost",
+                providerProtocol: .http,
+                port: 11434,
+                basePath: "/v1",
+                authType: .none,
                 providerType: .openai
             )
         case .custom:
