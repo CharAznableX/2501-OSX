@@ -1,4 +1,4 @@
-name: Build and Release Osaurus
+name: Build and Release Project 2501
 
 on:
   push:
@@ -46,7 +46,7 @@ jobs:
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: bash scripts/build/install_certificates.sh
 
-      - name: Build Osaurus (ARM64)
+      - name: Build Project 2501 (ARM64)
         env:
           DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
           DEVELOPER_ID_NAME: ${{ secrets.DEVELOPER_ID_NAME }}
@@ -102,8 +102,8 @@ jobs:
         with:
           name: project2501-release-${{ env.VERSION }}
           path: |
-            build_output/Osaurus-${{ env.VERSION }}.dmg
-            build_output/Osaurus.dmg
+            build_output/Project2501-${{ env.VERSION }}.dmg
+            build_output/Project2501.dmg
             updates/appcast.xml
           if-no-files-found: warn
 

@@ -20,12 +20,12 @@ fi
 
 # Ensure a clean build environment before archiving
 rm -rf build/DerivedData build/SourcePackages
-xcodebuild -resolvePackageDependencies -project App/osaurus.xcodeproj -scheme osaurus
+xcodebuild -resolvePackageDependencies -project App/project2501.xcodeproj -scheme project2501
 
 # 1. Build the CLI first (as a separate scheme)
-echo "Building CLI (OsaurusCLI)..."
-xcodebuild -project App/osaurus.xcodeproj \
-  -scheme osaurus-cli \
+echo "Building CLI (Project2501CLI)..."
+xcodebuild -project App/project2501.xcodeproj \
+  -scheme project2501-cli \
   -configuration Release \
   -derivedDataPath build \
   ARCHS=arm64 \
@@ -37,9 +37,9 @@ xcodebuild -project App/osaurus.xcodeproj \
   clean build
 
 # 2. Archive the App (which doesn't have the CLI embedded yet via Xcode)
-echo "Archiving App (osaurus)..."
-xcodebuild -project App/osaurus.xcodeproj \
-  -scheme osaurus \
+echo "Archiving App (project2501)..."
+xcodebuild -project App/project2501.xcodeproj \
+  -scheme project2501 \
   -configuration Release \
   -derivedDataPath build \
   ARCHS=arm64 \
@@ -50,27 +50,27 @@ xcodebuild -project App/osaurus.xcodeproj \
   CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY_VALUE}" \
   DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
   CODE_SIGN_STYLE=Manual \
-  archive -archivePath build/osaurus.xcarchive
+  archive -archivePath build/project2501.xcarchive
 
 # 3. Manually Embed the CLI into the Archive
 echo "Embedding CLI into Archive (Helpers)..."
-CLI_SRC="build/Build/Products/Release/osaurus-cli"
-ARCHIVE_APP="build/osaurus.xcarchive/Products/Applications/Osaurus.app"
+CLI_SRC="build/Build/Products/Release/project2501-cli"
+ARCHIVE_APP="build/project2501.xcarchive/Products/Applications/Project2501.app"
 
 if [[ ! -f "$CLI_SRC" ]]; then
   echo "Error: CLI binary not found at $CLI_SRC"
   exit 1
 fi
 
-# Copy to Helpers folder as 'osaurus'
+# Copy to Helpers folder as 'project2501'
 mkdir -p "$ARCHIVE_APP/Contents/Helpers"
-cp "$CLI_SRC" "$ARCHIVE_APP/Contents/Helpers/osaurus"
-chmod +x "$ARCHIVE_APP/Contents/Helpers/osaurus"
+cp "$CLI_SRC" "$ARCHIVE_APP/Contents/Helpers/project2501"
+chmod +x "$ARCHIVE_APP/Contents/Helpers/project2501"
 
 # Re-sign the modified app bundle inside the archive
 # (Use --deep to sign the nested CLI binary as well, but explicitly re-apply entitlements)
 echo "Re-signing modified app bundle..."
-codesign --force --deep --options runtime --entitlements "App/osaurus/osaurus.entitlements" --sign "${CODE_SIGN_IDENTITY_VALUE}" "$ARCHIVE_APP"
+codesign --force --deep --options runtime --entitlements "App/project2501/project2501.entitlements" --sign "${CODE_SIGN_IDENTITY_VALUE}" "$ARCHIVE_APP"
 
 cat > ExportOptions.plist <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -90,6 +90,6 @@ cat > ExportOptions.plist <<EOF
 EOF
 
 xcodebuild -exportArchive \
-  -archivePath build/osaurus.xcarchive \
+  -archivePath build/project2501.xcarchive \
   -exportPath build_output \
   -exportOptionsPlist ExportOptions.plist

@@ -10,12 +10,12 @@ xcrun notarytool store-credentials "AC_PASSWORD" \
   --team-id "$APPLE_TEAM_ID" \
   --password "$APPLE_ID_PASSWORD"
 
-xcrun notarytool submit "build_output/Osaurus-${VERSION}.dmg" \
+xcrun notarytool submit "build_output/Project2501-${VERSION}.dmg" \
   --keychain-profile "AC_PASSWORD" \
   --wait \
   --timeout 30m
 
-xcrun stapler staple "build_output/Osaurus-${VERSION}.dmg"
-cp "build_output/Osaurus-${VERSION}.dmg" "build_output/Osaurus.dmg"
+xcrun stapler staple "build_output/Project2501-${VERSION}.dmg"
+cp "build_output/Project2501-${VERSION}.dmg" "build_output/Project2501.dmg"
 
 

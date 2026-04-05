@@ -14,15 +14,15 @@ git config --global user.email "github-actions[bot]@users.noreply.github.com"
 RELEASE_FLAGS=()
 if [ "$IS_BETA" = "true" ]; then
   RELEASE_FLAGS+=(--prerelease)
-  RELEASE_FLAGS+=(--title "Osaurus ${VERSION} (Beta)")
+  RELEASE_FLAGS+=(--title "Project2501 ${VERSION} (Beta)")
 else
   RELEASE_FLAGS+=(--latest)
-  RELEASE_FLAGS+=(--title "Osaurus ${VERSION}")
+  RELEASE_FLAGS+=(--title "Project2501 ${VERSION}")
 fi
 
 gh release create "${VERSION}" \
-  "build_output/Osaurus-${VERSION}.dmg" \
-  "build_output/Osaurus.dmg" \
+  "build_output/Project2501-${VERSION}.dmg" \
+  "build_output/Project2501.dmg" \
   --repo "${PUBLIC_REPO}" \
   --notes-file RELEASE_NOTES.md \
   "${RELEASE_FLAGS[@]}"
@@ -31,5 +31,5 @@ echo "✅ Release created successfully"
 if [ "$IS_BETA" = "true" ]; then
   echo "🧪 Beta release URL: https://github.com/${PUBLIC_REPO}/releases/tag/${VERSION}"
 else
-  echo "📥 Latest download URL: https://github.com/${PUBLIC_REPO}/releases/latest/download/Osaurus.dmg"
+  echo "📥 Latest download URL: https://github.com/${PUBLIC_REPO}/releases/latest/download/Project2501.dmg"
 fi
