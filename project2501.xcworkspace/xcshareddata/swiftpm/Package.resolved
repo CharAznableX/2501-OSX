@@ -1,5 +1,5 @@
 {
-  "originHash" : "9ee5968f251643df32e140242767f955f62d420ec7fbf4d491fc1b4b3905bd2e",
+  "originHash" : "723dee384b5e1466bbdab39345b551235c5564e31ff40d01a15df516c1e45163",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -58,9 +58,10 @@
     {
       "identity" : "mlx-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/osaurus-ai/mlx-swift",
+      "location" : "https://github.com/ml-explore/mlx-swift",
       "state" : {
-        "revision" : "509d46d8252c5d344ae87fe4f53b5b038cf04075"
+        "revision" : "61b9e011e09a62b489f6bd647958f1555bdf2896",
+        "version" : "0.31.3"
       }
     },
     {
