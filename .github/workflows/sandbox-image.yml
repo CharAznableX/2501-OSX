@@ -33,5 +33,5 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: |
-            ghcr.io/osaurus-ai/sandbox:latest
-            ghcr.io/osaurus-ai/sandbox:${{ github.sha }}
+            ghcr.io/project2501-ai/sandbox:latest
+            ghcr.io/project2501-ai/sandbox:${{ github.sha }}

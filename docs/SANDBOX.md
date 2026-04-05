@@ -72,7 +72,7 @@ Switch to the **Plugins** tab to browse, import, or create sandbox plugins that 
 │  │              │     │                              │       │
 │  │  SandboxMgr ─┼─────┤→ /workspace (VirtioFS)      │       │
 │  │              │     │→ /output    (VirtioFS)       │       │
-│  │  HostAPI  ←──┼─vsock─→ /run/osaurus-bridge.sock  │       │
+│  │  HostAPI  ←──┼─vsock─→ /run/project2501-bridge.sock  │       │
 │  │  Bridge      │     │                              │       │
 │  │              │     │  agent-alice  (Linux user)   │       │
 │  │  ToolReg  ←──┼─────┤  agent-bob    (Linux user)  │       │
@@ -86,11 +86,11 @@ Switch to the **Plugins** tab to browse, import, or create sandbox plugins that 
 | Component | Description |
 |-----------|-------------|
 | **Linux VM** | Alpine Linux with Kata Containers 3.17.0 ARM64 kernel, 8 GiB root filesystem |
-| **VirtioFS Mounts** | `/workspace` maps to `~/.osaurus/container/workspace/`, `/output` maps to `~/.osaurus/container/output/` |
+| **VirtioFS Mounts** | `/workspace` maps to `~/.project2501/container/workspace/`, `/output` maps to `~/.project2501/container/output/` |
 | **NAT Networking** | Container gets `10.0.2.15/24` via `VZNATNetworkDeviceAttachment` |
 | **Vsock Bridge** | Unix socket relayed via vsock connects the container to the Host API Bridge server |
 | **Per-Agent Users** | Each agent gets a Linux user `agent-{name}` with home at `/workspace/agents/{name}/` |
-| **Host API Bridge** | HTTP server on the host, accessible from the container via `osaurus-host` CLI shim |
+| **Host API Bridge** | HTTP server on the host, accessible from the container via `project2501-host` CLI shim |
 
 ---
 
@@ -107,7 +107,7 @@ Configure the container via the Management window → **Sandbox** → **Containe
 
 Changes require a container restart to take effect.
 
-**Config file:** `~/.osaurus/config/sandbox.json`
+**Config file:** `~/.project2501/config/sandbox.json`
 
 ```json
 {
@@ -312,20 +312,20 @@ Registered plugins are saved to the `SandboxPluginLibrary` and survive app resta
 
 ## Host API Bridge
 
-The Host API Bridge connects the container to Osaurus services on the host. Inside the container, the `osaurus-host` CLI communicates with the bridge server over a vsock-relayed Unix socket.
+The Host API Bridge connects the container to Osaurus services on the host. Inside the container, the `project2501-host` CLI communicates with the bridge server over a vsock-relayed Unix socket.
 
 | Command | Description |
 |---------|-------------|
-| `osaurus-host secrets get <name>` | Read a secret from the macOS Keychain |
-| `osaurus-host config get <key>` | Read a plugin config value |
-| `osaurus-host config set <key> <value>` | Write a plugin config value |
-| `osaurus-host inference chat -m <message>` | Run a chat completion through Osaurus |
-| `osaurus-host agent dispatch <id> <task>` | Dispatch a task to an agent |
-| `osaurus-host agent memory query <text>` | Search agent memory |
-| `osaurus-host agent memory store <text>` | Store a memory entry |
-| `osaurus-host events emit <type> [payload]` | Emit a cross-plugin event |
-| `osaurus-host plugin create` | Create a plugin from stdin JSON |
-| `osaurus-host log <message>` | Append to the sandbox log buffer |
+| `project2501-host secrets get <name>` | Read a secret from the macOS Keychain |
+| `project2501-host config get <key>` | Read a plugin config value |
+| `project2501-host config set <key> <value>` | Write a plugin config value |
+| `project2501-host inference chat -m <message>` | Run a chat completion through Osaurus |
+| `project2501-host agent dispatch <id> <task>` | Dispatch a task to an agent |
+| `project2501-host agent memory query <text>` | Search agent memory |
+| `project2501-host agent memory store <text>` | Store a memory entry |
+| `project2501-host events emit <type> [payload]` | Emit a cross-plugin event |
+| `project2501-host plugin create` | Create a plugin from stdin JSON |
+| `project2501-host log <message>` | Append to the sandbox log buffer |
 
 All requests include the calling Linux username for identity verification.
 
@@ -389,13 +389,13 @@ Access these operations from the **Container** tab → **Danger Zone** section.
 
 | Path | Description |
 |------|-------------|
-| `~/.osaurus/container/` | Container root directory |
-| `~/.osaurus/container/kernel/vmlinux` | Linux kernel |
-| `~/.osaurus/container/initfs.ext4` | Initial filesystem |
-| `~/.osaurus/container/workspace/` | Mounted as `/workspace` in the VM |
-| `~/.osaurus/container/workspace/agents/{name}/` | Per-agent home directory |
-| `~/.osaurus/container/output/` | Mounted as `/output` in the VM |
-| `~/.osaurus/sandbox-plugins/` | Plugin library (JSON recipes) |
-| `~/.osaurus/agents/{agentId}/sandbox-plugins/installed.json` | Per-agent installed plugin records |
-| `~/.osaurus/config/sandbox.json` | Sandbox configuration |
-| `~/.osaurus/config/sandbox-agent-map.json` | Linux username to agent UUID mapping |
+| `~/.project2501/container/` | Container root directory |
+| `~/.project2501/container/kernel/vmlinux` | Linux kernel |
+| `~/.project2501/container/initfs.ext4` | Initial filesystem |
+| `~/.project2501/container/workspace/` | Mounted as `/workspace` in the VM |
+| `~/.project2501/container/workspace/agents/{name}/` | Per-agent home directory |
+| `~/.project2501/container/output/` | Mounted as `/output` in the VM |
+| `~/.project2501/sandbox-plugins/` | Plugin library (JSON recipes) |
+| `~/.project2501/agents/{agentId}/sandbox-plugins/installed.json` | Per-agent installed plugin records |
+| `~/.project2501/config/sandbox.json` | Sandbox configuration |
+| `~/.project2501/config/sandbox-agent-map.json` | Linux username to agent UUID mapping |

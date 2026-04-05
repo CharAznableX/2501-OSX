@@ -1,0 +1,137 @@
+//
+//  Project2501CLI.swift
+//  project2501
+//
+//  Main entry point for the Osaurus CLI. Parses command-line arguments and routes to appropriate command handlers.
+//
+
+import Foundation
+import Project2501CLICore
+
+@main
+struct Project2501CLI {
+    private enum CommandType {
+        case status
+        case serve([String])
+        case stop
+        case list
+        case show(String)
+        case run(String)
+        case mcp
+        case ui
+        case tools([String])
+        case manifest([String])
+        case bundle([String])
+        case version
+        case help
+    }
+
+    private static func parseCommand(_ args: ArraySlice<String>) -> CommandType? {
+        guard let command = args.first else { return nil }
+        let rest = Array(args.dropFirst())
+        switch command {
+        case "status": return .status
+        case "serve": return .serve(rest)
+        case "stop": return .stop
+        case "list": return .list
+        case "show":
+            if let modelId = rest.first, !modelId.isEmpty { return .show(modelId) }
+            return nil
+        case "run":
+            if let modelId = rest.first, !modelId.isEmpty { return .run(modelId) }
+            return nil
+        case "mcp": return .mcp
+        case "ui": return .ui
+        case "tools": return .tools(rest)
+        case "manifest": return .manifest(rest)
+        case "bundle": return .bundle(rest)
+        case "version", "--version", "-v": return .version
+        case "help", "-h", "--help": return .help
+        default: return nil
+        }
+    }
+
+    static func main() async {
+        let arguments = CommandLine.arguments.dropFirst()
+        guard let cmd = parseCommand(arguments) else {
+            if let first = arguments.first { fputs("Unknown or invalid command: \(first)\n\n", stderr) }
+            printUsage()
+            exit(EXIT_FAILURE)
+        }
+
+        switch cmd {
+        case .status:
+            await StatusCommand.execute(args: [])
+        case .serve(let args):
+            await ServeCommand.execute(args: args)
+        case .stop:
+            await StopCommand.execute(args: [])
+        case .list:
+            await ListCommand.execute(args: [])
+        case .show(let modelId):
+            await ShowCommand.execute(args: [modelId])
+        case .run(let modelId):
+            await RunCommand.execute(args: [modelId])
+        case .mcp:
+            await MCPCommand.execute(args: [])
+        case .ui:
+            await UICommand.execute(args: [])
+        case .tools(let args):
+            await ToolsCommand.execute(args: args)
+        case .manifest(let args):
+            await ManifestCommand.execute(args: args)
+        case .bundle(let args):
+            await BundleCommand.execute(args: args)
+        case .version:
+            await VersionCommand.execute(args: [])
+        case .help:
+            printUsage()
+            exit(EXIT_SUCCESS)
+        }
+    }
+
+    private static func printUsage() {
+        let usage = """
+            project2501 - CLI for Osaurus
+
+            Usage:
+              project2501 serve [--port N] [--expose] [--yes|-y]
+                                      Start the server (default: localhost only). If --expose
+                                      is set, a warning prompt will appear unless --yes is provided.
+              project2501 stop            Stop the server
+              project2501 mcp             Run MCP stdio server proxying to local HTTP
+              project2501 version         Show version (also: --version or -v)
+              project2501 status          Check if the Osaurus server is running
+              project2501 list            List available model IDs
+              project2501 show <model_id> Show metadata for a model
+              project2501 run <model_id>  Chat with a downloaded model (interactive)
+              project2501 ui              Show the Osaurus menu popover in the menu bar
+              project2501 tools list      List installed tools
+              project2501 tools install <plugin_id|url-or-path>
+                                      Install a tool from registry or local/URL
+              project2501 tools search <query>
+                                      Search for tools in the registry
+              project2501 tools outdated  Check for outdated tools
+              project2501 tools upgrade   Upgrade installed tools
+              project2501 tools uninstall <tool_name>
+                                      Uninstall a tool
+              project2501 tools verify    Verify dylib integrity of installed tools
+              project2501 tools create <name> [--language swift|rust]
+                                      Scaffold a v2 plugin project
+              project2501 tools package <plugin_id> <version> [dylib_path]
+                                      Package plugin into a zip (includes web/, docs)
+              project2501 tools reload    Ask the app to rescan tools
+              project2501 tools rollback <plugin_id>
+                                      Roll back a tool to its previous version
+              project2501 tools dev <plugin_id> [--web-proxy <url>]
+                                      Dev mode with hot reload and optional web proxy
+              project2501 manifest extract <dylib>
+                                      Extract manifest JSON from built plugin
+              project2501 bundle load <path.mcpb> [--name "Display Name"]
+                                      Load and run an MCP Bundle (.mcpb file)
+              project2501 help            Show this help
+
+            """
+        print(usage)
+    }
+}

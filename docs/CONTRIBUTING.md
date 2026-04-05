@@ -22,8 +22,8 @@ Requirements:
 
 Build and run:
 
-1. Open `osaurus.xcworkspace` in Xcode 16.4+
-2. Select the `osaurus` target and press Run
+1. Open `project2501.xcworkspace` in Xcode 16.4+
+2. Select the `project2501` target and press Run
 3. In the app UI, choose a port (default `1337`), then Start
 4. Download a model from the Model Manager to generate text locally
 
@@ -33,7 +33,7 @@ Project layout and API overview are in `README.md`. For a complete feature inven
 
 ### Layer definitions
 
-The core library (`Packages/OsaurusCore/`) follows a layered architecture. Each layer has a specific role and set of rules.
+The core library (`Packages/Project2501Core/`) follows a layered architecture. Each layer has a specific role and set of rules.
 
 **Models** — Pure data. No logic, no side effects, no singletons.
 
@@ -122,7 +122,7 @@ The core library (`Packages/OsaurusCore/`) follows a layered architecture. Each 
 
 ### Dependencies
 
-The workspace lockfile at `osaurus.xcworkspace/xcshareddata/swiftpm/Package.resolved`
+The workspace lockfile at `project2501.xcworkspace/xcshareddata/swiftpm/Package.resolved`
 is the single source of truth for pinned dependency versions. Xcode updates
 this file automatically when you add, remove, or update a package. Commit
 the changed `Package.resolved` alongside your other changes.
@@ -138,7 +138,7 @@ gitignored and not used by CI.
 
 ### Testing
 
-- Add or update tests in `Packages/OsaurusCore/Tests/` where reasonable
+- Add or update tests in `Packages/Project2501Core/Tests/` where reasonable
 - Ensure the project builds and tests pass in Xcode before submitting
 
 ### Commit and PR guidelines
@@ -239,6 +239,6 @@ This project follows the Contributor Covenant. By participating, you agree to up
 ## Join the community
 
 - **[Discord](https://discord.gg/dinoki)** — Chat with contributors and maintainers
-- **[Good First Issues](https://github.com/osaurus-ai/osaurus/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)** — Great starting points
+- **[Good First Issues](https://github.com/project2501-ai/project2501/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)** — Great starting points
 
 Thank you for helping make Osaurus better!

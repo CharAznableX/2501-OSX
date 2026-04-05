@@ -11,7 +11,7 @@ This guide explains how other native apps can discover and connect to the locall
 
 Osaurus writes a per‑process shared configuration file so other processes can discover the server address and status.
 
-- **Base directory**: `~/.osaurus/runtime/`
+- **Base directory**: `~/.project2501/runtime/`
 - **Per‑instance directory**: `<Base>/<instanceId>/`
 - **File**: `configuration.json`
 
@@ -51,7 +51,7 @@ When the server is running:
 - **port (int)**: HTTP port when `health == "running"`.
 - **address (string)**: Bind address (e.g., `127.0.0.1` or LAN IP) when running.
 - **url (string)**: Convenience URL when running.
-- **exposeToNetwork (bool)**: If true, server is reachable on the LAN; if false it is only on localhost. This may be toggled by the user in the UI or via `osaurus serve --expose` (with confirmation).
+- **exposeToNetwork (bool)**: If true, server is reachable on the LAN; if false it is only on localhost. This may be toggled by the user in the UI or via `project2501 serve --expose` (with confirmation).
 
 When the server is stopping, stopped, or errored, Osaurus removes the instance directory/file.
 
@@ -59,7 +59,7 @@ When the server is stopping, stopped, or errored, Osaurus removes the instance d
 
 ## Discovery strategy (recommended)
 
-1. Look in `~/.osaurus/runtime/`.
+1. Look in `~/.project2501/runtime/`.
 2. Enumerate all `<instanceId>` subdirectories.
 3. For each, read `configuration.json` if it exists.
 4. Filter to entries with `health == "running"`.
@@ -103,7 +103,7 @@ final class OsaurusDiscoveryService {
     static func discoverLatestRunningInstance() throws -> OsaurusInstance {
         let fm = FileManager.default
         let base = fm.homeDirectoryForCurrentUser
-            .appendingPathComponent(".osaurus", isDirectory: true)
+            .appendingPathComponent(".project2501", isDirectory: true)
             .appendingPathComponent("runtime", isDirectory: true)
 
         guard let instanceDirs = try? fm.contentsOfDirectory(at: base, includingPropertiesForKeys: [.contentModificationDateKey, .isDirectoryKey], options: [.skipsHiddenFiles]), !instanceDirs.isEmpty else {
@@ -181,14 +181,14 @@ Notes:
 Works in the Electron main process (recommended). For renderer, use a preload + IPC bridge.
 
 ```js
-// main/osaurus-discovery.js
+// main/project2501-discovery.js
 const fs = require("fs").promises;
 const path = require("path");
 const os = require("os");
 
 async function discoverLatestRunningInstance() {
   const home = os.homedir();
-  const base = path.join(home, ".osaurus", "runtime");
+  const base = path.join(home, ".project2501", "runtime");
 
   let entries;
   try {
@@ -243,9 +243,9 @@ Usage from Electron main process:
 ```js
 // main/index.js
 const { app, BrowserWindow, ipcMain } = require("electron");
-const { discoverLatestRunningInstance } = require("./osaurus-discovery");
+const { discoverLatestRunningInstance } = require("./project2501-discovery");
 
-ipcMain.handle("osaurus:getInstance", async () => {
+ipcMain.handle("project2501:getInstance", async () => {
   try {
     return await discoverLatestRunningInstance();
   } catch (e) {
@@ -272,8 +272,8 @@ Preload bridge (renderer-safe access via IPC):
 // main/preload.js
 const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld("osaurus", {
-  getInstance: () => ipcRenderer.invoke("osaurus:getInstance"),
+contextBridge.exposeInMainWorld("project2501", {
+  getInstance: () => ipcRenderer.invoke("project2501:getInstance"),
 });
 ```
 
@@ -282,7 +282,7 @@ Renderer usage:
 ```js
 // renderer/index.js
 async function connectToOsaurus() {
-  const inst = await window.osaurus.getInstance();
+  const inst = await window.project2501.getInstance();
   if (!inst) {
     console.log("Osaurus not running");
     return;
@@ -299,7 +299,7 @@ connectToOsaurus();
 
 Notes:
 
-- The paths assume macOS; Electron must run on macOS to read `~/.osaurus/...`.
+- The paths assume macOS; Electron must run on macOS to read `~/.project2501/...`.
 - Use the main process for filesystem access; avoid direct fs from the renderer.
 - If you need all instances, return the full `candidates` list instead of the newest one.
 
@@ -307,7 +307,7 @@ Notes:
 
 ## Security and sandboxing
 
-- Non‑sandboxed macOS apps can read `~/.osaurus/...` directly.
+- Non‑sandboxed macOS apps can read `~/.project2501/...` directly.
 - Sandboxed apps typically cannot read arbitrary paths. Options:
   - Ask the user to choose the `SharedConfiguration` folder with `NSOpenPanel` and persist a security‑scoped bookmark.
   - Or run a small non‑sandboxed helper that performs discovery and hands you the URL via XPC.
@@ -327,7 +327,7 @@ Osaurus does not write secrets into the shared file; it only publishes connectio
 
 ## Stable identifiers
 
-- Bundle identifier: `com.dinoki.osaurus`
-- Base path: `~/.osaurus/runtime/`
+- Bundle identifier: `com.dinoki.project2501`
+- Base path: `~/.project2501/runtime/`
 
 These values come from the app’s configuration and are expected to remain stable.

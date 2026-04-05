@@ -10,10 +10,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/osaurus-ai/osaurus/releases/latest"><img src="https://img.shields.io/github/v/release/osaurus-ai/osaurus?sort=semver" alt="Release"></a>
-  <a href="https://github.com/osaurus-ai/osaurus/releases"><img src="https://img.shields.io/github/downloads/osaurus-ai/osaurus/total" alt="Downloads"></a>
-  <a href="https://github.com/osaurus-ai/osaurus/blob/main/LICENSE"><img src="https://img.shields.io/github/license/osaurus-ai/osaurus" alt="License"></a>
-  <a href="https://github.com/osaurus-ai/osaurus/stargazers"><img src="https://img.shields.io/github/stars/osaurus-ai/osaurus?style=social" alt="Stars"></a>
+  <a href="https://github.com/project2501-ai/project2501/releases/latest"><img src="https://img.shields.io/github/v/release/project2501-ai/project2501?sort=semver" alt="Release"></a>
+  <a href="https://github.com/project2501-ai/project2501/releases"><img src="https://img.shields.io/github/downloads/project2501-ai/project2501/total" alt="Downloads"></a>
+  <a href="https://github.com/project2501-ai/project2501/blob/main/LICENSE"><img src="https://img.shields.io/github/license/project2501-ai/project2501" alt="License"></a>
+  <a href="https://github.com/project2501-ai/project2501/stargazers"><img src="https://img.shields.io/github/stars/project2501-ai/project2501?style=social" alt="Stars"></a>
 </p>
 
 <p align="center">
@@ -27,11 +27,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/osaurus-ai/osaurus/releases/latest/download/Osaurus.dmg">Download for Mac</a> ·
-  <a href="https://docs.osaurus.ai">Docs</a> ·
+  <a href="https://github.com/project2501-ai/project2501/releases/latest/download/Osaurus.dmg">Download for Mac</a> ·
+  <a href="https://docs.project2501.ai">Docs</a> ·
   <a href="https://discord.com/invite/dinoki">Discord</a> ·
   <a href="https://x.com/OsaurusAI">Twitter</a> ·
-  <a href="https://github.com/osaurus-ai/osaurus-tools">Plugin Registry</a>
+  <a href="https://github.com/project2501-ai/project2501-tools">Plugin Registry</a>
 </p>
 
 ---
@@ -49,15 +49,15 @@ Native Swift on Apple Silicon. No Electron. No compromises. MIT licensed.
 ## Install
 
 ```bash
-brew install --cask osaurus
+brew install --cask project2501
 ```
 
-Or download the latest `.dmg` from [Releases](https://github.com/osaurus-ai/osaurus/releases/latest). After installing, launch from Spotlight (`⌘ Space` → "Osaurus") or the CLI:
+Or download the latest `.dmg` from [Releases](https://github.com/project2501-ai/project2501/releases/latest). After installing, launch from Spotlight (`⌘ Space` → "Osaurus") or the CLI:
 
 ```bash
-osaurus ui       # Open the chat UI
-osaurus serve    # Start the server
-osaurus status   # Check status
+project2501 ui       # Open the chat UI
+project2501 serve    # Start the server
+project2501 status   # Check status
 ```
 
 > Requires macOS 15.5+ and Apple Silicon.
@@ -81,7 +81,7 @@ Each agent gets its own Linux user and home directory. The VM connects back to O
 │    Osaurus     │       │   Linux VM (Alpine)        │
 │                │       │                            │
 │  Sandbox Mgr ──┼───────┤→ /workspace  (VirtioFS)    │
-│  Host API   ←──┼─vsock─┤→ osaurus-host bridge       │
+│  Host API   ←──┼─vsock─┤→ project2501-host bridge       │
 │                │       │                            │
 │                │       │  agent-alice  (Linux user) │
 │                │       │  agent-bob    (Linux user) │
@@ -100,7 +100,7 @@ Every participant -- human, agent, device -- gets a secp256k1 cryptographic addr
 
 ### Relay
 
-Expose agents to the internet via secure WebSocket tunnels through `agent.osaurus.ai`. Unique URL per agent based on its crypto address. No port forwarding, no ngrok, no configuration.
+Expose agents to the internet via secure WebSocket tunnels through `agent.project2501.ai`. Unique URL per agent based on its crypto address. No port forwarding, no ngrok, no configuration.
 
 ## Models
 
@@ -129,8 +129,8 @@ Osaurus is a full MCP (Model Context Protocol) server. Give Cursor, Claude Deskt
 ```json
 {
   "mcpServers": {
-    "osaurus": {
-      "command": "osaurus",
+    "project2501": {
+      "command": "project2501",
       "args": ["mcp"]
     }
   }
@@ -142,10 +142,10 @@ Also an MCP client -- aggregate tools from remote MCP servers into Osaurus. See 
 ## Tools & Plugins
 
 ```bash
-osaurus tools install osaurus.browser    # Install from registry
-osaurus tools list                       # List installed
-osaurus tools create MyPlugin --swift    # Create a plugin
-osaurus tools dev com.acme.my-plugin     # Dev with hot reload
+project2501 tools install project2501.browser    # Install from registry
+project2501 tools list                       # List installed
+project2501 tools create MyPlugin --swift    # Create a plugin
+project2501 tools dev com.acme.my-plugin     # Dev with hot reload
 ```
 
 20+ native plugins: Mail, Calendar, Vision, macOS Use, XLSX, PPTX, Browser, Music, Git, Filesystem, Search, Fetch, and more. Plugins support v1 (tools only) and v2 (full host API) ABIs -- register HTTP routes, serve web apps, persist data in SQLite, dispatch agent tasks, and call inference through any model. See the [Plugin Authoring Guide](docs/PLUGIN_AUTHORING.md).
@@ -175,17 +175,17 @@ All prefixes supported (`/v1`, `/api`, `/v1/api`). Full function calling with st
 ## CLI
 
 ```bash
-osaurus serve --port 1337              # Start on localhost
-osaurus serve --port 1337 --expose     # Expose on LAN
-osaurus ui                             # Open the chat UI
-osaurus status                         # Check status
-osaurus stop                           # Stop the server
+project2501 serve --port 1337              # Start on localhost
+project2501 serve --port 1337 --expose     # Expose on LAN
+project2501 ui                             # Open the chat UI
+project2501 status                         # Check status
+project2501 stop                           # Stop the server
 ```
 
 Homebrew auto-links the CLI, or symlink manually:
 
 ```bash
-ln -sf "/Applications/Osaurus.app/Contents/MacOS/osaurus" "$(brew --prefix)/bin/osaurus"
+ln -sf "/Applications/Osaurus.app/Contents/MacOS/project2501" "$(brew --prefix)/bin/project2501"
 ```
 
 ## Architecture
@@ -215,12 +215,12 @@ Most features are accessible through the Management window (`⌘ ⇧ M`).
 ## Build from Source
 
 ```bash
-git clone https://github.com/osaurus-ai/osaurus.git
-cd osaurus
-open osaurus.xcworkspace
+git clone https://github.com/project2501-ai/project2501.git
+cd project2501
+open project2501.xcworkspace
 ```
 
-Build and run the `osaurus` target. Requires Xcode 16+ and macOS 15.5+.
+Build and run the `project2501` target. Requires Xcode 16+ and macOS 15.5+.
 
 ### Git Hooks (lefthook)
 
@@ -236,10 +236,10 @@ This installs a `pre-push` hook that runs `swift-format` over the `Packages/` di
 ## Project Structure
 
 ```
-osaurus/
+project2501/
 ├── App/                          # macOS app target (SwiftUI entry point, assets, entitlements)
 ├── Packages/
-│   ├── OsaurusCore/              # Core library — all app logic
+│   ├── Project2501Core/              # Core library — all app logic
 │   │   ├── Models/               # Data types, DTOs, configuration stores
 │   │   ├── Services/             # Business logic (actors and stateless types)
 │   │   ├── Managers/             # UI-facing state holders (@MainActor, observable)
@@ -251,8 +251,8 @@ osaurus/
 │   │   ├── Work/                 # Work mode execution context and file ops
 │   │   ├── Utils/                # Cross-cutting utilities
 │   │   └── Tests/                # Unit and integration tests
-│   ├── OsaurusCLI/               # CLI (osaurus command)
-│   └── OsaurusRepository/        # Plugin registry and installation
+│   ├── Project2501CLI/               # CLI (project2501 command)
+│   └── Project2501Repository/        # Plugin registry and installation
 ├── docs/                         # Feature guides and documentation
 ├── scripts/                      # Build, release, and benchmark scripts
 ├── sandbox/                      # Sandbox VM Dockerfile
@@ -265,16 +265,16 @@ See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for the architecture guide and layer
 
 Osaurus is actively developed and we welcome contributions: bug fixes, new plugins, documentation, UI/UX improvements, and testing.
 
-Check out [Good First Issues](https://github.com/osaurus-ai/osaurus/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22), read the [Contributing Guide](CONTRIBUTING.md), or join [Discord](https://discord.com/invite/dinoki). See [docs/FEATURES.md](docs/FEATURES.md) for the full feature inventory.
+Check out [Good First Issues](https://github.com/project2501-ai/project2501/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22), read the [Contributing Guide](CONTRIBUTING.md), or join [Discord](https://discord.com/invite/dinoki). See [docs/FEATURES.md](docs/FEATURES.md) for the full feature inventory.
 
 ## Community
 
 - [Discord](https://discord.com/invite/dinoki) -- chat, feedback, show-and-tell
 - [Twitter](https://x.com/OsaurusAI) -- updates and demos
-- [Community Calls](https://lu.ma/osaurus) -- bi-weekly, open to everyone
-- [Blog](https://osaurus.ai/blog) -- long-form thinking on personal AI
-- [Docs](https://docs.osaurus.ai) -- guides and tutorials
-- [Plugin Registry](https://github.com/osaurus-ai/osaurus-tools) -- browse and contribute tools
+- [Community Calls](https://lu.ma/project2501) -- bi-weekly, open to everyone
+- [Blog](https://project2501.ai/blog) -- long-form thinking on personal AI
+- [Docs](https://docs.project2501.ai) -- guides and tutorials
+- [Plugin Registry](https://github.com/project2501-ai/project2501-tools) -- browse and contribute tools
 
 ## License
 
@@ -283,5 +283,5 @@ Check out [Good First Issues](https://github.com/osaurus-ai/osaurus/issues?q=is%
 ---
 
 <p align="center">
-  Osaurus, Inc. · <a href="https://osaurus.ai">osaurus.ai</a>
+  Osaurus, Inc. · <a href="https://project2501.ai">project2501.ai</a>
 </p>

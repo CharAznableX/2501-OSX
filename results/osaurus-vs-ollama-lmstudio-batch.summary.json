@@ -1,5 +1,5 @@
 {
-  "osaurus|llama-3.2-3b-instruct-4bit": {
+  "project2501|llama-3.2-3b-instruct-4bit": {
     "runs": 20,
     "success_rate": 1.0,
     "ttft_ms_avg": 87.3210708014085,

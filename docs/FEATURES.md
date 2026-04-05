@@ -39,7 +39,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 | VAD Mode                         | Stable    | "Voice Input"      | VOICE_INPUT.md                | Services/Voice/VADService.swift, Views/ContentView.swift (VAD controls)                     |
 | Transcription Mode               | Stable    | "Voice Input"      | VOICE_INPUT.md                | Services/Voice/TranscriptionModeService.swift, Views/Voice/TranscriptionOverlayView.swift         |
 | Sandbox                          | macOS 26+ | "Sandbox"          | SANDBOX.md                    | Services/Sandbox/SandboxManager.swift, Tools/BuiltinSandboxTools.swift, Managers/Plugin/SandboxPluginManager.swift, Views/Sandbox/SandboxView.swift |
-| CLI                              | Stable    | "CLI Reference"    | (in README)                   | Packages/OsaurusCLI/                                                                  |
+| CLI                              | Stable    | "CLI Reference"    | (in README)                   | Packages/Project2501CLI/                                                                  |
 
 ---
 
@@ -135,7 +135,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 │  ├── Router (Request routing)                                            │
 │  └── HTTPHandler (OpenAI/Anthropic/Ollama API handlers)                  │
 ├─────────────────────────────────────────────────────────────────────────┤
-│  CLI (OsaurusCLI Package)                                                │
+│  CLI (Project2501CLI Package)                                                │
 │  └── Commands: serve, stop, status, ui, list, show, run, mcp, tools (install, dev, ...), version │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -169,7 +169,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 
 - Model storage: `~/MLXModels` (override with `OSU_MODELS_DIR`)
 - Default port: `1337` (override with `OSU_PORT`)
-- KV cache SSD storage: `~/.osaurus/cache/kv/`
+- KV cache SSD storage: `~/.project2501/cache/kv/`
 - Settings: Top P, Max Context Length, and advanced KV cache quantization options (collapsed by default)
 - Auto-tuned defaults (when not set in Settings):
 
@@ -494,7 +494,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 | `processing`| Agent task is running                           |
 | `settling`  | Waiting for self-caused FSEvents to flush       |
 
-**Storage:** `~/.osaurus/watchers/{uuid}.json`
+**Storage:** `~/.project2501/watchers/{uuid}.json`
 
 ---
 
@@ -570,7 +570,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 6. When the task is complete, the agent calls `complete_task` with a summary and artifact
 7. Clarification pauses execution when the task is ambiguous
 
-**Storage:** `~/.osaurus/work/work.db` (SQLite)
+**Storage:** `~/.project2501/work/work.db` (SQLite)
 
 ---
 
@@ -674,14 +674,14 @@ Read-only tools are always available. Write/exec/package/secret tools require `a
 
 | Path | Purpose |
 |------|---------|
-| `~/.osaurus/container/` | Container root |
-| `~/.osaurus/container/kernel/vmlinux` | Linux kernel |
-| `~/.osaurus/container/workspace/` | Mounted as `/workspace` |
-| `~/.osaurus/container/workspace/agents/{name}/` | Per-agent home |
-| `~/.osaurus/container/output/` | Mounted as `/output` |
-| `~/.osaurus/sandbox-plugins/` | Plugin library |
-| `~/.osaurus/config/sandbox.json` | Configuration |
-| `~/.osaurus/config/sandbox-agent-map.json` | Agent map |
+| `~/.project2501/container/` | Container root |
+| `~/.project2501/container/kernel/vmlinux` | Linux kernel |
+| `~/.project2501/container/workspace/` | Mounted as `/workspace` |
+| `~/.project2501/container/workspace/agents/{name}/` | Per-agent home |
+| `~/.project2501/container/output/` | Mounted as `/output` |
+| `~/.project2501/sandbox-plugins/` | Plugin library |
+| `~/.project2501/config/sandbox.json` | Configuration |
+| `~/.project2501/config/sandbox-agent-map.json` | Agent map |
 
 ---
 
@@ -726,8 +726,8 @@ Read-only tools are always available. Write/exec/package/secret tools require `a
 
 **Plugin Types:**
 
-- **v1 plugins** — Tools only, via `osaurus_plugin_entry`
-- **v2 plugins** — Tools + routes + storage + config, via `osaurus_plugin_entry_v2`
+- **v1 plugins** — Tools only, via `project2501_plugin_entry`
+- **v2 plugins** — Tools + routes + storage + config, via `project2501_plugin_entry_v2`
 - **System plugins** — Built-in tools (filesystem, browser, git, etc.)
 - **MCP provider tools** — Tools from remote MCP servers
 
@@ -781,7 +781,7 @@ See [PLUGIN_AUTHORING.md](PLUGIN_AUTHORING.md) for the full reference.
 | `references/`  | Text files loaded into context     |
 | `assets/`      | Supporting files                   |
 
-**Storage:** `~/.osaurus/skills/{skill-name}/SKILL.md`
+**Storage:** `~/.project2501/skills/{skill-name}/SKILL.md`
 
 ---
 
@@ -839,7 +839,7 @@ Each time a method is used, a `MethodEvent` is recorded (`loaded`, `succeeded`, 
 | `methods_save`    | Save a new method from a YAML workflow           |
 | `methods_report`  | Report success or failure to update method score |
 
-**Storage:** `~/.osaurus/methods/methods.db` (SQLite with WAL mode)
+**Storage:** `~/.project2501/methods/methods.db` (SQLite with WAL mode)
 
 ---
 
@@ -1125,7 +1125,7 @@ Results are cached for 10 seconds per agent.
 | `maxEntriesPerAgent` | 500 | 0 -- 10,000 |
 | `enabled` | true | true/false |
 
-**Storage:** `~/.osaurus/memory/memory.sqlite` (SQLite with WAL mode)
+**Storage:** `~/.project2501/memory/memory.sqlite` (SQLite with WAL mode)
 
 ---
 

@@ -150,7 +150,7 @@ Always include:
 Skills are stored as directories:
 
 ```
-~/.osaurus/skills/
+~/.project2501/skills/
 └── research-analyst/
     ├── SKILL.md           # Main skill file
     ├── references/        # Optional: files loaded into context

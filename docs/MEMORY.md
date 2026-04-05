@@ -308,9 +308,9 @@ Failed extraction and summarization calls use exponential backoff:
 
 All memory data is stored in a local SQLite database with WAL (Write-Ahead Logging) mode for concurrent read performance.
 
-**Location:** `~/.osaurus/memory/memory.sqlite`
+**Location:** `~/.project2501/memory/memory.sqlite`
 
-**Configuration:** `~/.osaurus/config/memory.json`
+**Configuration:** `~/.project2501/config/memory.json`
 
 The database schema is versioned with automatic migrations. Indexes are maintained on agent ID, status, temporal fields, and conversation IDs for efficient queries.
 
@@ -353,7 +353,7 @@ from openai import OpenAI
 
 client = OpenAI(
     base_url="http://127.0.0.1:1337/v1",
-    api_key="osaurus",
+    api_key="project2501",
     default_headers={"X-Osaurus-Agent-Id": "my-agent"},
 )
 
@@ -438,7 +438,7 @@ Our goal is to achieve state-of-the-art on this benchmark. Osaurus uses Apple Fo
 make bench-setup
 
 # 2. Configure .env in benchmarks/EasyLocomo/
-echo 'OPENAI_API_KEY=osaurus' > benchmarks/EasyLocomo/.env
+echo 'OPENAI_API_KEY=project2501' > benchmarks/EasyLocomo/.env
 echo 'OPENAI_API_BASE=http://localhost:1337/v1' >> benchmarks/EasyLocomo/.env
 
 # 3. Ingest LoCoMo data (full extraction — takes several hours, only needed once)
@@ -451,7 +451,7 @@ make bench-ingest-chunks
 make bench-run
 ```
 
-You may want to temporarily increase token budgets in the memory configuration file (`~/.osaurus/config/memory.json`) before running benchmarks. The default production budgets are tuned for everyday use, not maximal recall.
+You may want to temporarily increase token budgets in the memory configuration file (`~/.project2501/config/memory.json`) before running benchmarks. The default production budgets are tuned for everyday use, not maximal recall.
 
 ### Memory-Augmented Evaluation
 

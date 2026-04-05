@@ -22,13 +22,13 @@ Example response:
       "id": "llama-3.2-3b-instruct",
       "object": "model",
       "created": 1738193123,
-      "owned_by": "osaurus"
+      "owned_by": "project2501"
     },
     {
       "id": "qwen2.5-7b-instruct",
       "object": "model",
       "created": 1738193123,
-      "owned_by": "osaurus"
+      "owned_by": "project2501"
     }
   ]
 }
@@ -197,7 +197,7 @@ Tool execution loop: After receiving tool calls, execute them client‑side and 
 import json
 from openai import OpenAI
 
-client = OpenAI(base_url="http://127.0.0.1:1337/v1", api_key="osaurus")
+client = OpenAI(base_url="http://127.0.0.1:1337/v1", api_key="project2501")
 
 tools = [{
     "type": "function",
@@ -568,7 +568,7 @@ from openai import OpenAI
 
 client = OpenAI(
     base_url="http://127.0.0.1:1337/v1",
-    api_key="osaurus",
+    api_key="project2501",
     default_headers={"X-Osaurus-Agent-Id": "my-agent"},
 )
 

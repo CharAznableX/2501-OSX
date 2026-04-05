@@ -1,14 +1,14 @@
 included:
-  - Packages/OsaurusCore
-  - Packages/OsaurusCLI
-  - Packages/OsaurusRepository
+  - Packages/Project2501Core
+  - Packages/Project2501CLI
+  - Packages/Project2501Repository
   - App
 
 excluded:
-  - Packages/OsaurusCore/.build
-  - Packages/OsaurusCore/Tests
-  - Packages/OsaurusCLI/.build
-  - Packages/OsaurusCLI/Tests
+  - Packages/Project2501Core/.build
+  - Packages/Project2501Core/Tests
+  - Packages/Project2501CLI/.build
+  - Packages/Project2501CLI/Tests
 
 disabled_rules:
   - line_length

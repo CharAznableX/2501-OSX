@@ -1,6 +1,6 @@
 [
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 0,
     "iteration": 1,
@@ -13,7 +13,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 0,
     "iteration": 2,
@@ -26,7 +26,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 0,
     "iteration": 3,
@@ -39,7 +39,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 0,
     "iteration": 4,
@@ -52,7 +52,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 0,
     "iteration": 5,
@@ -65,7 +65,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 0,
     "iteration": 6,
@@ -78,7 +78,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 0,
     "iteration": 7,
@@ -91,7 +91,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 0,
     "iteration": 8,
@@ -104,7 +104,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 0,
     "iteration": 9,
@@ -117,7 +117,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 0,
     "iteration": 10,
@@ -130,7 +130,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 1,
     "iteration": 1,
@@ -143,7 +143,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 1,
     "iteration": 2,
@@ -156,7 +156,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 1,
     "iteration": 3,
@@ -169,7 +169,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 1,
     "iteration": 4,
@@ -182,7 +182,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 1,
     "iteration": 5,
@@ -195,7 +195,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 1,
     "iteration": 6,
@@ -208,7 +208,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 1,
     "iteration": 7,
@@ -221,7 +221,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 1,
     "iteration": 8,
@@ -234,7 +234,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 1,
     "iteration": 9,
@@ -247,7 +247,7 @@
     "error": null
   },
   {
-    "server": "osaurus",
+    "server": "project2501",
     "model": "llama-3.2-3b-instruct-4bit",
     "prompt_id": 1,
     "iteration": 10,

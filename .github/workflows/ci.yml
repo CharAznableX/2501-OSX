@@ -16,7 +16,7 @@ jobs:
   test-core:
     runs-on: macos-latest
     env:
-      WORKSPACE: osaurus.xcworkspace
+      WORKSPACE: project2501.xcworkspace
       SPM_CACHE: .spm-cache
     steps:
       - name: Checkout code
@@ -34,30 +34,30 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .spm-cache
-          key: spm-${{ runner.os }}-${{ hashFiles('osaurus.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: spm-${{ runner.os }}-${{ hashFiles('project2501.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: spm-${{ runner.os }}-
 
       - name: Resolve dependencies
         run: >-
           xcodebuild -resolvePackageDependencies
           -workspace $WORKSPACE
-          -scheme OsaurusCoreTests
+          -scheme Project2501CoreTests
           -clonedSourcePackagesDirPath $SPM_CACHE
 
-      - name: Test OsaurusCore
+      - name: Test Project2501Core
         run: >-
           xcodebuild test
           -workspace $WORKSPACE
-          -scheme OsaurusCoreTests
+          -scheme Project2501CoreTests
           -disableAutomaticPackageResolution
           -clonedSourcePackagesDirPath $SPM_CACHE
-          -skip-testing OsaurusCoreTests/KVCacheStoreTests
-          -skip-testing OsaurusCoreTests/MLXGenerationEngineTests
+          -skip-testing Project2501CoreTests/KVCacheStoreTests
+          -skip-testing Project2501CoreTests/MLXGenerationEngineTests
 
   test-cli:
     runs-on: macos-latest
     env:
-      WORKSPACE: osaurus.xcworkspace
+      WORKSPACE: project2501.xcworkspace
       SPM_CACHE: .spm-cache
     steps:
       - name: Checkout code
@@ -72,21 +72,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .spm-cache
-          key: spm-${{ runner.os }}-${{ hashFiles('osaurus.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: spm-${{ runner.os }}-${{ hashFiles('project2501.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: spm-${{ runner.os }}-
 
       - name: Resolve dependencies
         run: >-
           xcodebuild -resolvePackageDependencies
           -workspace $WORKSPACE
-          -scheme OsaurusCLITests
+          -scheme Project2501CLITests
           -clonedSourcePackagesDirPath $SPM_CACHE
 
-      - name: Test OsaurusCLI
+      - name: Test Project2501CLI
         run: >-
           xcodebuild test
           -workspace $WORKSPACE
-          -scheme OsaurusCLITests
+          -scheme Project2501CLITests
           -disableAutomaticPackageResolution
           -clonedSourcePackagesDirPath $SPM_CACHE
 

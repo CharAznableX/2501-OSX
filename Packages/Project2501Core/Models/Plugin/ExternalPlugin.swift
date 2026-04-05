@@ -1,0 +1,651 @@
+//
+//  ExternalPlugin.swift
+//  project2501
+//
+//  Represents a loaded plugin instance using the generic C ABI.
+//
+
+import Foundation
+
+// MARK: - C ABI Mirror
+
+typealias osr_plugin_ctx_t = UnsafeMutableRawPointer
+
+// v1 function types
+typealias osr_free_string_t = @convention(c) (UnsafePointer<CChar>?) -> Void
+typealias osr_init_t = @convention(c) () -> osr_plugin_ctx_t?
+typealias osr_destroy_t = @convention(c) (osr_plugin_ctx_t?) -> Void
+typealias osr_get_manifest_t = @convention(c) (osr_plugin_ctx_t?) -> UnsafePointer<CChar>?
+
+typealias osr_invoke_t =
+    @convention(c) (
+        osr_plugin_ctx_t?,  // ctx
+        UnsafePointer<CChar>?,  // type
+        UnsafePointer<CChar>?,  // id
+        UnsafePointer<CChar>?  // payload
+    ) -> UnsafePointer<CChar>?  // returns JSON string directly
+
+// v2 function types
+typealias osr_handle_route_t =
+    @convention(c) (
+        osr_plugin_ctx_t?,  // ctx
+        UnsafePointer<CChar>?  // request_json
+    ) -> UnsafePointer<CChar>?  // returns response JSON
+
+typealias osr_on_config_changed_t =
+    @convention(c) (
+        osr_plugin_ctx_t?,  // ctx
+        UnsafePointer<CChar>?,  // key
+        UnsafePointer<CChar>?  // value
+    ) -> Void
+
+typealias osr_on_task_event_t =
+    @convention(c) (
+        osr_plugin_ctx_t?,  // ctx
+        UnsafePointer<CChar>?,  // task_id
+        Int32,  // event_type (OSR_TASK_EVENT_*)
+        UnsafePointer<CChar>?  // event_json
+    ) -> Void
+
+/// Swift-side mirror of the OSR_TASK_EVENT_* constants.
+enum TaskEventType: Int32 {
+    case started = 0
+    case activity = 1
+    case progress = 2
+    case clarification = 3
+    case completed = 4
+    case failed = 5
+    case cancelled = 6
+    case output = 7
+    case draft = 8
+}
+
+// Host API callback types (host → plugin, injected at init for v2)
+typealias osr_config_get_t = @convention(c) (UnsafePointer<CChar>?) -> UnsafePointer<CChar>?
+typealias osr_config_set_t = @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Void
+typealias osr_config_delete_t = @convention(c) (UnsafePointer<CChar>?) -> Void
+typealias osr_db_exec_t = @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> UnsafePointer<CChar>?
+typealias osr_db_query_t = @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> UnsafePointer<CChar>?
+typealias osr_log_t = @convention(c) (Int32, UnsafePointer<CChar>?) -> Void
+
+// Agent dispatch
+typealias osr_dispatch_t = @convention(c) (UnsafePointer<CChar>?) -> UnsafePointer<CChar>?
+typealias osr_task_status_t = @convention(c) (UnsafePointer<CChar>?) -> UnsafePointer<CChar>?
+typealias osr_dispatch_cancel_t = @convention(c) (UnsafePointer<CChar>?) -> Void
+typealias osr_dispatch_clarify_t = @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Void
+
+// Inference
+typealias osr_complete_t = @convention(c) (UnsafePointer<CChar>?) -> UnsafePointer<CChar>?
+typealias osr_on_chunk_t = @convention(c) (UnsafePointer<CChar>?, UnsafeMutableRawPointer?) -> Void
+typealias osr_complete_stream_t =
+    @convention(c) (
+        UnsafePointer<CChar>?,  // request_json
+        osr_on_chunk_t?,  // on_chunk callback
+        UnsafeMutableRawPointer?  // user_data
+    ) -> UnsafePointer<CChar>?
+typealias osr_embed_t = @convention(c) (UnsafePointer<CChar>?) -> UnsafePointer<CChar>?
+
+// Models
+typealias osr_list_models_t = @convention(c) () -> UnsafePointer<CChar>?
+
+// HTTP client
+typealias osr_http_request_t = @convention(c) (UnsafePointer<CChar>?) -> UnsafePointer<CChar>?
+
+// File I/O
+typealias osr_file_read_t = @convention(c) (UnsafePointer<CChar>?) -> UnsafePointer<CChar>?
+
+// Extended Agent Dispatch
+typealias osr_list_active_tasks_t = @convention(c) () -> UnsafePointer<CChar>?
+typealias osr_send_draft_t = @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Void
+typealias osr_dispatch_interrupt_t = @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Void
+typealias osr_dispatch_add_issue_t =
+    @convention(c) (UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> UnsafePointer<CChar>?
+
+struct osr_host_api {
+    var version: UInt32
+
+    // Config + Storage + Logging
+    var config_get: osr_config_get_t?
+    var config_set: osr_config_set_t?
+    var config_delete: osr_config_delete_t?
+    var db_exec: osr_db_exec_t?
+    var db_query: osr_db_query_t?
+    var log: osr_log_t?
+
+    // Agent Dispatch
+    var dispatch: osr_dispatch_t?
+    var task_status: osr_task_status_t?
+    var dispatch_cancel: osr_dispatch_cancel_t?
+    var dispatch_clarify: osr_dispatch_clarify_t?
+
+    // Inference
+    var complete: osr_complete_t?
+    var complete_stream: osr_complete_stream_t?
+    var embed: osr_embed_t?
+    var list_models: osr_list_models_t?
+
+    // HTTP Client
+    var http_request: osr_http_request_t?
+
+    // File I/O
+    var file_read: osr_file_read_t?
+
+    // Extended Agent Dispatch (v2 trailing fields)
+    var list_active_tasks: osr_list_active_tasks_t?
+    var send_draft: osr_send_draft_t?
+    var dispatch_interrupt: osr_dispatch_interrupt_t?
+    var dispatch_add_issue: osr_dispatch_add_issue_t?
+}
+
+struct osr_plugin_api {
+    // v1 fields
+    var free_string: osr_free_string_t?
+    var `init`: osr_init_t?
+    var destroy: osr_destroy_t?
+    var get_manifest: osr_get_manifest_t?
+    var invoke: osr_invoke_t?
+    // v2 fields (zeroed for v1 plugins)
+    var version: UInt32
+    var handle_route: osr_handle_route_t?
+    var on_config_changed: osr_on_config_changed_t?
+    var on_task_event: osr_on_task_event_t?
+}
+
+// Entry point types
+typealias osr_plugin_entry_t = @convention(c) () -> UnsafeRawPointer?
+typealias osr_plugin_entry_v2_t = @convention(c) (UnsafeRawPointer?) -> UnsafeRawPointer?
+
+// MARK: - Swift Wrapper
+
+public struct PluginManifest: Decodable, Sendable {
+    public let plugin_id: String
+    public let description: String?
+    public let capabilities: Capabilities
+
+    /// System prompt instructions appended during plugin-initiated inference.
+    public let instructions: String?
+
+    // Optional fields for registry
+    public let name: String?
+    public let version: String?
+    public let license: String?
+    public let authors: [String]?
+    public let min_macos: String?
+    public let min_project2501: String?
+
+    public struct Capabilities: Decodable, Sendable {
+        public let tools: [ToolSpec]?
+        public let routes: [RouteSpec]?
+        public let config: ConfigSpec?
+        public let web: WebSpec?
+        public let artifact_handler: Bool?
+    }
+
+    public struct ToolSpec: Decodable, Sendable {
+        public let id: String
+        public let description: String
+        public let parameters: JSONValue?
+        public let requirements: [String]?
+        public let permission_policy: String?
+    }
+
+    /// Specification for a secret that a plugin requires (e.g., API key)
+    public struct SecretSpec: Decodable, Sendable {
+        /// Unique identifier for the secret (e.g., "api_key")
+        public let id: String
+        /// Display label for the secret (e.g., "API Key")
+        public let label: String
+        /// Rich text description with markdown links (e.g., "Get your key from [Example](https://example.com)")
+        public let description: String?
+        /// Whether this secret is required for the plugin to function
+        public let required: Bool
+        /// Optional URL to the settings page where users can obtain the secret
+        public let url: String?
+
+        public init(id: String, label: String, description: String? = nil, required: Bool = true, url: String? = nil) {
+            self.id = id
+            self.label = label
+            self.description = description
+            self.required = required
+            self.url = url
+        }
+    }
+
+    /// Plugin-level secrets (e.g., API keys, tokens)
+    public let secrets: [SecretSpec]?
+
+    /// Plugin documentation references
+    public let docs: DocsSpec?
+
+    // MARK: - Route Spec
+
+    public enum RouteAuth: String, Decodable, Sendable {
+        case none
+        case verify
+        case owner
+    }
+
+    public struct RouteSpec: Decodable, Sendable {
+        public let id: String
+        public let path: String
+        public let methods: [String]
+        public let description: String?
+        public let auth: RouteAuth
+
+        public init(id: String, path: String, methods: [String], description: String? = nil, auth: RouteAuth = .owner) {
+            self.id = id
+            self.path = path
+            self.methods = methods
+            self.description = description
+            self.auth = auth
+        }
+    }
+
+    // MARK: - Config Spec
+
+    public struct ConfigSpec: Decodable, Sendable {
+        public let title: String?
+        public let sections: [ConfigSection]
+    }
+
+    public struct ConfigSection: Decodable, Sendable {
+        public let title: String
+        public let fields: [ConfigField]
+    }
+
+    public enum ConfigFieldType: String, Decodable, Sendable {
+        case text
+        case secret
+        case toggle
+        case select
+        case multiselect
+        case number
+        case readonly
+        case status
+    }
+
+    public struct ConfigFieldOption: Decodable, Sendable {
+        public let value: String
+        public let label: String
+    }
+
+    public struct ConnectAction: Decodable, Sendable {
+        public let type: String?
+        public let url_route: String?
+    }
+
+    public struct DisconnectAction: Decodable, Sendable {
+        public let clear_keys: [String]?
+    }
+
+    public struct ValidationSpec: Decodable, Sendable {
+        public let required: Bool?
+        public let pattern: String?
+        public let pattern_hint: String?
+        public let min: Double?
+        public let max: Double?
+        public let min_length: Int?
+        public let max_length: Int?
+    }
+
+    public struct ConfigField: Decodable, Sendable {
+        public let key: String
+        public let type: ConfigFieldType
+        public let label: String
+        public let placeholder: String?
+        public let `default`: ConfigDefault?
+        public let options: [ConfigFieldOption]?
+        public let validation: ValidationSpec?
+        public let connected_when: String?
+        public let connect_action: ConnectAction?
+        public let disconnect_action: DisconnectAction?
+        public let value_template: String?
+        public let copyable: Bool?
+    }
+
+    public enum ConfigDefault: Decodable, Sendable {
+        case string(String)
+        case bool(Bool)
+        case number(Double)
+        case stringArray([String])
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let b = try? container.decode(Bool.self) { self = .bool(b); return }
+            if let n = try? container.decode(Double.self) { self = .number(n); return }
+            if let s = try? container.decode(String.self) { self = .string(s); return }
+            if let a = try? container.decode([String].self) { self = .stringArray(a); return }
+            throw DecodingError.typeMismatch(
+                ConfigDefault.self,
+                .init(codingPath: decoder.codingPath, debugDescription: "Unsupported default value type")
+            )
+        }
+
+        public var stringValue: String {
+            switch self {
+            case .string(let s): return s
+            case .bool(let b): return b ? "true" : "false"
+            case .number(let n): return String(n)
+            case .stringArray(let a):
+                let data = (try? JSONSerialization.data(withJSONObject: a)) ?? Data()
+                return String(data: data, encoding: .utf8) ?? "[]"
+            }
+        }
+    }
+
+    // MARK: - Web Spec
+
+    public struct WebSpec: Decodable, Sendable {
+        public let static_dir: String
+        public let entry: String
+        public let mount: String
+        public let auth: RouteAuth
+    }
+
+    // MARK: - Docs Spec
+
+    public struct DocLink: Decodable, Sendable {
+        public let label: String
+        public let url: String
+    }
+
+    public struct DocsSpec: Decodable, Sendable {
+        public let readme: String?
+        public let changelog: String?
+        public let links: [DocLink]?
+    }
+
+    // MARK: - Route Matching
+
+    /// Finds the best matching route for a given HTTP method and subpath.
+    /// The subpath is relative to the plugin's namespace (e.g., "/callback").
+    public func matchRoute(method: String, subpath: String) -> RouteSpec? {
+        guard let routes = capabilities.routes else { return nil }
+        let normalizedMethod = method.uppercased()
+        let normalizedPath = subpath.hasPrefix("/") ? subpath : "/\(subpath)"
+
+        for route in routes {
+            guard route.methods.contains(where: { $0.uppercased() == normalizedMethod }) else { continue }
+
+            let routePath = route.path.hasPrefix("/") ? route.path : "/\(route.path)"
+            if routePath.hasSuffix("/*") {
+                let prefix = String(routePath.dropLast(2))
+                if normalizedPath == prefix || normalizedPath.hasPrefix(prefix + "/") {
+                    return route
+                }
+            } else if routePath == normalizedPath {
+                return route
+            }
+        }
+        return nil
+    }
+}
+
+final class ExternalPlugin: @unchecked Sendable {
+    let id: String
+    let manifest: PluginManifest
+    let bundlePath: String
+    let abiVersion: UInt32
+
+    private let handle: UnsafeMutableRawPointer
+    private let api: osr_plugin_api
+    private let ctx: osr_plugin_ctx_t
+    private var isShutDown = false
+
+    /// Per-plugin concurrent queue for C ABI calls. Each plugin gets its own
+    /// queue so that long-running operations (e.g. agentic inference) in one
+    /// plugin don't block other plugins or additional requests to the same plugin.
+    /// Concurrent (not serial) so multiple route handlers can run in parallel.
+    private let invokeQueue: DispatchQueue
+
+    /// Per-task serial queues for event delivery. Each task gets its own queue
+    /// so a slow event handler (e.g. http_request inside on_task_event) for one
+    /// task doesn't block event delivery to other tasks. Serial ordering within
+    /// each queue preserves the logical event sequence per task
+    /// (STARTED → ACTIVITY → COMPLETED).
+    private var taskEventQueues: [String: DispatchQueue] = [:]
+    private let taskEventQueuesLock = NSLock()
+
+    private func eventQueue(for taskId: String) -> DispatchQueue {
+        taskEventQueuesLock.withLock {
+            if let q = taskEventQueues[taskId] { return q }
+            let q = DispatchQueue(
+                label: "com.project2501.plugin.events.\(id).\(taskId)",
+                qos: .utility
+            )
+            taskEventQueues[taskId] = q
+            return q
+        }
+    }
+
+    private func removeEventQueue(for taskId: String) {
+        taskEventQueuesLock.withLock {
+            _ = taskEventQueues.removeValue(forKey: taskId)
+        }
+    }
+
+    init(
+        handle: UnsafeMutableRawPointer,
+        api: osr_plugin_api,
+        ctx: osr_plugin_ctx_t,
+        manifest: PluginManifest,
+        path: String,
+        abiVersion: UInt32 = 1
+    ) {
+        self.handle = handle
+        self.api = api
+        self.ctx = ctx
+        self.manifest = manifest
+        self.bundlePath = path
+        self.id = manifest.plugin_id
+        self.abiVersion = abiVersion
+        self.invokeQueue = DispatchQueue(
+            label: "com.project2501.plugin.invoke.\(manifest.plugin_id)",
+            qos: .userInitiated,
+            attributes: .concurrent
+        )
+    }
+
+    var hasRouteHandler: Bool { abiVersion >= 2 && api.handle_route != nil }
+    var hasTaskEventHandler: Bool { abiVersion >= 2 && api.on_task_event != nil }
+
+    /// Tears down the plugin context by draining all per-task event queues
+    /// first, then the invoke queue (barrier), before calling `destroy`.
+    /// Uses async dispatch so the destroy callback (which may call host API
+    /// trampolines like httpRequest) never runs on the main thread, avoiding
+    /// deadlocks with `blockingAsync`.
+    func shutdown() async {
+        let queues: [DispatchQueue] = taskEventQueuesLock.withLock {
+            Array(taskEventQueues.values)
+        }
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let group = DispatchGroup()
+            for q in queues {
+                group.enter()
+                q.async(flags: .barrier) { group.leave() }
+            }
+            group.notify(flags: .barrier, queue: self.invokeQueue) { [self] in
+                guard !self.isShutDown else {
+                    continuation.resume()
+                    return
+                }
+                self.isShutDown = true
+                self.api.destroy?(self.ctx)
+                continuation.resume()
+            }
+        }
+    }
+
+    /// Dispatches a blocking C ABI call on `invokeQueue` and returns the resulting string.
+    /// Keeps `self` alive for the duration of the call to prevent `ctx` from being freed.
+    /// `agentId` is propagated via thread-local storage so concurrent requests
+    /// for different agents resolve the correct config.
+    private func dispatchPluginCall(
+        agentId: UUID? = nil,
+        errorCode: Int,
+        errorMessage: String,
+        _ call: @Sendable @escaping (osr_plugin_ctx_t) -> UnsafePointer<CChar>?
+    ) async throws -> String {
+        let freeString = api.free_string
+        nonisolated(unsafe) let ctx = self.ctx
+        let pluginId = self.id
+
+        return try await withCheckedThrowingContinuation { continuation in
+            self.invokeQueue.async { [self] in
+                guard !self.isShutDown else {
+                    continuation.resume(
+                        throwing: NSError(
+                            domain: "ExternalPlugin",
+                            code: errorCode,
+                            userInfo: [NSLocalizedDescriptionKey: "Plugin has been shut down"]
+                        )
+                    )
+                    return
+                }
+                PluginHostContext.setActivePlugin(pluginId)
+                if let agentId {
+                    PluginHostContext.setActiveAgent(agentId)
+                }
+                defer {
+                    PluginHostContext.clearActivePlugin()
+                    PluginHostContext.clearActiveAgent()
+                }
+
+                guard let resPtr = call(ctx) else {
+                    continuation.resume(
+                        throwing: NSError(
+                            domain: "ExternalPlugin",
+                            code: errorCode,
+                            userInfo: [NSLocalizedDescriptionKey: errorMessage]
+                        )
+                    )
+                    return
+                }
+
+                let result = String(cString: resPtr)
+                freeString?(resPtr)
+                continuation.resume(returning: result)
+                withExtendedLifetime(self) {}
+            }
+        }
+    }
+
+    func invoke(type: String, id: String, payload: String, agentId: UUID? = nil) async throws -> String {
+        guard let invokeFn = api.invoke else {
+            throw NSError(
+                domain: "ExternalPlugin",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Invoke not implemented"]
+            )
+        }
+
+        return try await dispatchPluginCall(
+            agentId: agentId,
+            errorCode: 2,
+            errorMessage: "Plugin returned NULL response"
+        ) { ctx in
+            type.withCString { typePtr in
+                id.withCString { idPtr in
+                    payload.withCString { payloadPtr in
+                        invokeFn(ctx, typePtr, idPtr, payloadPtr)
+                    }
+                }
+            }
+        }
+    }
+
+    func handleRoute(requestJSON: String, agentId: UUID? = nil) async throws -> String {
+        guard abiVersion >= 2, let routeFn = api.handle_route else {
+            throw NSError(
+                domain: "ExternalPlugin",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "Route handler not available (ABI v\(abiVersion))"]
+            )
+        }
+
+        return try await dispatchPluginCall(
+            agentId: agentId,
+            errorCode: 4,
+            errorMessage: "Plugin route handler returned NULL"
+        ) { ctx in
+            requestJSON.withCString { reqPtr in
+                routeFn(ctx, reqPtr)
+            }
+        }
+    }
+
+    func notifyConfigChanged(key: String, value: String, agentId: UUID? = nil) {
+        notifyConfigBatch([(key: key, value: value)], agentId: agentId)
+    }
+
+    func notifyConfigBatch(_ changes: [(key: String, value: String)], agentId: UUID? = nil) {
+        guard abiVersion >= 2, let configFn = api.on_config_changed, !changes.isEmpty else { return }
+        nonisolated(unsafe) let ctx = self.ctx
+        let pluginId = self.id
+
+        invokeQueue.async { [self] in
+            guard !self.isShutDown else { return }
+
+            PluginHostContext.setActivePlugin(pluginId)
+            if let agentId {
+                PluginHostContext.setActiveAgent(agentId)
+            }
+            defer {
+                PluginHostContext.clearActivePlugin()
+                PluginHostContext.clearActiveAgent()
+            }
+
+            for (key, value) in changes {
+                key.withCString { keyPtr in
+                    value.withCString { valuePtr in
+                        configFn(ctx, keyPtr, valuePtr)
+                    }
+                }
+            }
+            withExtendedLifetime(self) {}
+        }
+    }
+
+    func notifyTaskEvent(taskId: String, eventType: TaskEventType, eventJSON: String, agentId: UUID? = nil) {
+        guard abiVersion >= 2, let eventFn = api.on_task_event else { return }
+        nonisolated(unsafe) let ctx = self.ctx
+        let pluginId = self.id
+        let rawType = eventType.rawValue
+        let isTerminal = eventType == .completed || eventType == .failed || eventType == .cancelled
+
+        eventQueue(for: taskId).async { [self] in
+            guard !self.isShutDown else { return }
+            PluginHostContext.setActivePlugin(pluginId)
+            if let agentId {
+                PluginHostContext.setActiveAgent(agentId)
+            }
+            defer {
+                PluginHostContext.clearActivePlugin()
+                PluginHostContext.clearActiveAgent()
+            }
+
+            taskId.withCString { taskIdPtr in
+                eventJSON.withCString { jsonPtr in
+                    eventFn(ctx, taskIdPtr, rawType, jsonPtr)
+                }
+            }
+
+            if isTerminal {
+                self.removeEventQueue(for: taskId)
+            }
+            withExtendedLifetime(self) {}
+        }
+    }
+
+    /// Returns all configured secrets for this plugin from the Keychain, scoped to the given agent.
+    func resolvedSecrets(agentId: UUID) -> [String: String] {
+        return ToolSecretsKeychain.getAllSecrets(for: manifest.plugin_id, agentId: agentId)
+    }
+
+    /// Checks if all required secrets are configured for the given agent.
+    func hasAllRequiredSecrets(agentId: UUID) -> Bool {
+        guard let specs = manifest.secrets else { return true }
+        return ToolSecretsKeychain.hasAllRequiredSecrets(specs: specs, for: manifest.plugin_id, agentId: agentId)
+    }
+}

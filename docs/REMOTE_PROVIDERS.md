@@ -119,7 +119,7 @@ The model name should match what the remote provider expects.
 ```python
 from openai import OpenAI
 
-client = OpenAI(base_url="http://127.0.0.1:1337/v1", api_key="osaurus")
+client = OpenAI(base_url="http://127.0.0.1:1337/v1", api_key="project2501")
 
 # Use a remote model
 response = client.chat.completions.create(
@@ -229,7 +229,7 @@ Custom headers marked as "secret" are also stored in the Keychain.
 Non-secret provider configuration is stored at:
 
 ```
-~/.osaurus/providers/remote.json
+~/.project2501/providers/remote.json
 ```
 
 This file contains connection settings but **not** API keys or secret headers.

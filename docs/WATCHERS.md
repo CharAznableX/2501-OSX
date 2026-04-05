@@ -243,7 +243,7 @@ This context helps the agent understand what changed and what action to take.
 Watchers are stored as individual JSON files:
 
 ```
-~/.osaurus/watchers/
+~/.project2501/watchers/
 ├── {uuid-1}.json
 ├── {uuid-2}.json
 └── ...

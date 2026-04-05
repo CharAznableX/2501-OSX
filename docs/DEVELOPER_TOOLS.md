@@ -160,7 +160,7 @@ Test any endpoint directly:
 
 #### Documentation Link
 
-Quick access to the full documentation at docs.osaurus.ai.
+Quick access to the full documentation at docs.project2501.ai.
 
 ### Use Cases
 

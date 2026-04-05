@@ -100,7 +100,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: osaurus-release-${{ env.VERSION }}
+          name: project2501-release-${{ env.VERSION }}
           path: |
             build_output/Osaurus-${{ env.VERSION }}.dmg
             build_output/Osaurus.dmg

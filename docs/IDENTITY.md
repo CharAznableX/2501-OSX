@@ -104,13 +104,13 @@ The master key is stored in iCloud Keychain with `kSecAttrAccessibleWhenUnlocked
 ```
 HMAC-SHA512(
     key:  masterKey,                          // 32 bytes
-    data: "osaurus-agent-v1" || bigEndian(index)  // domain + 4-byte index
+    data: "project2501-agent-v1" || bigEndian(index)  // domain + 4-byte index
 )
     → first 32 bytes of HMAC output
     → same address derivation as master key
 ```
 
-The domain prefix `osaurus-agent-v1` prevents cross-protocol key reuse. The big-endian index encoding ensures a canonical byte representation across platforms. Each unique index produces a completely independent keypair.
+The domain prefix `project2501-agent-v1` prevents cross-protocol key reuse. The big-endian index encoding ensures a canonical byte representation across platforms. Each unique index produces a completely independent keypair.
 
 Agent keys are **never persisted**. They are re-derived from the master key whenever a signature is needed, which requires biometric authentication to access the master key. The derived `agentAddress` is persisted on the `Agent` model so it can be displayed without triggering biometric prompts.
 
@@ -145,7 +145,7 @@ Four base64url-encoded segments joined by `.`:
 ```json
 {
   "alg": "es256k+apple-attest",
-  "typ": "osaurus-id",
+  "typ": "project2501-id",
   "ver": 5
 }
 ```
@@ -263,7 +263,7 @@ The agent's own address and the master address are always implicitly included.
 
 ### Storage
 
-Whitelist data is persisted in macOS Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`), keyed by `com.osaurus.whitelist`.
+Whitelist data is persisted in macOS Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`), keyed by `com.project2501.whitelist`.
 
 ---
 
@@ -287,7 +287,7 @@ isRevoked = revokedKeys.contains(address:nonce)
 
 ### Storage
 
-Revocation data is persisted in macOS Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`), keyed by `com.osaurus.revocations`.
+Revocation data is persisted in macOS Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`), keyed by `com.project2501.revocations`.
 
 ---
 

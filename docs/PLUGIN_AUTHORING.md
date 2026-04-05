@@ -43,7 +43,7 @@ This document describes how to build external plugins for Osaurus using the Gene
 
 ```mermaid
 graph LR
-    Plugin["Plugin (.dylib)"] -- "osaurus_plugin_entry_v2(host)" --> Osaurus
+    Plugin["Plugin (.dylib)"] -- "project2501_plugin_entry_v2(host)" --> Osaurus
     Osaurus -- "init / get_manifest / invoke / handle_route" --> Plugin
     Plugin -- "host->complete / dispatch / db_exec / ..." --> HostAPI["osr_host_api (20 callbacks)"]
     HostAPI --> Osaurus
@@ -56,22 +56,22 @@ graph LR
 1. Scaffold a new plugin:
 
 ```bash
-osaurus tools create MyPlugin              # Swift (default)
-osaurus tools create MyPlugin --language rust   # Rust
+project2501 tools create MyPlugin              # Swift (default)
+project2501 tools create MyPlugin --language rust   # Rust
 ```
 
 2. Build, install, and start developing:
 
 ```bash
 cd MyPlugin
-osaurus tools dev
+project2501 tools dev
 ```
 
-That's it. `osaurus tools dev` will:
+That's it. `project2501 tools dev` will:
 
 - Detect the project language (Swift or Rust) from the build files
 - Build the plugin in release mode
-- Install the dylib, `SKILL.md`, `README.md`, and `web/` assets into `~/.osaurus/Tools/`
+- Install the dylib, `SKILL.md`, `README.md`, and `web/` assets into `~/.project2501/Tools/`
 - Launch Osaurus if it isn't already running
 - Send a reload signal so the plugin appears immediately
 - Watch for source file changes and automatically rebuild + hot-reload
@@ -84,25 +84,25 @@ That's it. `osaurus tools dev` will:
 
 ### Project-Root Dev Mode (Recommended)
 
-Run `osaurus tools dev` from your plugin's project root. This is the primary development workflow:
+Run `project2501 tools dev` from your plugin's project root. This is the primary development workflow:
 
 ```bash
 cd MyPlugin
-osaurus tools dev
+project2501 tools dev
 ```
 
-The command reads `osaurus-plugin.json` (created by `osaurus tools create`) to determine the plugin ID and version, then:
+The command reads `project2501-plugin.json` (created by `project2501 tools create`) to determine the plugin ID and version, then:
 
 1. **Detects the language** — looks for `Package.swift` (Swift) or `Cargo.toml` (Rust)
 2. **Builds** — runs `swift build -c release` or `cargo build --release`
-3. **Installs** — copies the dylib, `SKILL.md`, `README.md`, `CHANGELOG.md`, and `web/` directory into `~/.osaurus/Tools/<plugin_id>/<version>/`
+3. **Installs** — copies the dylib, `SKILL.md`, `README.md`, `CHANGELOG.md`, and `web/` directory into `~/.project2501/Tools/<plugin_id>/<version>/`
 4. **Launches Osaurus** — starts the app if it isn't already running
 5. **Sends a reload signal** — the plugin appears in Osaurus immediately
 6. **Watches for changes** — monitors `Sources/` (Swift) or `src/` (Rust) and asset files; on change, rebuilds and hot-reloads automatically
 
 No signing keys, no manual packaging, no manual installation steps.
 
-#### The `osaurus-plugin.json` file
+#### The `project2501-plugin.json` file
 
 Scaffolded projects include this file at the project root:
 
@@ -124,14 +124,14 @@ npm run dev   # → http://localhost:5173
 
 # Terminal 2: Plugin dev mode with proxy
 cd my-plugin
-osaurus tools dev --web-proxy http://localhost:5173
+project2501 tools dev --web-proxy http://localhost:5173
 ```
 
 When the proxy is active:
 
 - Requests to `/plugins/<plugin_id>/app/*` are proxied to your local dev server
 - Requests to `/plugins/<plugin_id>/api/*` still hit the dylib
-- Osaurus injects `window.__osaurus` context into the proxied HTML
+- Osaurus injects `window.__project2501` context into the proxied HTML
 - CORS headers are handled automatically
 
 This gives you hot module replacement (HMR) and instant feedback during frontend development.
@@ -141,23 +141,23 @@ This gives you hot module replacement (HMR) and instant feedback during frontend
 For advanced use, you can watch an already-installed plugin by passing its ID directly:
 
 ```bash
-osaurus tools dev com.acme.slack
+project2501 tools dev com.acme.slack
 ```
 
-This watches the installed dylib at `~/.osaurus/Tools/com.acme.slack/` for changes and sends reload signals when it is modified. You are responsible for building and copying the dylib yourself.
+This watches the installed dylib at `~/.project2501/Tools/com.acme.slack/` for changes and sends reload signals when it is modified. You are responsible for building and copying the dylib yourself.
 
 ### Manual Install (Development Only)
 
 Installing from a local path or URL is intended for development and testing:
 
 ```bash
-osaurus tools install ./my-plugin-1.0.0.zip
-osaurus tools install https://example.com/my-plugin-1.0.0.zip
+project2501 tools install ./my-plugin-1.0.0.zip
+project2501 tools install https://example.com/my-plugin-1.0.0.zip
 ```
 
 These paths skip minisign signature verification, TOFU author key checks, and do not grant user consent. They work in DEBUG builds of Osaurus; in release builds, plugins installed this way will fail to load because they cannot pass code signature and consent verification.
 
-For distribution, always publish to the central registry and install with `osaurus tools install <plugin-id>`, which enforces the full verification chain (minisign, code signing, consent).
+For distribution, always publish to the central registry and install with `project2501 tools install <plugin-id>`, which enforces the full verification chain (minisign, code signing, consent).
 
 ---
 
@@ -167,7 +167,7 @@ For distribution, always publish to the central registry and install with `osaur
 
 Osaurus loads plugins via `dlopen` and resolves entry point symbols. The lifecycle is:
 
-1. **Load** — Osaurus opens the `.dylib` and looks for `osaurus_plugin_entry_v2` (v2) or `osaurus_plugin_entry` (v1).
+1. **Load** — Osaurus opens the `.dylib` and looks for `project2501_plugin_entry_v2` (v2) or `project2501_plugin_entry` (v1).
 2. **Init** — The host calls `init()`, which returns an opaque context pointer owned by the plugin.
 3. **Manifest** — The host calls `get_manifest(ctx)` to discover capabilities (tools, routes, config, etc.).
 4. **Runtime** — The host calls `invoke(ctx, ...)` for tool executions, `handle_route(ctx, ...)` for HTTP requests, and lifecycle callbacks as events occur.
@@ -269,18 +269,18 @@ All v2 capabilities (`routes`, `config`, `web`, `artifact_handler`, `docs`) are 
 
 ### ABI Versions
 
-The C header is available at `Packages/OsaurusCore/Tools/PluginABI/osaurus_plugin.h`.
+The C header is available at `Packages/Project2501Core/Tools/PluginABI/project2501_plugin.h`.
 
 Osaurus supports two ABI versions. Existing v1 plugins continue to work without changes.
 
 **v1 ABI (Tools Only):**
 
-- **Entry Point**: Plugin exports `osaurus_plugin_entry` returning `const osr_plugin_api*`.
+- **Entry Point**: Plugin exports `project2501_plugin_entry` returning `const osr_plugin_api*`.
 - **Functions**: `init`, `destroy`, `get_manifest`, `invoke`, `free_string`.
 
 **v2 ABI (Full Host API):**
 
-- **Entry Point**: Plugin exports `osaurus_plugin_entry_v2(const osr_host_api* host)`. The host API struct provides 20 callbacks across nine groups.
+- **Entry Point**: Plugin exports `project2501_plugin_entry_v2(const osr_host_api* host)`. The host API struct provides 20 callbacks across nine groups.
 - **New fields on `osr_plugin_api`** (appended after v1 fields for binary compatibility):
   - `version`: Set to `2` (`OSR_ABI_VERSION_2`).
   - `handle_route(ctx, request_json)`: Called when an HTTP request hits a plugin route. Returns JSON. May be `NULL` if the plugin has no routes.
@@ -294,17 +294,17 @@ Osaurus supports two ABI versions. Existing v1 plugins continue to work without 
   - **Inference**: `complete` / `complete_stream` / `embed` — Chat completion and embeddings through any configured provider.
   - **Models**: `list_models` — Enumerate available models (local MLX, Apple Foundation, remote).
   - **HTTP Client**: `http_request` — Outbound HTTP with SSRF protection.
-  - **File I/O**: `file_read` — Read shared artifact files (restricted to `~/.osaurus/artifacts/`).
+  - **File I/O**: `file_read` — Read shared artifact files (restricted to `~/.project2501/artifacts/`).
 
 See [ABI Reference](#abi-reference) for the full C struct definitions and type signatures.
 
 **Migration from v1 to v2:**
 
-Upgrading is additive. Change your entry point from `osaurus_plugin_entry` to `osaurus_plugin_entry_v2`, store the host API pointer, set `api.version = 2`, and populate the new function pointers (or leave them `NULL` if unused). Osaurus detects the ABI version from `api->version` and enables features accordingly.
+Upgrading is additive. Change your entry point from `project2501_plugin_entry` to `project2501_plugin_entry_v2`, store the host API pointer, set `api.version = 2`, and populate the new function pointers (or leave them `NULL` if unused). Osaurus detects the ABI version from `api->version` and enables features accordingly.
 
 New in v2:
 - **`on_task_event`**: Set this on `osr_plugin_api` to receive lifecycle events for dispatched tasks. Set to `NULL` to opt out.
-- **Host API callbacks**: The `osr_host_api` now provides 20 callbacks across 9 capability groups — config, data store, logging, agent dispatch (core + extended), inference, models, HTTP client, and file I/O. All are available from the moment `osaurus_plugin_entry_v2` returns.
+- **Host API callbacks**: The `osr_host_api` now provides 20 callbacks across 9 capability groups — config, data store, logging, agent dispatch (core + extended), inference, models, HTTP client, and file I/O. All are available from the moment `project2501_plugin_entry_v2` returns.
 - **Artifact handling**: Plugins can declare `"artifact_handler": true` in their manifest capabilities to intercept shared artifacts. See [Artifact Handling](#artifact-handling).
 
 ---
@@ -654,7 +654,7 @@ Routes are namespaced under `/plugins/<plugin_id>/` to prevent collisions. Two p
 
 ```
 Local:   http://127.0.0.1:1337/plugins/com.acme.slack/callback
-Tunnel:  https://0x<agent-address>.agent.osaurus.ai/plugins/com.acme.slack/callback
+Tunnel:  https://0x<agent-address>.agent.project2501.ai/plugins/com.acme.slack/callback
 ```
 
 #### Auth Levels
@@ -691,9 +691,9 @@ When a request hits a plugin route, Osaurus builds a JSON request, calls `handle
   "body_encoding": "utf8",
   "remote_addr": "",
   "plugin_id": "com.acme.slack",
-  "osaurus": {
-    "base_url": "https://0x1234.agent.osaurus.ai",
-    "plugin_url": "https://0x1234.agent.osaurus.ai/plugins/com.acme.slack",
+  "project2501": {
+    "base_url": "https://0x1234.agent.project2501.ai",
+    "plugin_url": "https://0x1234.agent.project2501.ai/plugins/com.acme.slack",
     "agent_address": "0x1a2b3c4d5e6f7890abcdef1234567890abcdef12"
   }
 }
@@ -701,7 +701,7 @@ When a request hits a plugin route, Osaurus builds a JSON request, calls `handle
 
 > **Note:** `remote_addr` is currently always an empty string. Do not rely on it for client identification.
 
-The `osaurus` context object provides host-resolved metadata:
+The `project2501` context object provides host-resolved metadata:
 
 | Field            | Description                                                                 |
 | ---------------- | --------------------------------------------------------------------------- |
@@ -902,11 +902,11 @@ Plugins can ship a full frontend (React, Svelte, Vue, vanilla JS — anything th
 
 #### Context Injection
 
-Osaurus automatically injects a `window.__osaurus` context object into HTML responses before `</head>`:
+Osaurus automatically injects a `window.__project2501` context object into HTML responses before `</head>`:
 
 ```html
 <script>
-window.__osaurus = {
+window.__project2501 = {
   pluginId: "com.acme.dashboard",
   baseUrl: "/plugins/com.acme.dashboard",
   apiUrl: "/plugins/com.acme.dashboard/api"
@@ -914,12 +914,12 @@ window.__osaurus = {
 </script>
 ```
 
-> **Note:** The `window.__osaurus` fields (`pluginId`, `baseUrl`, `apiUrl`) use camelCase and differ from the route request's `osaurus` context object (`base_url`, `plugin_url`, `agent_address`). The injected script does not include `agent_address`.
+> **Note:** The `window.__project2501` fields (`pluginId`, `baseUrl`, `apiUrl`) use camelCase and differ from the route request's `project2501` context object (`base_url`, `plugin_url`, `agent_address`). The injected script does not include `agent_address`.
 
 The frontend can use these values for API calls:
 
 ```javascript
-const res = await fetch(`${window.__osaurus.baseUrl}/api/widgets`);
+const res = await fetch(`${window.__project2501.baseUrl}/api/widgets`);
 ```
 
 ### Plugin Skills (SKILL.md)
@@ -963,7 +963,7 @@ The body after the frontmatter contains the full instructions in markdown. This 
 
 Include `SKILL.md` in your plugin's zip archive alongside the `.dylib`. When installing from the central registry, Osaurus searches the entire archive for files named `SKILL.md` (case-insensitive) and copies them into a `skills/` directory within the plugin's install location. If your plugin bundles multiple skills, place each in its own subdirectory; the parent directory name is used as a prefix for disambiguation.
 
-When using `osaurus tools dev`, only the root-level `SKILL.md` file is copied. For development, place your skill file at the project root.
+When using `project2501 tools dev`, only the root-level `SKILL.md` file is copied. For development, place your skill file at the project root.
 
 **Lifecycle:**
 
@@ -983,7 +983,7 @@ When using `osaurus tools dev`, only the root-level `SKILL.md` file is copied. F
 
 **Example:**
 
-The [osaurus-pptx](https://github.com/osaurus-ai/osaurus-pptx) plugin includes a SKILL.md that covers the required tool call sequence, slide coordinate system, layout recipes for common slide types, theme selection guidance, and design best practices.
+The [project2501-pptx](https://github.com/project2501-ai/project2501-pptx) plugin includes a SKILL.md that covers the required tool call sequence, slide coordinate system, layout recipes for common slide types, theme selection guidance, and design best practices.
 
 ### Plugin Documentation
 
@@ -998,7 +998,7 @@ Plugins can include a `README.md` and `CHANGELOG.md` that are displayed in the O
     "changelog": "CHANGELOG.md",
     "links": [
       { "label": "Documentation", "url": "https://docs.acme.com/slack" },
-      { "label": "Report Issue", "url": "https://github.com/acme/osaurus-slack/issues" }
+      { "label": "Report Issue", "url": "https://github.com/acme/project2501-slack/issues" }
     ]
   }
 }
@@ -1048,7 +1048,7 @@ Set `"artifact_handler": true` in the manifest:
 #### How It Works
 
 1. The agent creates an artifact and calls `share_artifact`.
-2. Osaurus saves the artifact locally to `~/.osaurus/artifacts/{contextId}/`.
+2. Osaurus saves the artifact locally to `~/.project2501/artifacts/{contextId}/`.
 3. Osaurus checks all loaded plugins for `artifact_handler: true` (requires ABI v2).
 4. Each matching plugin receives an `invoke` call with artifact metadata.
 5. The plugin can then use `host->file_read` to read the file contents and `host->http_request` to upload it to an external service.
@@ -1076,7 +1076,7 @@ Artifact notifications are delivered via the standard `invoke` function:
 ```json
 {
   "filename": "architecture-diagram.png",
-  "host_path": "/Users/me/.osaurus/artifacts/ctx-abc123/architecture-diagram.png",
+  "host_path": "/Users/me/.project2501/artifacts/ctx-abc123/architecture-diagram.png",
   "mime_type": "image/png",
   "size": 245760,
   "is_directory": false
@@ -1132,7 +1132,7 @@ const char* invoke(osr_plugin_ctx_t ctx, const char* type,
 
 ## Host API Reference
 
-v2 plugins receive an `osr_host_api` struct at init time with 20 callbacks across nine capability groups. All callbacks are available from the moment `osaurus_plugin_entry_v2` returns.
+v2 plugins receive an `osr_host_api` struct at init time with 20 callbacks across nine capability groups. All callbacks are available from the moment `project2501_plugin_entry_v2` returns.
 
 ### Config Store
 
@@ -1151,7 +1151,7 @@ Config values are also used by the [Configuration UI](#configuration-ui) — fie
 Each plugin gets a sandboxed SQLite database at:
 
 ```
-~/.osaurus/Tools/<plugin_id>/data/data.db
+~/.project2501/Tools/<plugin_id>/data/data.db
 ```
 
 Accessed via the host API with raw SQL and JSON parameter binding:
@@ -1254,7 +1254,7 @@ const char* result = host->dispatch(request);
 
 If neither `agent_address` nor `agent_id` is provided, the task is dispatched to the default agent.
 
-**Agent addressing:** Prefer `agent_address` from the route request's `osaurus.agent_address` field — it is always present in route handler requests and ensures the task runs under the correct agent with its configured model and settings. Both `agent_address` and `agent_id` are accepted and resolved automatically.
+**Agent addressing:** Prefer `agent_address` from the route request's `project2501.agent_address` field — it is always present in route handler requests and ensures the task runs under the correct agent with its configured model and settings. Both `agent_address` and `agent_id` are accepted and resolved automatically.
 
 **Rate limiting:** Dispatch is limited to 10 requests per minute per plugin. Exceeding this returns an error with `"error": "rate_limit_exceeded"`.
 
@@ -1621,7 +1621,7 @@ The agentic loop runs for at most `max_iterations` iterations (capped at 30). Ea
 
 **Sandbox execution:** When `"tools": true` is set and the resolved agent has autonomous execution enabled, the agentic loop includes full sandbox capabilities. The model can execute commands, read/write files, install packages, and run scripts inside the sandboxed Linux environment — matching the behavior of Chat and Work modes.
 
-**Artifact handling:** When the model calls `share_artifact` during the agentic loop, the artifact is fully processed — files are copied from the sandbox to `~/.osaurus/artifacts/`, the tool result is enriched with `host_path` and `file_size`, and all plugins with `artifact_handler: true` are notified. This means plugins can both produce and consume artifacts through the inference API.
+**Artifact handling:** When the model calls `share_artifact` during the agentic loop, the artifact is fully processed — files are copied from the sandbox to `~/.project2501/artifacts/`, the tool result is enriched with `host_path` and `file_size`, and all plugins with `artifact_handler: true` are notified. This means plugins can both produce and consume artifacts through the inference API.
 
 **Capabilities hot-loading:** When the model calls `capabilities_load` during the agentic loop, newly discovered tools are dynamically injected into subsequent iterations. This allows the model to progressively expand its tool set as it discovers relevant capabilities.
 
@@ -1853,7 +1853,7 @@ v2 plugins can read shared artifact files through the host API. This is primaril
 #### Reading a File
 
 ```c
-const char* request = "{\"path\": \"/Users/me/.osaurus/artifacts/ctx-123/image.png\"}";
+const char* request = "{\"path\": \"/Users/me/.project2501/artifacts/ctx-123/image.png\"}";
 const char* response = host->file_read(request);
 ```
 
@@ -1879,7 +1879,7 @@ const char* response = host->file_read(request);
 
 #### Security Restrictions
 
-- `file_read` is restricted to `~/.osaurus/artifacts/`. Attempts to read files outside this directory return `"error": "access_denied"`.
+- `file_read` is restricted to `~/.project2501/artifacts/`. Attempts to read files outside this directory return `"error": "access_denied"`.
 - Path traversal (e.g., `../../etc/passwd`) is blocked — paths are resolved and validated against the allowed prefix.
 - Maximum file size is 50 MB. Files exceeding this limit return `"error": "file_too_large"`.
 
@@ -1888,7 +1888,7 @@ const char* response = host->file_read(request);
 | Error              | Description                                      |
 | ------------------ | ------------------------------------------------ |
 | `invalid_request`  | Missing or malformed `path` field                |
-| `access_denied`    | Path is outside `~/.osaurus/artifacts/`          |
+| `access_denied`    | Path is outside `~/.project2501/artifacts/`          |
 | `not_found`        | File does not exist at the given path            |
 | `file_too_large`   | File exceeds the 50 MB limit                     |
 | `read_error`       | I/O error while reading the file                 |
@@ -2056,7 +2056,7 @@ The registry entry should include publishing metadata (`homepage`, `license`, `a
       { "name": "create_presentation", "description": "Create a new presentation" }
     ],
     "skills": [
-      { "name": "osaurus-pptx", "description": "Guides the AI through presentation creation workflows" }
+      { "name": "project2501-pptx", "description": "Guides the AI through presentation creation workflows" }
     ]
   },
   "versions": [ ... ]
@@ -2065,7 +2065,7 @@ The registry entry should include publishing metadata (`homepage`, `license`, `a
 
 The `capabilities` block is **informational only** — it is used for the plugin listing in the registry UI. The actual skills are discovered automatically from `SKILL.md` files in the archive at install time (see [Plugin Skills](#plugin-skills-skillmd)).
 
-> **Note:** If you use the shared CI workflow (`osaurus-ai/osaurus-tools/.github/workflows/build-plugin.yml`), the `capabilities` block is generated automatically. Tools are extracted from the dylib manifest, and skills are detected from any `SKILL.md` file at the repository root. You do not need to write this JSON by hand.
+> **Note:** If you use the shared CI workflow (`project2501-ai/project2501-tools/.github/workflows/build-plugin.yml`), the `capabilities` block is generated automatically. Tools are extracted from the dylib manifest, and skills are detected from any `SKILL.md` file at the repository root. You do not need to write this JSON by hand.
 
 ---
 
@@ -2106,14 +2106,14 @@ Some tools require macOS system permissions that must be granted at the app leve
 
 ## ABI Reference
 
-The C header is at `Packages/OsaurusCore/Tools/PluginABI/osaurus_plugin.h`.
+The C header is at `Packages/Project2501Core/Tools/PluginABI/project2501_plugin.h`.
 
 ```c
 // v2 entry point — receives host callbacks
-const osr_plugin_api* osaurus_plugin_entry_v2(const osr_host_api* host);
+const osr_plugin_api* project2501_plugin_entry_v2(const osr_host_api* host);
 
 // v1 entry point (legacy)
-const osr_plugin_api* osaurus_plugin_entry(void);
+const osr_plugin_api* project2501_plugin_entry(void);
 
 // Host API struct (20 callbacks across 9 capability groups)
 typedef struct {
@@ -2193,4 +2193,4 @@ typedef struct {
 
 ### Rust Authors
 
-Create a `cdylib` exposing `osaurus_plugin_entry` (v1) or `osaurus_plugin_entry_v2` (v2) that returns the generic function table. For v1, implement `init`, `destroy`, `get_manifest`, `invoke`, and `free_string`. For v2, also set `version = 2` and optionally implement `handle_route`, `on_config_changed`, and `on_task_event`. Store the `osr_host_api` pointer passed to the v2 entry point for access to all 20 host callbacks — config, data store, logging, agent dispatch (`dispatch`, `task_status`, `dispatch_cancel`, `dispatch_clarify`, `list_active_tasks`, `dispatch_interrupt`, `dispatch_add_issue`, `send_draft`), inference (`complete`, `complete_stream`, `embed`), model enumeration (`list_models`), outbound HTTP (`http_request`), and file I/O (`file_read`). All callbacks use C strings (null-terminated UTF-8) with JSON payloads; wrap them in safe Rust abstractions using `CStr`/`CString`.
+Create a `cdylib` exposing `project2501_plugin_entry` (v1) or `project2501_plugin_entry_v2` (v2) that returns the generic function table. For v1, implement `init`, `destroy`, `get_manifest`, `invoke`, and `free_string`. For v2, also set `version = 2` and optionally implement `handle_route`, `on_config_changed`, and `on_task_event`. Store the `osr_host_api` pointer passed to the v2 entry point for access to all 20 host callbacks — config, data store, logging, agent dispatch (`dispatch`, `task_status`, `dispatch_cancel`, `dispatch_clarify`, `list_active_tasks`, `dispatch_interrupt`, `dispatch_add_issue`, `send_draft`), inference (`complete`, `complete_stream`, `embed`), model enumeration (`list_models`), outbound HTTP (`http_request`), and file I/O (`file_read`). All callbacks use C strings (null-terminated UTF-8) with JSON payloads; wrap them in safe Rust abstractions using `CStr`/`CString`.
