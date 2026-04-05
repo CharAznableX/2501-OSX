@@ -2,15 +2,15 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:App/osaurus.xcodeproj">
+      location = "group:App/project2501.xcodeproj">
    </FileRef>
    <FileRef
-      location = "group:Packages/OsaurusCore">
+      location = "group:Packages/Project2501Core">
    </FileRef>
    <FileRef
-      location = "group:Packages/OsaurusCLI">
+      location = "group:Packages/Project2501CLI">
    </FileRef>
    <FileRef
-      location = "group:Packages/OsaurusRepository">
+      location = "group:Packages/Project2501Repository">
    </FileRef>
 </Workspace>

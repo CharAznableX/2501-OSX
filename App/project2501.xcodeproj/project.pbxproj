@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		05576F752F72E7D800EF3CD3 /* OsaurusCore in Frameworks */ = {isa = PBXBuildFile; productRef = 05576F742F72E7D800EF3CD3 /* OsaurusCore */; };
+		05576F752F72E7D800EF3CD3 /* Project2501Core in Frameworks */ = {isa = PBXBuildFile; productRef = 05576F742F72E7D800EF3CD3 /* Project2501Core */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,7 +77,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				05576F752F72E7D800EF3CD3 /* OsaurusCore in Frameworks */,
+				05576F752F72E7D800EF3CD3 /* Project2501Core in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -146,7 +146,7 @@
 			);
 			name = osaurus;
 			packageProductDependencies = (
-				05576F742F72E7D800EF3CD3 /* OsaurusCore */,
+				05576F742F72E7D800EF3CD3 /* Project2501Core */,
 			);
 			productName = osaurus;
 			productReference = F0BB3C262E51FBCC00895593 /* osaurus.app */;
@@ -228,9 +228,9 @@
 			mainGroup = F0BB3C1D2E51FBCC00895593;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				F0F4E2992ED1209200BEFA4D /* XCLocalSwiftPackageReference "../Packages/OsaurusRepository" */,
-				F0AA7F342ED20D2E00672B07 /* XCLocalSwiftPackageReference "../Packages/OsaurusCLI" */,
-				F0AA7F3B2ED20DA700672B07 /* XCLocalSwiftPackageReference "../Packages/OsaurusCore" */,
+				F0F4E2992ED1209200BEFA4D /* XCLocalSwiftPackageReference "../Packages/Project2501Repository" */,
+				F0AA7F342ED20D2E00672B07 /* XCLocalSwiftPackageReference "../Packages/Project2501CLI" */,
+				F0AA7F3B2ED20DA700672B07 /* XCLocalSwiftPackageReference "../Packages/Project2501Core" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F0BB3C272E51FBCC00895593 /* Products */;
@@ -670,24 +670,24 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		F0AA7F342ED20D2E00672B07 /* XCLocalSwiftPackageReference "../Packages/OsaurusCLI" */ = {
+		F0AA7F342ED20D2E00672B07 /* XCLocalSwiftPackageReference "../Packages/Project2501CLI" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../Packages/OsaurusCLI;
+			relativePath = ../Packages/Project2501CLI;
 		};
-		F0AA7F3B2ED20DA700672B07 /* XCLocalSwiftPackageReference "../Packages/OsaurusCore" */ = {
+		F0AA7F3B2ED20DA700672B07 /* XCLocalSwiftPackageReference "../Packages/Project2501Core" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../Packages/OsaurusCore;
+			relativePath = ../Packages/Project2501Core;
 		};
-		F0F4E2992ED1209200BEFA4D /* XCLocalSwiftPackageReference "../Packages/OsaurusRepository" */ = {
+		F0F4E2992ED1209200BEFA4D /* XCLocalSwiftPackageReference "../Packages/Project2501Repository" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../Packages/OsaurusRepository;
+			relativePath = ../Packages/Project2501Repository;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		05576F742F72E7D800EF3CD3 /* OsaurusCore */ = {
+		05576F742F72E7D800EF3CD3 /* Project2501Core */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = OsaurusCore;
+			productName = Project2501Core;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
