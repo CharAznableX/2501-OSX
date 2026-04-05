@@ -43,4 +43,29 @@ public final class OnboardingService: ObservableObject {
         UserDefaults.standard.set(false, forKey: hasCompletedOnboardingKey)
         UserDefaults.standard.set(0, forKey: onboardingVersionKey)
     }
+
+    /// Perform a full factory reset by deleting all data, preferences, and identity.
+    /// This will terminate the application.
+    public func performFactoryReset() async {
+        print("[OnboardingService] Initiating factory reset...")
+
+        // delete the Master Key from Keychain
+        _ = MasterKey.delete()
+
+        // clear all UserDefaults keys
+        if let bundleID = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+        }
+
+        // delete the entire ~/.osaurus root directory on a background thread
+        let root = OsaurusPaths.root()
+        await Task.detached(priority: .userInitiated) {
+            try? FileManager.default.removeItem(at: root)
+        }.value
+
+        print("[OnboardingService] Factory reset complete. Terminating...")
+
+        // terminate the app so it can be restarted fresh
+        exit(0)
+    }
 }
