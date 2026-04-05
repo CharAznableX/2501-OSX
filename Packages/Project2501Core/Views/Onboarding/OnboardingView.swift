@@ -217,7 +217,7 @@ public struct OnboardingView: View {
     }
 
     private func navigateToIdentityOrNext() {
-        if !forceShowIdentity && Project2501Identity.exists() {
+        if !forceShowIdentity && RequestSigner.exists() {
             proceedAfterIdentity()
         } else {
             navigateTo(.identitySetup, direction: .forward)

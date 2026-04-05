@@ -626,7 +626,7 @@ public final class RelayTunnelManager: ObservableObject {
     // MARK: - Helpers
 
     private func obtainMasterKey() -> Data? {
-        guard Project2501Identity.exists() else { return nil }
+        guard RequestSigner.exists() else { return nil }
         let context = Project2501IdentityContext.biometric()
         return try? MasterKey.getPrivateKey(context: context)
     }

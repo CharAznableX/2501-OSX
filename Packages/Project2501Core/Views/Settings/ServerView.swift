@@ -222,7 +222,7 @@ private struct AccessKeysSection: View {
 
                 Spacer()
 
-                if Project2501Identity.exists() {
+                if RequestSigner.exists() {
                     Button(action: { showingKeyGenerator = true }) {
                         HStack(spacing: 6) {
                             Image(systemName: "plus")

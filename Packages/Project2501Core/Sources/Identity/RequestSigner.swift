@@ -1,17 +1,15 @@
 //
-//  Project2501Identity.swift
+//  RequestSigner.swift
 //  project2501
 //
-//  Public entry point for the Project2501 Identity system.
-//  Orchestrates Master Key, Device Key, counter, and recovery code
-//  to produce two-layer signed tokens for every API request.
+//  Handles API request signing with master key and device attestation.
 //
 
 import CryptoKit
 import Foundation
 import LocalAuthentication
 
-public struct Project2501Identity: Sendable {
+public struct RequestSigner: Sendable {
 
     // MARK: - Setup
 

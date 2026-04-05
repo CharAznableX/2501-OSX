@@ -84,7 +84,7 @@ struct IdentityView: View {
     // MARK: - State Machine
 
     private func checkIdentityStatus() {
-        if Project2501Identity.exists() {
+        if RequestSigner.exists() {
             loadExistingIdentity()
         } else {
             phase = .noIdentity
@@ -216,7 +216,7 @@ private struct IdentitySetupCard: View {
 
         Task {
             do {
-                let info = try await Project2501Identity.setup()
+                let info = try await RequestSigner.setup()
                 await MainActor.run {
                     isCreating = false
                     onCreated(info)

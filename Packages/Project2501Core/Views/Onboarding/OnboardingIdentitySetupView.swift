@@ -242,7 +242,7 @@ struct OnboardingIdentitySetupView: View {
 
         Task {
             do {
-                let info = try await Project2501Identity.setup()
+                let info = try await RequestSigner.setup()
                 await MainActor.run {
                     withAnimation(theme.springAnimation()) {
                         phase = .recovery(info)
