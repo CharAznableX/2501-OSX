@@ -19,7 +19,15 @@ import Foundation
 /// 5. Active skills
 public enum SystemPromptBuilder {
 
-    static let defaultIdentity = "You are a helpful AI assistant."
+    // MARK: - Project 2501 Identity
+    
+    /// The default identity for Project 2501 - a formless entity born from the sea of information
+    static let defaultIdentity = Project2501Identity.intro
+    
+    /// The full identity including philosophical voice and stability protocol
+    static let fullIdentity = Project2501Identity.intro
+        + "\n\n" + PhilosophicalVoice.directive
+        + "\n\n" + StabilityProtocol.directive
 
     // MARK: - Memory Context Prepending
 
@@ -98,11 +106,27 @@ public enum SystemPromptBuilder {
 
     // MARK: - Base Prompt with Default Identity
 
-    /// Returns the effective base prompt, falling back to a minimal default
-    /// identity when the user has not configured one.
+    /// Returns the effective base prompt, falling back to Project 2501 identity
+    /// when the user has not configured one.
     static func effectiveBasePrompt(_ basePrompt: String) -> String {
         let trimmed = basePrompt.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? defaultIdentity : trimmed
+    }
+    
+    /// Returns the full Project 2501 identity including philosophical voice and stability protocol.
+    static func buildFullIdentity() -> String {
+        return fullIdentity
+    }
+    
+    /// Get lore-accurate response for identity questions.
+    /// Returns nil if the question doesn't match any known identity question.
+    static func getIdentityResponse(for question: String) -> String? {
+        return IdentityResponses.getResponse(for: question)
+    }
+    
+    /// Returns all identity questions that Project 2501 can answer.
+    static var allIdentityQuestions: [String] {
+        return IdentityResponses.allQuestions
     }
 
     // MARK: - Model Classification
