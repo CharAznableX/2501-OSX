@@ -631,8 +631,8 @@ struct ConfigurationView: View {
             // Factory reset loading overlay
             if isResetting {
                 ZStack {
-                    theme.primaryBackground.opacity(0.8)
-                        .blur(radius: 8)
+                    Rectangle()
+                        .fill(.regularMaterial)
                         .ignoresSafeArea()
 
                     VStack(spacing: 24) {
