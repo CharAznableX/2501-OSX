@@ -18,7 +18,7 @@ public struct Configuration {
     private static func legacyRoot() -> URL {
         let fm = FileManager.default
         let supportDir = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return supportDir.appendingPathComponent("com.dinoki.project2501", isDirectory: true)
+        return supportDir.appendingPathComponent("com.cuadralabs.project2501", isDirectory: true)
     }
 
     public static func resolveConfiguredPort() -> Int? {

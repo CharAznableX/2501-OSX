@@ -57,7 +57,7 @@ public struct ToolsReset {
             print("Reset crash recovery state")
         }
 
-        AppControl.postDistributedNotification(name: "com.dinoki.project2501.control.toolsReload", userInfo: [:])
+        AppControl.postDistributedNotification(name: "com.cuadralabs.project2501.control.toolsReload", userInfo: [:])
         print("Done. Restart Project2501 to apply changes.")
         exit(EXIT_SUCCESS)
     }

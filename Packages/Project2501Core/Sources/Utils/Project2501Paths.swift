@@ -21,7 +21,7 @@ public enum Project2501Paths {
         let fm = FileManager.default
         let newRoot = fm.homeDirectoryForCurrentUser.appendingPathComponent(".project2501", isDirectory: true)
         let supportDir = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let oldRoot = supportDir.appendingPathComponent("com.dinoki.project2501", isDirectory: true)
+        let oldRoot = supportDir.appendingPathComponent("com.cuadralabs.project2501", isDirectory: true)
 
         // Copy data from old Application Support on first access (never deletes the original).
         if fm.fileExists(atPath: oldRoot.path) {

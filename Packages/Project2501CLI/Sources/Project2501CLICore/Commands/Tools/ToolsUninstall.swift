@@ -75,7 +75,7 @@ public struct ToolsUninstall {
             exit(EXIT_FAILURE)
         }
         // Notify app to reload
-        AppControl.postDistributedNotification(name: "com.dinoki.project2501.control.toolsReload", userInfo: [:])
+        AppControl.postDistributedNotification(name: "com.cuadralabs.project2501.control.toolsReload", userInfo: [:])
         exit(EXIT_SUCCESS)
     }
 }

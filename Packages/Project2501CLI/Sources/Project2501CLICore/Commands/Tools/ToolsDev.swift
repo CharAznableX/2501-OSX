@@ -401,7 +401,7 @@ public struct ToolsDev {
 
     private static func sendReload() {
         AppControl.postDistributedNotification(
-            name: "com.dinoki.project2501.control.toolsReload",
+            name: "com.cuadralabs.project2501.control.toolsReload",
             userInfo: [:]
         )
     }

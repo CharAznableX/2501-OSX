@@ -709,16 +709,16 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelega
 // MARK: - Distributed Control (Local Only)
 extension AppDelegate {
     fileprivate static let controlToolsReloadNotification = Notification.Name(
-        "com.dinoki.project2501.control.toolsReload"
+        "com.cuadralabs.project2501.control.toolsReload"
     )
     fileprivate static let controlServeNotification = Notification.Name(
-        "com.dinoki.project2501.control.serve"
+        "com.cuadralabs.project2501.control.serve"
     )
     fileprivate static let controlStopNotification = Notification.Name(
-        "com.dinoki.project2501.control.stop"
+        "com.cuadralabs.project2501.control.stop"
     )
     fileprivate static let controlShowUINotification = Notification.Name(
-        "com.dinoki.project2501.control.ui"
+        "com.cuadralabs.project2501.control.ui"
     )
 
     private func setupControlNotifications() {

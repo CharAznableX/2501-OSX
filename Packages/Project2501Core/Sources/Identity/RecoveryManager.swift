@@ -19,7 +19,7 @@ public struct RecoveryManager: Sendable {
         return RecoveryInfo(code: code)
     }
 
-    /// Format: OSAURUS-XXXX-XXXX-XXXX-XXXX (uppercase hex, 4 groups of 4).
+    /// Format: PROJECT2501-XXXX-XXXX-XXXX-XXXX (uppercase hex, 4 groups of 4).
     private static func generateRecoveryCode() -> String {
         var bytes = [UInt8](repeating: 0, count: 8)
         _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
@@ -30,6 +30,6 @@ public struct RecoveryManager: Sendable {
             let end = hex.index(start, offsetBy: 4)
             return String(hex[start ..< end])
         }
-        return "OSAURUS-\(chunks.joined(separator: "-"))"
+        return "PROJECT2501-\(chunks.joined(separator: "-"))"
     }
 }

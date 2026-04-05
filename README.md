@@ -29,7 +29,7 @@
 <p align="center">
   <a href="https://github.com/project2501-ai/project2501/releases/latest/download/Project2501.dmg">Download for Mac</a> ·
   <a href="https://docs.project2501.ai">Docs</a> ·
-  <a href="https://discord.com/invite/dinoki">Discord</a> ·
+  <a href="https://discord.com/invite/cuadralabs">Discord</a> ·
   <a href="https://x.com/Project2501AI">Twitter</a> ·
   <a href="https://github.com/project2501-ai/project2501-tools">Plugin Registry</a>
 </p>
@@ -265,11 +265,11 @@ See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for the architecture guide and layer
 
 Project2501 is actively developed and we welcome contributions: bug fixes, new plugins, documentation, UI/UX improvements, and testing.
 
-Check out [Good First Issues](https://github.com/project2501-ai/project2501/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22), read the [Contributing Guide](CONTRIBUTING.md), or join [Discord](https://discord.com/invite/dinoki). See [docs/FEATURES.md](docs/FEATURES.md) for the full feature inventory.
+Check out [Good First Issues](https://github.com/project2501-ai/project2501/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22), read the [Contributing Guide](CONTRIBUTING.md), or join [Discord](https://discord.com/invite/cuadralabs). See [docs/FEATURES.md](docs/FEATURES.md) for the full feature inventory.
 
 ## Community
 
-- [Discord](https://discord.com/invite/dinoki) -- chat, feedback, show-and-tell
+- [Discord](https://discord.com/invite/cuadralabs) -- chat, feedback, show-and-tell
 - [Twitter](https://x.com/Project2501AI) -- updates and demos
 - [Community Calls](https://lu.ma/project2501) -- bi-weekly, open to everyone
 - [Blog](https://project2501.ai/blog) -- long-form thinking on personal AI

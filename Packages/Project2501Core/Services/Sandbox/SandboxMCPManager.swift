@@ -57,7 +57,7 @@ public actor SandboxMCPManager {
         var mergedEnv = secretsEnvironment(agentName: agentName, pluginId: pluginId)
         mergedEnv.merge(env) { _, new in new }
         mergedEnv.merge(spec.env ?? [:]) { _, new in new }
-        mergedEnv["OSAURUS_PLUGIN"] = pluginId
+        mergedEnv["PROJECT2501_PLUGIN"] = pluginId
 
         let fullCommand =
             "cd '\(pluginDir)' && nohup \(spec.command) > /tmp/mcp-\(pluginId).log 2>&1 & echo $!"

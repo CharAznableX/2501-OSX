@@ -20,14 +20,14 @@ public struct UICommand: Command {
         while Date() < deadline {
             // Once the server is healthy, (re)post a UI request to ensure it is handled
             if await ServerControl.checkHealth(port: port) {
-                AppControl.postDistributedNotification(name: "com.dinoki.project2501.control.ui", userInfo: [:])
+                AppControl.postDistributedNotification(name: "com.cuadralabs.project2501.control.ui", userInfo: [:])
                 // Give the app a moment to show the popover, then exit
                 try? await Task.sleep(nanoseconds: 300_000_000)
                 exit(EXIT_SUCCESS)
             }
             // If still not healthy, periodically post the UI request as the app may not have registered observers yet
             if Date().timeIntervalSince(lastPost) > 0.8 {
-                AppControl.postDistributedNotification(name: "com.dinoki.project2501.control.ui", userInfo: [:])
+                AppControl.postDistributedNotification(name: "com.cuadralabs.project2501.control.ui", userInfo: [:])
                 postedAtLeastOnce = true
                 lastPost = Date()
             }
@@ -35,7 +35,7 @@ public struct UICommand: Command {
         }
         // Best-effort: post one final time and exit success
         if !postedAtLeastOnce {
-            AppControl.postDistributedNotification(name: "com.dinoki.project2501.control.ui", userInfo: [:])
+            AppControl.postDistributedNotification(name: "com.cuadralabs.project2501.control.ui", userInfo: [:])
         }
         try? await Task.sleep(nanoseconds: 150_000_000)
         exit(EXIT_SUCCESS)

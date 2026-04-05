@@ -327,7 +327,7 @@ Project2501 does not write secrets into the shared file; it only publishes conne
 
 ## Stable identifiers
 
-- Bundle identifier: `com.dinoki.project2501`
+- Bundle identifier: `com.cuadralabs.project2501`
 - Base path: `~/.project2501/runtime/`
 
 These values come from the app’s configuration and are expected to remain stable.

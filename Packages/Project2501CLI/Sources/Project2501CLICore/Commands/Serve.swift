@@ -64,7 +64,7 @@ public struct ServeCommand: Command {
             return info
         }
         AppControl.postDistributedNotification(
-            name: "com.dinoki.project2501.control.serve",
+            name: "com.cuadralabs.project2501.control.serve",
             userInfo: buildInfo()
         )
 
@@ -87,7 +87,7 @@ public struct ServeCommand: Command {
                     relaunched = true
                 }
                 AppControl.postDistributedNotification(
-                    name: "com.dinoki.project2501.control.serve",
+                    name: "com.cuadralabs.project2501.control.serve",
                     userInfo: buildInfo()
                 )
                 retried = true

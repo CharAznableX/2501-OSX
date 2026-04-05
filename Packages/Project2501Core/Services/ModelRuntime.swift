@@ -14,7 +14,7 @@ import MLXLLM
 import MLXVLM
 import os.log
 
-private let genLog = Logger(subsystem: "com.dinoki.project2501", category: "Generation")
+private let genLog = Logger(subsystem: "com.cuadralabs.project2501", category: "Generation")
 
 // Force-link MLXVLM so ModelFactoryRegistry discovers the VLM trampoline at runtime.
 private let _vlmFactory = MLXVLM.VLMModelFactory.shared

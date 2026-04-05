@@ -43,7 +43,7 @@ public struct ToolsInstall {
                 "Installed \(result.receipt.plugin_id) @ \(result.receipt.version) to \(result.installDirectory.path)"
             )
             // Notify app to reload tools
-            AppControl.postDistributedNotification(name: "com.dinoki.project2501.control.toolsReload", userInfo: [:])
+            AppControl.postDistributedNotification(name: "com.cuadralabs.project2501.control.toolsReload", userInfo: [:])
             exit(EXIT_SUCCESS)
         } catch {
             fputs("Install failed: \(error)\n", stderr)
@@ -165,7 +165,7 @@ public struct ToolsInstall {
             print("Installed \(pluginId) @ \(semver) to \(installDir.path)")
 
             // Notify app
-            AppControl.postDistributedNotification(name: "com.dinoki.project2501.control.toolsReload", userInfo: [:])
+            AppControl.postDistributedNotification(name: "com.cuadralabs.project2501.control.toolsReload", userInfo: [:])
             exit(EXIT_SUCCESS)
 
         } catch {

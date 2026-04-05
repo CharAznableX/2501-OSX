@@ -303,7 +303,7 @@ private struct RecoveryPromptCard: View {
 
     private var recoveryCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("OSAURUS IDENTITY RECOVERY")
+            Text("PROJECT2501 IDENTITY RECOVERY")
                 .font(.system(size: 12, weight: .bold, design: .monospaced))
                 .foregroundColor(theme.primaryText)
                 .tracking(1)
@@ -369,7 +369,7 @@ private struct RecoveryPromptCard: View {
 
     private func printRecoveryCode() {
         let printContent = """
-            OSAURUS IDENTITY RECOVERY
+            PROJECT2501 IDENTITY RECOVERY
 
             Master Address:
             \(info.project2501Id)

@@ -147,7 +147,7 @@ struct SandboxIntegrationTests {
     }
 
     private func sandboxIntegrationEnabled() -> Bool {
-        ProcessInfo.processInfo.environment["OSAURUS_RUN_SANDBOX_INTEGRATION_TESTS"] == "1"
+        ProcessInfo.processInfo.environment["PROJECT2501_RUN_SANDBOX_INTEGRATION_TESTS"] == "1"
     }
 }
 

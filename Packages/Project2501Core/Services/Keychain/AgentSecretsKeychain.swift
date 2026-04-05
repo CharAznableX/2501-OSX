@@ -96,7 +96,7 @@ public enum AgentSecretsKeychain {
     private static let reservedEnvVarNames: Set<String> = [
         "PATH", "HOME", "SHELL", "USER", "LOGNAME",
         "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
-        "VIRTUAL_ENV", "OSAURUS_PLUGIN",
+        "VIRTUAL_ENV", "PROJECT2501_PLUGIN",
     ]
 
     /// Returns agent secrets with reserved env var names stripped out.

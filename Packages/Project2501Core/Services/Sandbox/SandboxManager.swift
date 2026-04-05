@@ -804,7 +804,7 @@
             SOCK="/tmp/project2501-bridge.sock"
             API="http://localhost/api"
             USER=$(whoami)
-            PLUGIN="${OSAURUS_PLUGIN:-$(basename "$(pwd)")}"
+            PLUGIN="${PROJECT2501_PLUGIN:-$(basename "$(pwd)")}"
             H="-H X-Project2501-User:$USER -H X-Project2501-Plugin:$PLUGIN"
 
             _call() {

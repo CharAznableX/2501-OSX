@@ -29,7 +29,7 @@ public struct AppControl {
         do {
             let openByBundle = Process()
             openByBundle.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-            openByBundle.arguments = ["-n", "-b", "com.dinoki.project2501", "--args", "--launched-by-cli"]
+            openByBundle.arguments = ["-n", "-b", "com.cuadralabs.project2501", "--args", "--launched-by-cli"]
             try? openByBundle.run()
             openByBundle.waitUntilExit()
             launched = (openByBundle.terminationStatus == 0)
@@ -75,13 +75,13 @@ public struct AppControl {
         if let path = spotlightFind(queryArgs: [
             "-onlyin", "/Applications",
             "-onlyin", "\(home)/Applications",
-            "kMDItemCFBundleIdentifier == 'com.dinoki.project2501'",
+            "kMDItemCFBundleIdentifier == 'com.cuadralabs.project2501'",
         ]) {
             if fm.fileExists(atPath: path) { return path }
         }
         // Unrestricted Spotlight fallback (search entire metadata index)
         if let path = spotlightFind(queryArgs: [
-            "kMDItemCFBundleIdentifier == 'com.dinoki.project2501'"
+            "kMDItemCFBundleIdentifier == 'com.cuadralabs.project2501'"
         ]) {
             if fm.fileExists(atPath: path) { return path }
         }

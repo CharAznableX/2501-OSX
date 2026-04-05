@@ -90,7 +90,7 @@ final class SandboxPluginTool: Project2501Tool, @unchecked Sendable {
             env = AgentSecretsKeychain.mergedSecretsEnvironment(agentId: uuid, pluginId: plugin.id)
         }
 
-        env["OSAURUS_PLUGIN"] = plugin.id
+        env["PROJECT2501_PLUGIN"] = plugin.id
         env.merge(buildParamVars(from: argumentsJSON)) { _, new in new }
         return env
     }

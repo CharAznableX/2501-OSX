@@ -14,8 +14,8 @@ public struct VersionCommand: Command {
         var versionString: String?
         var buildString: String?
 
-        if let v = ProcessInfo.processInfo.environment["OSAURUS_VERSION"] { versionString = v }
-        if let b = ProcessInfo.processInfo.environment["OSAURUS_BUILD_NUMBER"] { buildString = b }
+        if let v = ProcessInfo.processInfo.environment["PROJECT2501_VERSION"] { versionString = v }
+        if let b = ProcessInfo.processInfo.environment["PROJECT2501_BUILD_NUMBER"] { buildString = b }
 
         let output: String
         if let v = versionString, let b = buildString, !b.isEmpty {

@@ -162,7 +162,7 @@ private extension project2501App {
             }
 
             Button("Discord Community") {
-                openURL("https://discord.gg/dinoki")
+                openURL("https://github.com/CharAznableX/2501-OSX")
             }
 
             Button("Report an Issue…") {

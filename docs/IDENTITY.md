@@ -296,10 +296,10 @@ Revocation data is persisted in macOS Keychain (`kSecAttrAccessibleWhenUnlockedT
 During initial identity setup, a one-time recovery code is generated:
 
 ```
-OSAURUS-XXXX-XXXX-XXXX-XXXX
+PROJECT2501-XXXX-XXXX-XXXX-XXXX
 ```
 
-Format: `OSAURUS-` prefix followed by 4 groups of 4 uppercase hex characters (8 random bytes = 64 bits of entropy).
+Format: `PROJECT2501-` prefix followed by 4 groups of 4 uppercase hex characters (8 random bytes = 64 bits of entropy).
 
 The recovery code is:
 - Generated from `SecRandomCopyBytes` (cryptographically secure)
