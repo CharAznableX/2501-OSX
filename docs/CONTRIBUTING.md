@@ -1,4 +1,4 @@
-# Contributing to Osaurus
+# Contributing to Project2501
 
 Thanks for your interest in contributing! We welcome bug reports, feature ideas, documentation improvements, and code contributions.
 
@@ -102,7 +102,7 @@ The core library (`Packages/Project2501Core/`) follows a layered architecture. E
 ### Tool calling (developer notes)
 
 - OpenAI‑compatible DTOs live in `Models/OpenAIAPI.swift` (`Tool`, `ToolFunction`, `ToolCall`, `DeltaToolCall`, etc.).
-- Prompt templating is handled internally by MLX `ChatSession`. Osaurus does not assemble prompts manually.
+- Prompt templating is handled internally by MLX `ChatSession`. Project2501 does not assemble prompts manually.
 - We rely on MLX `ToolCallProcessor` and event streaming from `MLXLMCommon.generate` to surface tool calls; we no longer parse assistant text ourselves.
 - Streaming tool calls are emitted as OpenAI‑style deltas in `Networking/AsyncHTTPHandler.swift` directly from MLX tool call events.
 
@@ -178,7 +178,7 @@ Good documentation is just as important as good code. Here's how to contribute t
 2. **Update the README** — If the feature should be highlighted:
    - Add to the "Highlights" table
    - Add to "Key Features" section
-   - Update "What is Osaurus?" if it's a major feature
+   - Update "What is Project2501?" if it's a major feature
 
 3. **Create dedicated documentation** — For significant features:
    - Create a new doc in `/docs/` (e.g., `FEATURE_NAME.md`)
@@ -241,4 +241,4 @@ This project follows the Contributor Covenant. By participating, you agree to up
 - **[Discord](https://discord.gg/dinoki)** — Chat with contributors and maintainers
 - **[Good First Issues](https://github.com/project2501-ai/project2501/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)** — Great starting points
 
-Thank you for helping make Osaurus better!
+Thank you for helping make Project2501 better!

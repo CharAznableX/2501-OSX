@@ -132,45 +132,45 @@ struct PluginRouteMatchingTests {
 struct PluginQueryParamsTests {
 
     @Test func noQueryString() {
-        let params = OsaurusHTTPRequest.parseQueryParams(from: "/path")
+        let params = Project2501HTTPRequest.parseQueryParams(from: "/path")
         #expect(params.isEmpty)
     }
 
     @Test func emptyQueryString() {
-        let params = OsaurusHTTPRequest.parseQueryParams(from: "/path?")
+        let params = Project2501HTTPRequest.parseQueryParams(from: "/path?")
         #expect(params.isEmpty)
     }
 
     @Test func singleParam() {
-        let params = OsaurusHTTPRequest.parseQueryParams(from: "/path?key=value")
+        let params = Project2501HTTPRequest.parseQueryParams(from: "/path?key=value")
         #expect(params == ["key": "value"])
     }
 
     @Test func multipleParams() {
-        let params = OsaurusHTTPRequest.parseQueryParams(from: "/path?a=1&b=2&c=3")
+        let params = Project2501HTTPRequest.parseQueryParams(from: "/path?a=1&b=2&c=3")
         #expect(params["a"] == "1")
         #expect(params["b"] == "2")
         #expect(params["c"] == "3")
     }
 
     @Test func percentEncoded() {
-        let params = OsaurusHTTPRequest.parseQueryParams(from: "/path?name=hello%20world&code=abc%3D123")
+        let params = Project2501HTTPRequest.parseQueryParams(from: "/path?name=hello%20world&code=abc%3D123")
         #expect(params["name"] == "hello world")
         #expect(params["code"] == "abc=123")
     }
 
     @Test func paramWithoutValue() {
-        let params = OsaurusHTTPRequest.parseQueryParams(from: "/path?flag")
+        let params = Project2501HTTPRequest.parseQueryParams(from: "/path?flag")
         #expect(params["flag"] == "")
     }
 
     @Test func paramWithEmptyValue() {
-        let params = OsaurusHTTPRequest.parseQueryParams(from: "/path?key=")
+        let params = Project2501HTTPRequest.parseQueryParams(from: "/path?key=")
         #expect(params["key"] == "")
     }
 
     @Test func valueWithEquals() {
-        let params = OsaurusHTTPRequest.parseQueryParams(from: "/path?data=a=b=c")
+        let params = Project2501HTTPRequest.parseQueryParams(from: "/path?data=a=b=c")
         #expect(params["data"] == "a=b=c")
     }
 }

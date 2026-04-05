@@ -12,8 +12,8 @@ public enum WatcherStore {
     // MARK: - Directory Management
 
     private static var watchersDirectory: URL {
-        let dir = OsaurusPaths.watchers()
-        OsaurusPaths.ensureExistsSilent(dir)
+        let dir = Project2501Paths.watchers()
+        Project2501Paths.ensureExistsSilent(dir)
         return dir
     }
 
@@ -43,7 +43,7 @@ public enum WatcherStore {
                 let watcher = try decoder.decode(Watcher.self, from: data)
                 watchers.append(watcher)
             } catch {
-                print("[Osaurus] Failed to load watcher from \(file.lastPathComponent): \(error)")
+                print("[Project2501] Failed to load watcher from \(file.lastPathComponent): \(error)")
             }
         }
 
@@ -62,7 +62,7 @@ public enum WatcherStore {
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(Watcher.self, from: data)
         } catch {
-            print("[Osaurus] Failed to load watcher \(id): \(error)")
+            print("[Project2501] Failed to load watcher \(id): \(error)")
             return nil
         }
     }
@@ -78,7 +78,7 @@ public enum WatcherStore {
             let data = try encoder.encode(watcher)
             try data.write(to: url, options: [.atomic])
         } catch {
-            print("[Osaurus] Failed to save watcher \(watcher.id): \(error)")
+            print("[Project2501] Failed to save watcher \(watcher.id): \(error)")
         }
     }
 
@@ -92,7 +92,7 @@ public enum WatcherStore {
             try FileManager.default.removeItem(at: url)
             return true
         } catch {
-            print("[Osaurus] Failed to delete watcher \(id): \(error)")
+            print("[Project2501] Failed to delete watcher \(id): \(error)")
             return false
         }
     }

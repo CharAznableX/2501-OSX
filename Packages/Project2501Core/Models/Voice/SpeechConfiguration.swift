@@ -244,24 +244,24 @@ public enum SpeechConfigurationStore {
         do {
             return try JSONDecoder().decode(SpeechConfiguration.self, from: Data(contentsOf: url))
         } catch {
-            print("[Osaurus] Failed to load SpeechConfiguration: \(error)")
+            print("[Project2501] Failed to load SpeechConfiguration: \(error)")
             return SpeechConfiguration.default
         }
     }
 
     private static func saveToDisk(_ configuration: SpeechConfiguration) {
         let url = configurationFileURL()
-        OsaurusPaths.ensureExistsSilent(url.deletingLastPathComponent())
+        Project2501Paths.ensureExistsSilent(url.deletingLastPathComponent())
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(configuration).write(to: url, options: [.atomic])
         } catch {
-            print("[Osaurus] Failed to save SpeechConfiguration: \(error)")
+            print("[Project2501] Failed to save SpeechConfiguration: \(error)")
         }
     }
 
     private static func configurationFileURL() -> URL {
-        OsaurusPaths.speechConfigFile()
+        Project2501Paths.speechConfigFile()
     }
 }

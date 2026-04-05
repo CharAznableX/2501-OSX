@@ -111,7 +111,7 @@ public struct Router {
     }
 
     private func rootEndpoint() -> (HTTPResponseStatus, [(String, String)], String) {
-        return (.ok, [("Content-Type", "text/plain; charset=utf-8")], "Osaurus Server is running! 🦕")
+        return (.ok, [("Content-Type", "text/plain; charset=utf-8")], "Project2501 Server is running! 🦕")
     }
 
     private func notFoundEndpoint() -> (HTTPResponseStatus, [(String, String)], String) {

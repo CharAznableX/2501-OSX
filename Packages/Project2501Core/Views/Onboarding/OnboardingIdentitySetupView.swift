@@ -198,7 +198,7 @@ struct OnboardingIdentitySetupView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         recoveryBullet("Single-use — consumed on recovery")
                         recoveryBullet("Store in a safe place")
-                        recoveryBullet("Cannot be retrieved by Osaurus")
+                        recoveryBullet("Cannot be retrieved by Project2501")
                     }
                     .padding(.top, 2)
                 }
@@ -242,7 +242,7 @@ struct OnboardingIdentitySetupView: View {
 
         Task {
             do {
-                let info = try await OsaurusIdentity.setup()
+                let info = try await Project2501Identity.setup()
                 await MainActor.run {
                     withAnimation(theme.springAnimation()) {
                         phase = .recovery(info)

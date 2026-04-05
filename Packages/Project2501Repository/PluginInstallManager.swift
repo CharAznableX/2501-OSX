@@ -70,7 +70,7 @@ public final class PluginInstallManager: @unchecked Sendable {
             existingKey != newKey
         {
             NSLog(
-                "[Osaurus] Signing key changed for %@ — removing old version %@ to accept new key",
+                "[Project2501] Signing key changed for %@ — removing old version %@ to accept new key",
                 spec.plugin_id,
                 latest.description
             )
@@ -87,7 +87,7 @@ public final class PluginInstallManager: @unchecked Sendable {
             resolution = try spec.resolveBestVersion(
                 targetPlatform: targetPlatform,
                 targetArch: targetArch,
-                minimumOsaurusVersion: nil,
+                minimumProject2501Version: nil,
                 preferredVersion: preferredVersion
             )
         } catch {
@@ -119,10 +119,10 @@ public final class PluginInstallManager: @unchecked Sendable {
         do {
             _ = try MinisignVerifier.verify(publicKey: pubKey, signature: ms.signature, data: bytes)
         } catch {
-            NSLog("[Osaurus] Minisign verification failed for \(pluginId): \(error)")
+            NSLog("[Project2501] Minisign verification failed for \(pluginId): \(error)")
             throw PluginInstallError.signatureInvalid
         }
-        NSLog("[Osaurus] Minisign signature verified for \(pluginId)")
+        NSLog("[Project2501] Minisign signature verified for \(pluginId)")
 
         let tmpDir = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: tmpDir) }
@@ -164,7 +164,7 @@ public final class PluginInstallManager: @unchecked Sendable {
                 }
                 try FileManager.default.copyItem(at: skillURL, to: destURL)
                 installedSkillFiles.append(destURL)
-                NSLog("[Osaurus] Installed SKILL.md for plugin \(pluginId): \(destName)")
+                NSLog("[Project2501] Installed SKILL.md for plugin \(pluginId): \(destName)")
             }
         }
 
@@ -176,7 +176,7 @@ public final class PluginInstallManager: @unchecked Sendable {
                     try FileManager.default.removeItem(at: destURL)
                 }
                 try FileManager.default.copyItem(at: docURL, to: destURL)
-                NSLog("[Osaurus] Installed \(docName) for plugin \(pluginId)")
+                NSLog("[Project2501] Installed \(docName) for plugin \(pluginId)")
             }
         }
 

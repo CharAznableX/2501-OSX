@@ -25,7 +25,7 @@ final class MCPServerManager {
 
         // Initialize MCP server
         let srv = MCP.Server(
-            name: "Osaurus MCP",
+            name: "Project2501 MCP",
             version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0",
             capabilities: .init(
                 // We expose tools only; resources/prompts omitted for now

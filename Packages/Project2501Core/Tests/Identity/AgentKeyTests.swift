@@ -45,7 +45,7 @@ struct AgentKeyTests {
 
     // MARK: - Address Derivation
 
-    @Test func deriveAddress_validOsaurusId() throws {
+    @Test func deriveAddress_validProject2501Id() throws {
         let address = try AgentKey.deriveAddress(masterKey: TestKeys.alicePrivateKey, index: 0)
         #expect(address.hasPrefix("0x"))
         #expect(address.count == 42)
@@ -84,7 +84,7 @@ struct AgentKeyTests {
         let recovered = try recoverAddress(
             payload: payload,
             signature: signature,
-            domainPrefix: "Osaurus Signed Access"
+            domainPrefix: "Project2501 Signed Access"
         )
         #expect(recovered.lowercased() == agentAddress.lowercased())
     }
@@ -108,7 +108,7 @@ struct AgentKeyTests {
         let recovered = try recoverAddress(
             payload: payload,
             signature: signature,
-            domainPrefix: "Osaurus Signed Access"
+            domainPrefix: "Project2501 Signed Access"
         )
         #expect(recovered.lowercased() != masterAddress.lowercased())
     }

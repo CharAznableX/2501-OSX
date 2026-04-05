@@ -1,6 +1,6 @@
 # Theme JSON Reference
 
-This document describes the JSON schema for Osaurus custom themes. Themes can be imported and exported as `.json` files through the Themes view.
+This document describes the JSON schema for Project2501 custom themes. Themes can be imported and exported as `.json` files through the Themes view.
 
 ## General Notes
 

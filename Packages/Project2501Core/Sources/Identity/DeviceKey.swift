@@ -43,7 +43,7 @@ public struct DeviceKey: Sendable {
     /// Retrieve the attestation object for server registration (Phase 1b).
     public static func getAttestation(challenge: Data) async throws -> Data {
         guard let keyId = UserDefaults.standard.string(forKey: keyIdKey) else {
-            throw OsaurusIdentityError.deviceNotAttested
+            throw Project2501IdentityError.deviceNotAttested
         }
         let challengeHash = Data(SHA256.hash(data: challenge))
         return try await DCAppAttestService.shared.attestKey(keyId, clientDataHash: challengeHash)
@@ -66,7 +66,7 @@ public struct DeviceKey: Sendable {
     /// Read the stored device ID.
     public static func currentDeviceId() throws -> String {
         guard let id = UserDefaults.standard.string(forKey: deviceIdKey) else {
-            throw OsaurusIdentityError.deviceNotAttested
+            throw Project2501IdentityError.deviceNotAttested
         }
         return id
     }

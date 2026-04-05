@@ -79,7 +79,7 @@ struct OnboardingChoosePathView: View {
                 Spacer().frame(height: OnboardingStyle.headerTopPadding + 15)
 
                 // Headline
-                Text("How do you want to power Osaurus?")
+                Text("How do you want to power Project2501?")
                     .font(theme.font(size: 22, weight: .semibold))
                     .foregroundColor(theme.primaryText)
                     .multilineTextAlignment(.center)

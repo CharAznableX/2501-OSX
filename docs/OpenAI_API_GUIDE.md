@@ -1,6 +1,6 @@
 # API Endpoints Guide
 
-This guide explains how to use the API endpoints in Osaurus, including OpenAI-compatible, Anthropic-compatible, and Open Responses formats.
+This guide explains how to use the API endpoints in Project2501, including OpenAI-compatible, Anthropic-compatible, and Open Responses formats.
 
 ## Available Endpoints
 
@@ -112,7 +112,7 @@ data: [DONE]
 
 ### Function/Tool Calling
 
-Osaurus implements OpenAI‑compatible function calling via the `tools` array and optional `tool_choice` in the request. The server injects tool‑calling instructions into the prompt and parses assistant outputs for a top‑level `tool_calls` object, tolerating minor formatting (e.g., code fences).
+Project2501 implements OpenAI‑compatible function calling via the `tools` array and optional `tool_choice` in the request. The server injects tool‑calling instructions into the prompt and parses assistant outputs for a top‑level `tool_calls` object, tolerating minor formatting (e.g., code fences).
 
 Supported tool type: `function`.
 
@@ -175,7 +175,7 @@ Example non‑streaming response (simplified):
 }
 ```
 
-Streaming with tool calls: Osaurus emits OpenAI‑style deltas. First a role delta, then for each tool call: an id/type delta, a function name delta, and one or more argument deltas (chunked). The final chunk has `finish_reason: "tool_calls"`, followed by `[DONE]`.
+Streaming with tool calls: Project2501 emits OpenAI‑style deltas. First a role delta, then for each tool call: an id/type delta, a function name delta, and one or more argument deltas (chunked). The final chunk has `finish_reason: "tool_calls"`, followed by `[DONE]`.
 
 ```
 data: {"id":"chatcmpl-xyz","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant"}}]}
@@ -294,7 +294,7 @@ This is useful for API clients that want to guarantee cache hits across requests
 
 ### Chat Templates
 
-Osaurus defers chat templating to MLX `ChatSession`, which uses the model's configuration to format prompts. System messages are combined and passed as `instructions`; user content is supplied as the prompt to `respond/streamResponse`.
+Project2501 defers chat templating to MLX `ChatSession`, which uses the model's configuration to format prompts. System messages are combined and passed as `instructions`; user content is supplied as the prompt to `respond/streamResponse`.
 
 ## Model Naming
 
@@ -313,15 +313,15 @@ Models are automatically named based on their display names in ModelManager. The
 
 ## Usage with OpenAI Python Library
 
-You can use the official OpenAI Python library with Osaurus:
+You can use the official OpenAI Python library with Project2501:
 
 ```python
 from openai import OpenAI
 
-# Point to your local Osaurus server
+# Point to your local Project2501 server
 client = OpenAI(
     base_url="http://127.0.0.1:1337/v1",  # Use /v1 for OpenAI client compatibility
-    api_key="not-needed"  # Osaurus doesn't require authentication
+    api_key="not-needed"  # Project2501 doesn't require authentication
 )
 
 # List available models
@@ -358,7 +358,7 @@ for chunk in stream:
 
 ## Open Responses API
 
-Osaurus supports the [Open Responses](https://www.openresponses.org) specification, providing a semantic, item-based API format for multi-provider interoperability.
+Project2501 supports the [Open Responses](https://www.openresponses.org) specification, providing a semantic, item-based API format for multi-provider interoperability.
 
 ### 3. Responses - `POST /responses` (also available at `POST /v1/responses`)
 
@@ -541,18 +541,18 @@ curl http://127.0.0.1:1337/v1/responses \
 
 ## Memory API
 
-Osaurus provides a persistent memory system that can be used via the API. Memory learns from conversations and injects relevant context automatically into future requests.
+Project2501 provides a persistent memory system that can be used via the API. Memory learns from conversations and injects relevant context automatically into future requests.
 
-### Memory Context Injection — `X-Osaurus-Agent-Id` Header
+### Memory Context Injection — `X-Project2501-Agent-Id` Header
 
-Add the `X-Osaurus-Agent-Id` header to any `POST /chat/completions` request and Osaurus will automatically assemble relevant memory (user profile, working memory, conversation summaries, knowledge graph) and prepend it to the system prompt.
+Add the `X-Project2501-Agent-Id` header to any `POST /chat/completions` request and Project2501 will automatically assemble relevant memory (user profile, working memory, conversation summaries, knowledge graph) and prepend it to the system prompt.
 
 The header value is an arbitrary string that identifies the agent or user session whose memory should be retrieved.
 
 ```bash
 curl http://127.0.0.1:1337/chat/completions \
   -H "Content-Type: application/json" \
-  -H "X-Osaurus-Agent-Id: my-agent" \
+  -H "X-Project2501-Agent-Id: my-agent" \
   -d '{
     "model": "your-model-name",
     "messages": [
@@ -569,7 +569,7 @@ from openai import OpenAI
 client = OpenAI(
     base_url="http://127.0.0.1:1337/v1",
     api_key="project2501",
-    default_headers={"X-Osaurus-Agent-Id": "my-agent"},
+    default_headers={"X-Project2501-Agent-Id": "my-agent"},
 )
 
 response = client.chat.completions.create(
@@ -583,7 +583,7 @@ When the header is absent or empty, the request is processed normally without me
 
 ### Memory Ingestion — `POST /memory/ingest`
 
-Bulk-ingest conversation turns into the memory system for a given agent. Osaurus processes ingested turns asynchronously — extracting facts, updating the user profile, and building the knowledge graph in the background.
+Bulk-ingest conversation turns into the memory system for a given agent. Project2501 processes ingested turns asynchronously — extracting facts, updating the user profile, and building the knowledge graph in the background.
 
 ```bash
 curl http://127.0.0.1:1337/memory/ingest \
@@ -612,7 +612,7 @@ Response:
 
 ### List Agents — `GET /agents`
 
-Returns all configured agents along with their memory entry counts. Use this to discover agent IDs for the `X-Osaurus-Agent-Id` header.
+Returns all configured agents along with their memory entry counts. Use this to discover agent IDs for the `X-Project2501-Agent-Id` header.
 
 ```bash
 curl http://127.0.0.1:1337/agents
@@ -625,7 +625,7 @@ Example response:
   "agents": [
     {
       "id": "00000000-0000-0000-0000-000000000001",
-      "name": "Osaurus",
+      "name": "Project2501",
       "description": "Default assistant",
       "default_model": null,
       "is_built_in": true,
@@ -641,7 +641,7 @@ Example response:
 
 ## Notes
 
-1. **Model Availability**: Only models that have been downloaded through the Osaurus UI will be available via the API.
+1. **Model Availability**: Only models that have been downloaded through the Project2501 UI will be available via the API.
 
 2. **Performance**: The first request to a model loads it into memory and pins its weights in GPU memory; subsequent requests skip this step. Generation settings (prefill step size, max KV cache size, KV cache quantization) are auto-tuned based on system RAM and model size when not explicitly configured in Settings. Prefix caching is available to API clients via `cache_hint` / `prefix_hash`, but prefix caches are only precomputed by the UI warm-up flow — API requests read existing prefix caches but do not create new ones. Use `session_id` for multi-turn KV cache reuse across requests.
 

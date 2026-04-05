@@ -55,7 +55,7 @@ public struct SandboxConfiguration: Codable, Sendable, Equatable {
 
 public struct SandboxConfigurationStore {
     private static var configURL: URL {
-        OsaurusPaths.sandboxConfigFile()
+        Project2501Paths.sandboxConfigFile()
     }
 
     public static func load() -> SandboxConfiguration {
@@ -66,7 +66,7 @@ public struct SandboxConfigurationStore {
     }
 
     public static func save(_ config: SandboxConfiguration) {
-        OsaurusPaths.ensureExistsSilent(OsaurusPaths.config())
+        Project2501Paths.ensureExistsSilent(Project2501Paths.config())
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         do {

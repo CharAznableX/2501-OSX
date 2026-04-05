@@ -51,7 +51,7 @@ public final class CentralRepositoryManager: @unchecked Sendable {
                 return true
             }
             NSLog(
-                "[Osaurus] Registry pull failed or integrity check failed (fetch=%d, pull=%d), re-cloning",
+                "[Project2501] Registry pull failed or integrity check failed (fetch=%d, pull=%d), re-cloning",
                 fetchStatus,
                 pullStatus
             )
@@ -103,7 +103,7 @@ public final class CentralRepositoryManager: @unchecked Sendable {
                 options: [.skipsHiddenFiles]
             )
         else {
-            NSLog("[Osaurus] Clone integrity check failed for %@", cloneDir.path)
+            NSLog("[Project2501] Clone integrity check failed for %@", cloneDir.path)
             return false
         }
         for case let fileURL as URL in enumerator {
@@ -114,7 +114,7 @@ public final class CentralRepositoryManager: @unchecked Sendable {
                 return true
             }
         }
-        NSLog("[Osaurus] Clone integrity check failed: no valid spec JSON in %@", pluginsDir.path)
+        NSLog("[Project2501] Clone integrity check failed: no valid spec JSON in %@", pluginsDir.path)
         return false
     }
 

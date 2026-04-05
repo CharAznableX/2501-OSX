@@ -1052,7 +1052,7 @@ private func extractStandaloneImageKind(from text: String) -> MessageBlock.Kind?
 #if DEBUG
     struct MarkdownMessageView_Previews: PreviewProvider {
         static let sampleMarkdown = """
-            # Welcome to Osaurus
+            # Welcome to Project2501
 
             Here's a **bold** statement and some *italic* text.
 

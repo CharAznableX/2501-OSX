@@ -121,14 +121,14 @@ public extension PluginSpec {
     func resolveBestVersion(
         targetPlatform: Platform,
         targetArch: CPUArch,
-        minimumOsaurusVersion: SemanticVersion?,
+        minimumProject2501Version: SemanticVersion?,
         preferredVersion: SemanticVersion? = nil
     ) throws -> PluginResolution {
         guard !versions.isEmpty else { throw PluginResolutionError.noVersions }
 
         let filtered: [PluginVersionEntry] = versions.filter { entry in
             guard let req = entry.requires?.project2501_min_version,
-                let min = minimumOsaurusVersion
+                let min = minimumProject2501Version
             else { return true }
             return min >= req
         }

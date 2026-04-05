@@ -23,7 +23,7 @@ public struct MCPCommand: Command {
 
         // Build MCP server
         let server = MCP.Server(
-            name: "Osaurus MCP Proxy",
+            name: "Project2501 MCP Proxy",
             version: version,
             capabilities: .init(tools: .init(listChanged: true))
         )

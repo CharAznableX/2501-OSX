@@ -423,7 +423,7 @@ public actor RemoteProviderService: ToolCapableService {
                                                             thoughtSignature: nil
                                                         )
                                                         print(
-                                                            "[Osaurus] Tool call detected: index=\(idx), name=\(toolBlock.name)"
+                                                            "[Project2501] Tool call detected: index=\(idx), name=\(toolBlock.name)"
                                                         )
                                                         continuation.yield(StreamingToolHint.encode(toolBlock.name))
                                                     }
@@ -563,7 +563,7 @@ public actor RemoteProviderService: ToolCapableService {
                                 } catch {
                                     // Log parsing errors for debugging
                                     print(
-                                        "[Osaurus] Warning: Failed to parse SSE chunk in streamDeltas: \(error.localizedDescription)"
+                                        "[Project2501] Warning: Failed to parse SSE chunk in streamDeltas: \(error.localizedDescription)"
                                     )
                                 }
                             }
@@ -778,7 +778,7 @@ public actor RemoteProviderService: ToolCapableService {
 
                             if dataContent.trimmingCharacters(in: .whitespaces) == "[DONE]" {
                                 if let invocation = Self.makeToolInvocation(from: accumulatedToolCalls) {
-                                    print("[Osaurus] Stream [DONE]: Emitting tool call '\(invocation.toolName)'")
+                                    print("[Project2501] Stream [DONE]: Emitting tool call '\(invocation.toolName)'")
                                     continuation.finish(throwing: invocation)
                                     return
                                 }
@@ -790,7 +790,7 @@ public actor RemoteProviderService: ToolCapableService {
                                         tools: tools
                                     )
                                 {
-                                    print("[Osaurus] Fallback: Detected inline tool call '\(name)' in text")
+                                    print("[Project2501] Fallback: Detected inline tool call '\(name)' in text")
                                     continuation.finish(
                                         throwing: ServiceToolInvocation(
                                             toolName: name,
@@ -851,7 +851,7 @@ public actor RemoteProviderService: ToolCapableService {
                                                         thoughtSignature: funcCall.thoughtSignature
                                                     )
                                                     print(
-                                                        "[Osaurus] Gemini tool call detected: index=\(idx), name=\(funcCall.name)"
+                                                        "[Project2501] Gemini tool call detected: index=\(idx), name=\(funcCall.name)"
                                                     )
                                                     continuation.yield(StreamingToolHint.encode(funcCall.name))
                                                     continuation.yield(StreamingToolHint.encodeArgs(argsString))
@@ -887,7 +887,7 @@ public actor RemoteProviderService: ToolCapableService {
                                                 if let invocation = Self.makeToolInvocation(from: accumulatedToolCalls)
                                                 {
                                                     print(
-                                                        "[Osaurus] Gemini stream ended: Emitting tool call '\(invocation.toolName)'"
+                                                        "[Project2501] Gemini stream ended: Emitting tool call '\(invocation.toolName)'"
                                                     )
                                                     continuation.finish(throwing: invocation)
                                                     return
@@ -945,7 +945,7 @@ public actor RemoteProviderService: ToolCapableService {
                                                             thoughtSignature: nil
                                                         )
                                                         print(
-                                                            "[Osaurus] Tool call detected: index=\(idx), name=\(toolBlock.name)"
+                                                            "[Project2501] Tool call detected: index=\(idx), name=\(toolBlock.name)"
                                                         )
                                                         continuation.yield(StreamingToolHint.encode(toolBlock.name))
                                                     }
@@ -963,7 +963,7 @@ public actor RemoteProviderService: ToolCapableService {
                                                 if let invocation = Self.makeToolInvocation(from: accumulatedToolCalls)
                                                 {
                                                     print(
-                                                        "[Osaurus] Anthropic stream ended: Emitting tool call '\(invocation.toolName)'"
+                                                        "[Project2501] Anthropic stream ended: Emitting tool call '\(invocation.toolName)'"
                                                     )
                                                     continuation.finish(throwing: invocation)
                                                     return
@@ -1009,7 +1009,7 @@ public actor RemoteProviderService: ToolCapableService {
                                                             thoughtSignature: nil
                                                         )
                                                         print(
-                                                            "[Osaurus] Open Responses tool call detected: index=\(idx), name=\(funcCall.name)"
+                                                            "[Project2501] Open Responses tool call detected: index=\(idx), name=\(funcCall.name)"
                                                         )
                                                         continuation.yield(StreamingToolHint.encode(funcCall.name))
                                                     }
@@ -1034,7 +1034,7 @@ public actor RemoteProviderService: ToolCapableService {
                                                 if let invocation = Self.makeToolInvocation(from: accumulatedToolCalls)
                                                 {
                                                     print(
-                                                        "[Osaurus] Open Responses stream ended: Emitting tool call '\(invocation.toolName)'"
+                                                        "[Project2501] Open Responses stream ended: Emitting tool call '\(invocation.toolName)'"
                                                     )
                                                     continuation.finish(throwing: invocation)
                                                     return
@@ -1065,7 +1065,7 @@ public actor RemoteProviderService: ToolCapableService {
                                                 }
                                                 if let name = toolCall.function?.name, current.name == nil {
                                                     current.name = name
-                                                    print("[Osaurus] Tool call detected: index=\(idx), name=\(name)")
+                                                    print("[Project2501] Tool call detected: index=\(idx), name=\(name)")
                                                     continuation.yield(StreamingToolHint.encode(name))
                                                 }
                                                 if let args = toolCall.function?.arguments {
@@ -1102,7 +1102,7 @@ public actor RemoteProviderService: ToolCapableService {
                                             lastFinishReason = finishReason
                                             if let invocation = Self.makeToolInvocation(from: accumulatedToolCalls) {
                                                 print(
-                                                    "[Osaurus] Emitting tool call '\(invocation.toolName)' on finish_reason '\(finishReason)'"
+                                                    "[Project2501] Emitting tool call '\(invocation.toolName)' on finish_reason '\(finishReason)'"
                                                 )
                                                 continuation.finish(throwing: invocation)
                                                 return
@@ -1112,7 +1112,7 @@ public actor RemoteProviderService: ToolCapableService {
                                 } catch {
                                     // Log parsing errors for debugging instead of silently ignoring
                                     print(
-                                        "[Osaurus] Warning: Failed to parse SSE chunk: \(error.localizedDescription)"
+                                        "[Project2501] Warning: Failed to parse SSE chunk: \(error.localizedDescription)"
                                     )
                                 }
                             }
@@ -1131,7 +1131,7 @@ public actor RemoteProviderService: ToolCapableService {
                 // Emit any accumulated tool call data at stream end
                 if let invocation = Self.makeToolInvocation(from: accumulatedToolCalls) {
                     print(
-                        "[Osaurus] Stream ended: Emitting tool call '\(invocation.toolName)' (finish_reason: \(lastFinishReason ?? "none"))"
+                        "[Project2501] Stream ended: Emitting tool call '\(invocation.toolName)' (finish_reason: \(lastFinishReason ?? "none"))"
                     )
                     continuation.finish(throwing: invocation)
                     return
@@ -1144,7 +1144,7 @@ public actor RemoteProviderService: ToolCapableService {
                         tools: tools
                     )
                 {
-                    print("[Osaurus] Fallback: Detected inline tool call '\(name)' in text")
+                    print("[Project2501] Fallback: Detected inline tool call '\(name)' in text")
                     continuation.finish(
                         throwing: ServiceToolInvocation(
                             toolName: name,
@@ -1161,7 +1161,7 @@ public actor RemoteProviderService: ToolCapableService {
                 if Task.isCancelled {
                     continuation.finish()
                 } else {
-                    print("[Osaurus] Stream error: \(error.localizedDescription)")
+                    print("[Project2501] Stream error: \(error.localizedDescription)")
                     continuation.finish(throwing: error)
                 }
             }
@@ -1324,12 +1324,12 @@ public actor RemoteProviderService: ToolCapableService {
         if let data = repaired.data(using: .utf8),
             (try? JSONSerialization.jsonObject(with: data)) != nil
         {
-            print("[Osaurus] Repaired incomplete tool call JSON (\(json.count) -> \(repaired.count) chars)")
+            print("[Project2501] Repaired incomplete tool call JSON (\(json.count) -> \(repaired.count) chars)")
             return repaired
         }
 
         // Repair failed - return original and let downstream handle the error
-        print("[Osaurus] Warning: Tool call JSON is malformed and could not be repaired: \(json.prefix(200))")
+        print("[Project2501] Warning: Tool call JSON is malformed and could not be repaired: \(json.prefix(200))")
         return json
     }
 

@@ -42,11 +42,11 @@ public actor ToolSearchService {
     public func initialize() async {
         guard !isInitialized else { return }
 
-        let storageDir = OsaurusPaths.toolIndex().appendingPathComponent("vectura", isDirectory: true)
+        let storageDir = Project2501Paths.toolIndex().appendingPathComponent("vectura", isDirectory: true)
 
         for attempt in 1 ... 2 {
             do {
-                OsaurusPaths.ensureExistsSilent(storageDir)
+                Project2501Paths.ensureExistsSilent(storageDir)
 
                 let config = try VecturaConfig(
                     name: "project2501-tools",

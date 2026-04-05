@@ -1207,7 +1207,7 @@ final class PluginHostContext: @unchecked Sendable {
         }
 
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
-        let suffix = "Osaurus/\(appVersion) Plugin/\(pluginId)"
+        let suffix = "Project2501/\(appVersion) Plugin/\(pluginId)"
         let existing = request.value(forHTTPHeaderField: "User-Agent")
         request.setValue(existing.map { "\($0) \(suffix)" } ?? suffix, forHTTPHeaderField: "User-Agent")
 
@@ -1292,7 +1292,7 @@ final class PluginHostContext: @unchecked Sendable {
         }
 
         let fileURL = URL(fileURLWithPath: path).standardizedFileURL
-        let allowedPrefix = OsaurusPaths.artifactsDir().standardizedFileURL.path + "/"
+        let allowedPrefix = Project2501Paths.artifactsDir().standardizedFileURL.path + "/"
 
         guard fileURL.path.hasPrefix(allowedPrefix) else {
             return Self.jsonString(["error": "access_denied", "message": "File read restricted to artifact paths"])

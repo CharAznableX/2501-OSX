@@ -720,7 +720,7 @@ struct PluginConfigView: View {
     }
 
     private static func loadServerPort() -> Int {
-        let url = OsaurusPaths.serverConfigFile()
+        let url = Project2501Paths.serverConfigFile()
         guard let data = try? Data(contentsOf: url),
             let config = try? JSONDecoder().decode(ServerConfiguration.self, from: data)
         else { return 1337 }

@@ -1,6 +1,6 @@
 # Support
 
-Thanks for using Osaurus! Here are the best ways to get help and stay unblocked.
+Thanks for using Project2501! Here are the best ways to get help and stay unblocked.
 
 ## First steps
 

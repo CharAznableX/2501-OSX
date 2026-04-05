@@ -1,5 +1,5 @@
 //
-//  OsaurusTool.swift
+//  Project2501Tool.swift
 //  project2501
 //
 //  Defines the standardized tool protocol and helpers to expose OpenAI-compatible tool specs.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-protocol OsaurusTool: Sendable {
+protocol Project2501Tool: Sendable {
     /// Unique tool name exposed to the model
     var name: String { get }
     /// Human description for the model and UI
@@ -19,7 +19,7 @@ protocol OsaurusTool: Sendable {
     func execute(argumentsJSON: String) async throws -> String
 }
 
-extension OsaurusTool {
+extension Project2501Tool {
     /// Build OpenAI-compatible Tool specification
     func asOpenAITool() -> Tool {
         Tool(

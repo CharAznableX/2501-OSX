@@ -1,12 +1,12 @@
 # Developer Tools
 
-Osaurus includes built-in developer tools for debugging, monitoring, and testing your integration. Access them via the Management window (`⌘ Shift M`).
+Project2501 includes built-in developer tools for debugging, monitoring, and testing your integration. Access them via the Management window (`⌘ Shift M`).
 
 ---
 
 ## Insights
 
-The **Insights** tab provides real-time monitoring of all API requests flowing through Osaurus.
+The **Insights** tab provides real-time monitoring of all API requests flowing through Project2501.
 
 ### Accessing Insights
 

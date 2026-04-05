@@ -58,7 +58,7 @@ struct CryptoHelpersTests {
         let recovered = try recoverAddress(
             payload: payload,
             signature: signature,
-            domainPrefix: "Osaurus Signed Message"
+            domainPrefix: "Project2501 Signed Message"
         )
         #expect(recovered.lowercased() == expectedAddress.lowercased())
     }
@@ -74,7 +74,7 @@ struct CryptoHelpersTests {
         let recovered = try recoverAddress(
             payload: payload,
             signature: signature,
-            domainPrefix: "Osaurus Signed Access"
+            domainPrefix: "Project2501 Signed Access"
         )
         #expect(recovered.lowercased() == expectedAddress.lowercased())
     }
@@ -100,7 +100,7 @@ struct CryptoHelpersTests {
         let recoveredWithWrongPrefix = try recoverAddress(
             payload: payload,
             signature: signature,
-            domainPrefix: "Osaurus Signed Access"
+            domainPrefix: "Project2501 Signed Access"
         )
         #expect(recoveredWithWrongPrefix.lowercased() != expectedAddress.lowercased())
     }
@@ -111,8 +111,8 @@ struct CryptoHelpersTests {
         let payload = Data("test".utf8)
         let shortSig = Data(repeating: 0x00, count: 64)
 
-        #expect(throws: OsaurusIdentityError.self) {
-            _ = try recoverAddress(payload: payload, signature: shortSig, domainPrefix: "Osaurus Signed Access")
+        #expect(throws: Project2501IdentityError.self) {
+            _ = try recoverAddress(payload: payload, signature: shortSig, domainPrefix: "Project2501 Signed Access")
         }
     }
 
@@ -132,23 +132,23 @@ struct CryptoHelpersTests {
 
     // MARK: - Address Derivation
 
-    @Test func deriveOsaurusId_deterministic() throws {
-        let addr1 = try deriveOsaurusId(from: TestKeys.alicePrivateKey)
-        let addr2 = try deriveOsaurusId(from: TestKeys.alicePrivateKey)
+    @Test func deriveProject2501Id_deterministic() throws {
+        let addr1 = try deriveProject2501Id(from: TestKeys.alicePrivateKey)
+        let addr2 = try deriveProject2501Id(from: TestKeys.alicePrivateKey)
         #expect(addr1 == addr2)
     }
 
-    @Test func deriveOsaurusId_differentKeys_differentAddresses() throws {
-        let alice = try deriveOsaurusId(from: TestKeys.alicePrivateKey)
-        let bob = try deriveOsaurusId(from: TestKeys.bobPrivateKey)
-        let carol = try deriveOsaurusId(from: TestKeys.carolPrivateKey)
+    @Test func deriveProject2501Id_differentKeys_differentAddresses() throws {
+        let alice = try deriveProject2501Id(from: TestKeys.alicePrivateKey)
+        let bob = try deriveProject2501Id(from: TestKeys.bobPrivateKey)
+        let carol = try deriveProject2501Id(from: TestKeys.carolPrivateKey)
         #expect(alice != bob)
         #expect(bob != carol)
         #expect(alice != carol)
     }
 
-    @Test func deriveOsaurusId_checksumFormat() throws {
-        let addr = try deriveOsaurusId(from: TestKeys.alicePrivateKey)
+    @Test func deriveProject2501Id_checksumFormat() throws {
+        let addr = try deriveProject2501Id(from: TestKeys.alicePrivateKey)
         #expect(addr.hasPrefix("0x"))
         #expect(addr.count == 42)
     }
@@ -175,7 +175,7 @@ struct CryptoHelpersTests {
     // MARK: - Base64url Encoding
 
     @Test func base64url_roundtrip() {
-        let original = Data("Hello, Osaurus!".utf8)
+        let original = Data("Hello, Project2501!".utf8)
         let encoded = original.base64urlEncoded
         let decoded = Data(base64urlEncoded: encoded)
         #expect(decoded == original)

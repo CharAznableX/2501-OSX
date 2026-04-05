@@ -79,7 +79,7 @@ public final class SandboxAgentProvisioner {
 
     public func unprovision(agentId: String) async -> SandboxAgentCleanupResult {
         let agentName = Self.linuxName(for: agentId)
-        let hostWorkspace = OsaurusPaths.containerAgentDir(agentName)
+        let hostWorkspace = Project2501Paths.containerAgentDir(agentName)
 
         let removedMapping = SandboxAgentMap.unregister(agentId: agentId)
         let removedPluginState = SandboxPluginManager.shared.removeAgentState(for: agentId)
@@ -112,7 +112,7 @@ public final class SandboxAgentProvisioner {
 
     private func ensureHostWorkspace(for agentName: String) {
         let fm = FileManager.default
-        let agentDir = OsaurusPaths.containerAgentDir(agentName)
+        let agentDir = Project2501Paths.containerAgentDir(agentName)
         let pluginsDir = agentDir.appendingPathComponent("plugins", isDirectory: true)
         try? fm.createDirectory(at: pluginsDir, withIntermediateDirectories: true)
     }

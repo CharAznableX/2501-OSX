@@ -47,10 +47,10 @@ public final class APIKeyManager: @unchecked Sendable {
             }
         }
 
-        let masterAddress = try deriveOsaurusId(from: masterKeyData)
+        let masterAddress = try deriveProject2501Id(from: masterKeyData)
 
-        let signerAddress: OsaurusID
-        let audienceAddress: OsaurusID
+        let signerAddress: Project2501ID
+        let audienceAddress: Project2501ID
         if let idx = agentIndex {
             signerAddress = try AgentKey.deriveAddress(masterKey: masterKeyData, index: idx)
             audienceAddress = signerAddress
@@ -124,7 +124,7 @@ public final class APIKeyManager: @unchecked Sendable {
     }
 
     /// Revoke all keys from a given address with counter <= current counter.
-    public func revokeAll(forAddress address: OsaurusID) {
+    public func revokeAll(forAddress address: Project2501ID) {
         queue.sync(flags: .barrier) {
             let currentCounter = CounterStore.shared.current
             RevocationStore.shared.revokeAllBefore(address: address, counter: currentCounter)

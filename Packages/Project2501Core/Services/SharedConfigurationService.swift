@@ -15,7 +15,7 @@ final class SharedConfigurationService {
     private init() {}
 
     private func baseDirectoryURL() -> URL {
-        OsaurusPaths.resolvePath(new: OsaurusPaths.runtime(), legacy: "SharedConfiguration")
+        Project2501Paths.resolvePath(new: Project2501Paths.runtime(), legacy: "SharedConfiguration")
     }
 
     private func instanceDirectoryURL() -> URL {
@@ -25,11 +25,11 @@ final class SharedConfigurationService {
     private func ensureDirectories() -> URL? {
         let instance = instanceDirectoryURL()
         do {
-            try OsaurusPaths.ensureExists(baseDirectoryURL())
-            try OsaurusPaths.ensureExists(instance)
+            try Project2501Paths.ensureExists(baseDirectoryURL())
+            try Project2501Paths.ensureExists(instance)
             return instance
         } catch {
-            print("[Osaurus] SharedConfigurationService: failed to create directories: \(error)")
+            print("[Project2501] SharedConfigurationService: failed to create directories: \(error)")
             return nil
         }
     }
@@ -63,7 +63,7 @@ final class SharedConfigurationService {
                     ofItemAtPath: instanceDir.path
                 )
             } catch {
-                print("[Osaurus] SharedConfigurationService: failed to write configuration: \(error)")
+                print("[Project2501] SharedConfigurationService: failed to write configuration: \(error)")
             }
         case .starting:
             // Publish minimal metadata while starting
@@ -80,7 +80,7 @@ final class SharedConfigurationService {
                 try jsonData.write(to: fileURL, options: [.atomic])
             } catch {
                 print(
-                    "[Osaurus] SharedConfigurationService: failed to write starting configuration: \(error)"
+                    "[Project2501] SharedConfigurationService: failed to write starting configuration: \(error)"
                 )
             }
         case .restarting:
@@ -98,7 +98,7 @@ final class SharedConfigurationService {
                 try jsonData.write(to: fileURL, options: [.atomic])
             } catch {
                 print(
-                    "[Osaurus] SharedConfigurationService: failed to write restarting configuration: \(error)"
+                    "[Project2501] SharedConfigurationService: failed to write restarting configuration: \(error)"
                 )
             }
         case .stopped, .stopping, .error:
@@ -114,11 +114,11 @@ final class SharedConfigurationService {
             if FileManager.default.fileExists(atPath: instance.path) {
                 try FileManager.default.removeItem(at: instance)
                 print(
-                    "[Osaurus] SharedConfigurationService: removed instance directory at \(instance.path)"
+                    "[Project2501] SharedConfigurationService: removed instance directory at \(instance.path)"
                 )
             }
         } catch {
-            print("[Osaurus] SharedConfigurationService: failed to remove instance directory: \(error)")
+            print("[Project2501] SharedConfigurationService: failed to remove instance directory: \(error)")
         }
     }
 }

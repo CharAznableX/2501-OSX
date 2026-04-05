@@ -2,7 +2,7 @@
 <img width="865" height="677" alt="Screenshot 2026-03-19 at 3 42 04 PM" src="https://github.com/user-attachments/assets/c16ee8bb-7f31-4659-9c2c-6eaaf8441c26" />
 </p>
 
-<h1 align="center">Osaurus</h1>
+<h1 align="center">Project2501</h1>
 
 <p align="center">
   <strong>Own your AI.</strong><br>
@@ -27,10 +27,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/project2501-ai/project2501/releases/latest/download/Osaurus.dmg">Download for Mac</a> ·
+  <a href="https://github.com/project2501-ai/project2501/releases/latest/download/Project2501.dmg">Download for Mac</a> ·
   <a href="https://docs.project2501.ai">Docs</a> ·
   <a href="https://discord.com/invite/dinoki">Discord</a> ·
-  <a href="https://x.com/OsaurusAI">Twitter</a> ·
+  <a href="https://x.com/Project2501AI">Twitter</a> ·
   <a href="https://github.com/project2501-ai/project2501-tools">Plugin Registry</a>
 </p>
 
@@ -38,9 +38,9 @@
 
 ## Inference is all you need. Everything else can be owned by you.
 
-Models are getting cheaper and more interchangeable by the day. What's irreplaceable is the layer around them -- your context, your memory, your tools, your identity. Others keep that layer on their servers. Osaurus keeps it on your machine.
+Models are getting cheaper and more interchangeable by the day. What's irreplaceable is the layer around them -- your context, your memory, your tools, your identity. Others keep that layer on their servers. Project2501 keeps it on your machine.
 
-Osaurus is the AI harness for macOS. It sits between you and any model -- local or cloud -- and provides the continuity that makes AI personal: agents that remember, execute autonomously, run real code, and stay reachable from anywhere. The models are interchangeable. The harness is what compounds.
+Project2501 is the AI harness for macOS. It sits between you and any model -- local or cloud -- and provides the continuity that makes AI personal: agents that remember, execute autonomously, run real code, and stay reachable from anywhere. The models are interchangeable. The harness is what compounds.
 
 Works fully offline with local models. Connect to any cloud provider when you want more power. Nothing leaves your Mac unless you choose.
 
@@ -52,7 +52,7 @@ Native Swift on Apple Silicon. No Electron. No compromises. MIT licensed.
 brew install --cask project2501
 ```
 
-Or download the latest `.dmg` from [Releases](https://github.com/project2501-ai/project2501/releases/latest). After installing, launch from Spotlight (`⌘ Space` → "Osaurus") or the CLI:
+Or download the latest `.dmg` from [Releases](https://github.com/project2501-ai/project2501/releases/latest). After installing, launch from Spotlight (`⌘ Space` → "Project2501") or the CLI:
 
 ```bash
 project2501 ui       # Open the chat UI
@@ -64,7 +64,7 @@ project2501 status   # Check status
 
 ## Agents
 
-Agents are the core of Osaurus. Each one gets its own prompts, memory, and visual theme -- a research assistant, a coding partner, a file organizer, whatever you need. Tools and skills are automatically selected via RAG search based on the task at hand -- no manual configuration needed. Everything else in the harness exists to make agents smarter, faster, and more capable over time.
+Agents are the core of Project2501. Each one gets its own prompts, memory, and visual theme -- a research assistant, a coding partner, a file organizer, whatever you need. Tools and skills are automatically selected via RAG search based on the task at hand -- no manual configuration needed. Everything else in the harness exists to make agents smarter, faster, and more capable over time.
 
 ### Work Mode
 
@@ -74,11 +74,11 @@ Give an agent an objective. It breaks the work into trackable issues, executes s
 
 Agents execute code in an isolated Linux VM powered by Apple's [Containerization](https://developer.apple.com/documentation/containerization) framework. Full dev environment -- shell, Python, Node.js, compilers, package managers -- with zero risk to your Mac.
 
-Each agent gets its own Linux user and home directory. The VM connects back to Osaurus (inference, memory, secrets) via a vsock bridge -- sandboxed but not disconnected. Extend with simple JSON plugin recipes, no Xcode or code signing required.
+Each agent gets its own Linux user and home directory. The VM connects back to Project2501 (inference, memory, secrets) via a vsock bridge -- sandboxed but not disconnected. Extend with simple JSON plugin recipes, no Xcode or code signing required.
 
 ```
 ┌────────────────┐       ┌────────────────────────────┐
-│    Osaurus     │       │   Linux VM (Alpine)        │
+│    Project2501     │       │   Linux VM (Alpine)        │
 │                │       │                            │
 │  Sandbox Mgr ──┼───────┤→ /workspace  (VirtioFS)    │
 │  Host API   ←──┼─vsock─┤→ project2501-host bridge       │
@@ -112,7 +112,7 @@ Run Llama, Qwen, Gemma, Mistral, DeepSeek, and more on Apple Silicon with optimi
 
 ### Liquid Foundation Models
 
-Osaurus supports [Liquid AI's LFM](https://www.liquid.ai/models) family -- on-device models built on a non-transformer architecture optimized for edge deployment. Fast decode, low memory footprint, and strong tool calling out of the box.
+Project2501 supports [Liquid AI's LFM](https://www.liquid.ai/models) family -- on-device models built on a non-transformer architecture optimized for edge deployment. Fast decode, low memory footprint, and strong tool calling out of the box.
 
 ### Apple Foundation Models
 
@@ -124,7 +124,7 @@ Connect to OpenAI, Anthropic, Gemini, xAI/Grok, [Venice AI](https://venice.ai), 
 
 ## MCP
 
-Osaurus is a full MCP (Model Context Protocol) server. Give Cursor, Claude Desktop, or any MCP client access to your tools:
+Project2501 is a full MCP (Model Context Protocol) server. Give Cursor, Claude Desktop, or any MCP client access to your tools:
 
 ```json
 {
@@ -137,7 +137,7 @@ Osaurus is a full MCP (Model Context Protocol) server. Give Cursor, Claude Deskt
 }
 ```
 
-Also an MCP client -- aggregate tools from remote MCP servers into Osaurus. See the [Remote MCP Providers Guide](docs/REMOTE_MCP_PROVIDERS.md) for details.
+Also an MCP client -- aggregate tools from remote MCP servers into Project2501. See the [Remote MCP Providers Guide](docs/REMOTE_MCP_PROVIDERS.md) for details.
 
 ## Tools & Plugins
 
@@ -170,7 +170,7 @@ Drop-in endpoints for existing tools:
 | Anthropic | `http://127.0.0.1:1337/anthropic/v1/messages` |
 | Ollama    | `http://127.0.0.1:1337/api/chat`              |
 
-All prefixes supported (`/v1`, `/api`, `/v1/api`). Full function calling with streaming tool call deltas. See [OpenAI API Guide](docs/OpenAI_API_GUIDE.md) for tool calling, streaming, and SDK examples. Building a macOS app that connects to Osaurus? See the [Shared Configuration Guide](docs/SHARED_CONFIGURATION_GUIDE.md).
+All prefixes supported (`/v1`, `/api`, `/v1/api`). Full function calling with streaming tool call deltas. See [OpenAI API Guide](docs/OpenAI_API_GUIDE.md) for tool calling, streaming, and SDK examples. Building a macOS app that connects to Project2501? See the [Shared Configuration Guide](docs/SHARED_CONFIGURATION_GUIDE.md).
 
 ## CLI
 
@@ -185,7 +185,7 @@ project2501 stop                           # Stop the server
 Homebrew auto-links the CLI, or symlink manually:
 
 ```bash
-ln -sf "/Applications/Osaurus.app/Contents/MacOS/project2501" "$(brew --prefix)/bin/project2501"
+ln -sf "/Applications/Project2501.app/Contents/MacOS/project2501" "$(brew --prefix)/bin/project2501"
 ```
 
 ## Architecture
@@ -263,14 +263,14 @@ See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for the architecture guide and layer
 
 ## Contributing
 
-Osaurus is actively developed and we welcome contributions: bug fixes, new plugins, documentation, UI/UX improvements, and testing.
+Project2501 is actively developed and we welcome contributions: bug fixes, new plugins, documentation, UI/UX improvements, and testing.
 
 Check out [Good First Issues](https://github.com/project2501-ai/project2501/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22), read the [Contributing Guide](CONTRIBUTING.md), or join [Discord](https://discord.com/invite/dinoki). See [docs/FEATURES.md](docs/FEATURES.md) for the full feature inventory.
 
 ## Community
 
 - [Discord](https://discord.com/invite/dinoki) -- chat, feedback, show-and-tell
-- [Twitter](https://x.com/OsaurusAI) -- updates and demos
+- [Twitter](https://x.com/Project2501AI) -- updates and demos
 - [Community Calls](https://lu.ma/project2501) -- bi-weekly, open to everyone
 - [Blog](https://project2501.ai/blog) -- long-form thinking on personal AI
 - [Docs](https://docs.project2501.ai) -- guides and tutorials
@@ -283,5 +283,5 @@ Check out [Good First Issues](https://github.com/project2501-ai/project2501/issu
 ---
 
 <p align="center">
-  Osaurus, Inc. · <a href="https://project2501.ai">project2501.ai</a>
+  Project2501, Inc. · <a href="https://project2501.ai">project2501.ai</a>
 </p>

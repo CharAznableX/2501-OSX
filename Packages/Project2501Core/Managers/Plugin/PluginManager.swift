@@ -414,7 +414,7 @@ final class PluginManager {
             } else {
                 errorMsg = "Failed to load library (unknown error)"
             }
-            print("[Osaurus] dlopen failed for \(url.path): \(errorMsg)")
+            print("[Project2501] dlopen failed for \(url.path): \(errorMsg)")
             return .failure(PluginLoadError(message: errorMsg))
         }
 
@@ -434,7 +434,7 @@ final class PluginManager {
                 ctx = try PluginHostContext(pluginId: preliminaryId)
             } catch {
                 let errorMsg = "Failed to create host context: \(error.localizedDescription)"
-                print("[Osaurus] \(errorMsg) for \(url.lastPathComponent)")
+                print("[Project2501] \(errorMsg) for \(url.lastPathComponent)")
                 dlclose(handle)
                 return .failure(PluginLoadError(message: errorMsg))
             }
@@ -449,7 +449,7 @@ final class PluginManager {
 
             guard let apiRawPtr else {
                 let errorMsg = "Plugin v2 entry returned null API"
-                print("[Osaurus] \(errorMsg) in \(url.lastPathComponent)")
+                print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
                 ctx.teardown()
                 dlclose(handle)
                 return .failure(PluginLoadError(message: errorMsg))
@@ -461,13 +461,13 @@ final class PluginManager {
             hostContext = ctx
 
             PluginHostContext.setContext(ctx, for: preliminaryId)
-            print("[Osaurus] Loaded v2 plugin from \(url.lastPathComponent)")
+            print("[Project2501] Loaded v2 plugin from \(url.lastPathComponent)")
         } else if let v1sym = dlsym(handle, "project2501_plugin_entry") {
             // v1 path: no host API
             let entryFn = unsafeBitCast(v1sym, to: osr_plugin_entry_t.self)
             guard let apiRawPtr = entryFn() else {
                 let errorMsg = "Plugin entry returned null API"
-                print("[Osaurus] \(errorMsg) in \(url.lastPathComponent)")
+                print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
                 dlclose(handle)
                 return .failure(PluginLoadError(message: errorMsg))
             }
@@ -477,7 +477,7 @@ final class PluginManager {
             abiVersion = 1
         } else {
             let errorMsg = "Missing plugin entry point (project2501_plugin_entry or project2501_plugin_entry_v2)"
-            print("[Osaurus] \(errorMsg) in \(url.lastPathComponent)")
+            print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
             dlclose(handle)
             return .failure(PluginLoadError(message: errorMsg))
         }
@@ -485,7 +485,7 @@ final class PluginManager {
         // Initialize Plugin
         guard let initFn = api.`init` else {
             let errorMsg = "Plugin missing init function"
-            print("[Osaurus] \(errorMsg) in \(url.lastPathComponent)")
+            print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
             hostContext?.teardown()
             dlclose(handle)
             return .failure(PluginLoadError(message: errorMsg))
@@ -503,7 +503,7 @@ final class PluginManager {
 
         guard let ctx else {
             let errorMsg = "Plugin initialization failed"
-            print("[Osaurus] \(errorMsg) in \(url.lastPathComponent)")
+            print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
             hostContext?.teardown()
             dlclose(handle)
             return .failure(PluginLoadError(message: errorMsg))
@@ -512,7 +512,7 @@ final class PluginManager {
         // Get Manifest
         guard let getManifest = api.get_manifest, let jsonPtr = getManifest(ctx) else {
             let errorMsg = "Plugin failed to return manifest"
-            print("[Osaurus] \(errorMsg) in \(url.lastPathComponent)")
+            print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
             api.destroy?(ctx)
             hostContext?.teardown()
             dlclose(handle)
@@ -526,7 +526,7 @@ final class PluginManager {
             let manifest = try? JSONDecoder().decode(PluginManifest.self, from: data)
         else {
             let errorMsg = "Failed to parse plugin manifest"
-            print("[Osaurus] \(errorMsg) in \(url.lastPathComponent)")
+            print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
             api.destroy?(ctx)
             hostContext?.teardown()
             dlclose(handle)
@@ -631,9 +631,9 @@ final class PluginManager {
                     pluginId: pluginId
                 )
                 results.append(skill)
-                NSLog("[Osaurus] Loaded skill '\(skill.name)' from plugin \(pluginId)")
+                NSLog("[Project2501] Loaded skill '\(skill.name)' from plugin \(pluginId)")
             } catch {
-                NSLog("[Osaurus] Failed to parse SKILL.md from plugin \(pluginId): \(error)")
+                NSLog("[Project2501] Failed to parse SKILL.md from plugin \(pluginId): \(error)")
             }
         }
 
@@ -729,7 +729,7 @@ final class PluginManager {
         if let data = try? JSONEncoder().encode(Array(ids)) {
             try? data.write(to: quarantineURL())
         }
-        NSLog("[Osaurus] Quarantined plugin '%@' after crash during load", pluginId)
+        NSLog("[Project2501] Quarantined plugin '%@' after crash during load", pluginId)
     }
 
     nonisolated static func clearQuarantine() {

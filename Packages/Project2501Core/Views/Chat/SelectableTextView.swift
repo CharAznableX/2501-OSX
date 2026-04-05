@@ -1086,7 +1086,7 @@ final class SelectableNSTextView: NSTextView {
         let filename = url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !filename.isEmpty else { return }
 
-        let artifactsRoot = OsaurusPaths.artifactsDir()
+        let artifactsRoot = Project2501Paths.artifactsDir()
         let fm = FileManager.default
         guard
             let contextDirs = try? fm.contentsOfDirectory(

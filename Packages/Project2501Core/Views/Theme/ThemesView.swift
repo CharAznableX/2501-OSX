@@ -176,10 +176,10 @@ struct ThemesView: View {
         let themeName = theme.metadata.name
         let success = themeManager.deleteTheme(id: theme.metadata.id)
         if success {
-            print("[Osaurus] Successfully deleted theme: \(themeName)")
+            print("[Project2501] Successfully deleted theme: \(themeName)")
             showToast("Deleted \"\(themeName)\"")
         } else {
-            print("[Osaurus] Failed to delete theme: \(themeName)")
+            print("[Project2501] Failed to delete theme: \(themeName)")
         }
         themeToDelete = nil
     }
@@ -570,7 +570,7 @@ struct ThemesView: View {
     private func confirmDelete(_ theme: CustomTheme) {
         // Don't allow deleting built-in themes
         guard !theme.isBuiltIn else {
-            print("[Osaurus] Cannot delete built-in theme: \(theme.metadata.name)")
+            print("[Project2501] Cannot delete built-in theme: \(theme.metadata.name)")
             return
         }
         themeToDelete = theme
@@ -586,11 +586,11 @@ struct ThemesView: View {
                 themeManager.refreshInstalledThemes()
                 showToast("Imported \"\(imported.metadata.name)\"")
             } catch {
-                print("[Osaurus] Failed to import theme: \(error)")
+                print("[Project2501] Failed to import theme: \(error)")
                 showToast("Import failed: \(error.localizedDescription)", type: .error)
             }
         case .failure(let error):
-            print("[Osaurus] Import failed: \(error)")
+            print("[Project2501] Import failed: \(error)")
             showToast("Import failed: \(error.localizedDescription)", type: .error)
         }
     }
@@ -603,7 +603,7 @@ struct ThemesView: View {
             }
             themeToExport = nil
         case .failure(let error):
-            print("[Osaurus] Export failed: \(error)")
+            print("[Project2501] Export failed: \(error)")
         }
     }
 }

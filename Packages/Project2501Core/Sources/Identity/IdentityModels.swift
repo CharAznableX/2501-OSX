@@ -2,13 +2,13 @@
 //  IdentityModels.swift
 //  project2501
 //
-//  Data types for the Osaurus Identity system.
+//  Data types for the Project2501 Identity system.
 //
 
 import Foundation
 
 /// Checksummed hex address: "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18"
-public typealias OsaurusID = String
+public typealias Project2501ID = String
 
 // MARK: - Token
 
@@ -43,7 +43,7 @@ public struct TokenPayload: Codable, Sendable {
 
 /// Returned once after initial identity setup.
 public struct IdentityInfo: Sendable {
-    public let project2501Id: OsaurusID
+    public let project2501Id: Project2501ID
     public let deviceId: String
     public let recovery: RecoveryInfo
 }
@@ -83,20 +83,20 @@ public enum AccessKeyExpiration: String, Codable, CaseIterable, Sendable {
 /// The signed payload embedded inside an osk-v1 access key.
 /// Keys are sorted alphabetically for canonical JSON encoding.
 public struct AccessKeyPayload: Codable, Sendable {
-    public let aud: OsaurusID
+    public let aud: Project2501ID
     public let cnt: UInt64
     public let exp: Int?
     public let iat: Int
-    public let iss: OsaurusID
+    public let iss: Project2501ID
     public let lbl: String?
     public let nonce: String
 
     public init(
-        aud: OsaurusID,
+        aud: Project2501ID,
         cnt: UInt64,
         exp: Int?,
         iat: Int,
-        iss: OsaurusID,
+        iss: Project2501ID,
         lbl: String?,
         nonce: String
     ) {
@@ -118,8 +118,8 @@ public struct AccessKeyInfo: Codable, Identifiable, Sendable {
     public let prefix: String
     public let nonce: String
     public let cnt: UInt64
-    public let iss: OsaurusID
-    public let aud: OsaurusID
+    public let iss: Project2501ID
+    public let aud: Project2501ID
     public let createdAt: Date
     public let expiration: AccessKeyExpiration
     public let expiresAt: Date?
@@ -156,8 +156,8 @@ public struct AccessKeyInfo: Codable, Identifiable, Sendable {
         prefix: String,
         nonce: String,
         cnt: UInt64,
-        iss: OsaurusID,
-        aud: OsaurusID,
+        iss: Project2501ID,
+        aud: Project2501ID,
         createdAt: Date,
         expiration: AccessKeyExpiration,
         expiresAt: Date?,
@@ -183,11 +183,11 @@ public struct AccessKeyInfo: Codable, Identifiable, Sendable {
 public struct AgentInfo: Codable, Identifiable, Sendable {
     public var id: UInt32 { index }
     public let index: UInt32
-    public let address: OsaurusID
+    public let address: Project2501ID
     public let label: String
     public let createdAt: Date
 
-    public init(index: UInt32, address: OsaurusID, label: String, createdAt: Date = Date()) {
+    public init(index: UInt32, address: Project2501ID, label: String, createdAt: Date = Date()) {
         self.index = index
         self.address = address
         self.label = label
@@ -200,19 +200,19 @@ public struct AgentInfo: Codable, Identifiable, Sendable {
 /// An immutable snapshot of revocation state, used by the validator at request time.
 public struct RevocationSnapshot: Sendable {
     public let revokedKeys: Set<String>
-    public let counterThresholds: [OsaurusID: UInt64]
+    public let counterThresholds: [Project2501ID: UInt64]
 
-    public init(revokedKeys: Set<String>, counterThresholds: [OsaurusID: UInt64]) {
+    public init(revokedKeys: Set<String>, counterThresholds: [Project2501ID: UInt64]) {
         self.revokedKeys = revokedKeys
         self.counterThresholds = counterThresholds
     }
 
     /// Composite key for individual revocation lookups.
-    public static func revocationKey(address: OsaurusID, nonce: String) -> String {
+    public static func revocationKey(address: Project2501ID, nonce: String) -> String {
         "\(address.lowercased()):\(nonce)"
     }
 
-    public func isRevoked(address: OsaurusID, nonce: String, cnt: UInt64) -> Bool {
+    public func isRevoked(address: Project2501ID, nonce: String, cnt: UInt64) -> Bool {
         let key = Self.revocationKey(address: address, nonce: nonce)
         if revokedKeys.contains(key) { return true }
         if let threshold = counterThresholds[address.lowercased()], cnt <= threshold { return true }
@@ -223,7 +223,7 @@ public struct RevocationSnapshot: Sendable {
 // MARK: - Validation Result
 
 public enum AccessKeyValidationResult: Sendable {
-    case valid(issuer: OsaurusID)
+    case valid(issuer: Project2501ID)
     case invalid(reason: String)
     case expired
     case revoked

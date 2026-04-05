@@ -67,11 +67,11 @@ public enum ThemeConfigurationStore {
 
     static func saveTheme(_ theme: CustomTheme) {
         do {
-            try OsaurusPaths.ensureExists(themesDirectoryURL())
+            try Project2501Paths.ensureExists(themesDirectoryURL())
             let data = try encodeTheme(theme)
             try data.write(to: themeFileURL(for: theme.metadata.id), options: .atomic)
         } catch {
-            print("[Osaurus] Failed to save theme '\(theme.metadata.name)': \(error)")
+            print("[Project2501] Failed to save theme '\(theme.metadata.name)': \(error)")
         }
     }
 
@@ -121,7 +121,7 @@ public enum ThemeConfigurationStore {
     // MARK: - Built-in Themes
 
     static func installBuiltInThemesIfNeeded() {
-        guard (try? OsaurusPaths.ensureExists(themesDirectoryURL())) != nil else { return }
+        guard (try? Project2501Paths.ensureExists(themesDirectoryURL())) != nil else { return }
 
         for theme in CustomTheme.allBuiltInPresets {
             let url = themeFileURL(for: theme.metadata.id)
@@ -133,7 +133,7 @@ public enum ThemeConfigurationStore {
     }
 
     static func forceReinstallBuiltInThemes() {
-        guard (try? OsaurusPaths.ensureExists(themesDirectoryURL())) != nil else { return }
+        guard (try? Project2501Paths.ensureExists(themesDirectoryURL())) != nil else { return }
 
         for theme in CustomTheme.allBuiltInPresets {
             saveTheme(theme)
@@ -165,7 +165,7 @@ public enum ThemeConfigurationStore {
     }
 
     private static func themesDirectoryURL() -> URL {
-        OsaurusPaths.resolvePath(new: OsaurusPaths.themes(), legacy: "Themes")
+        Project2501Paths.resolvePath(new: Project2501Paths.themes(), legacy: "Themes")
     }
 
     private static func themeFileURL(for id: UUID) -> URL {

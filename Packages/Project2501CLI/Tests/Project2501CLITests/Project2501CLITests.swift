@@ -2,7 +2,7 @@
 //  Project2501CLITests.swift
 //  project2501
 //
-//  Unit tests for the Osaurus CLI core functionality.
+//  Unit tests for the Project2501 CLI core functionality.
 //
 
 import XCTest

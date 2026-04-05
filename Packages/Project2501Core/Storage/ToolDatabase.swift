@@ -121,7 +121,7 @@ public final class ToolDatabase: @unchecked Sendable {
     public func open() throws {
         try queue.sync {
             guard db == nil else { return }
-            OsaurusPaths.ensureExistsSilent(OsaurusPaths.toolIndex())
+            Project2501Paths.ensureExistsSilent(Project2501Paths.toolIndex())
             try openConnection()
             try runMigrations()
         }
@@ -159,7 +159,7 @@ public final class ToolDatabase: @unchecked Sendable {
     // MARK: - Connection
 
     private func openConnection() throws {
-        let path = OsaurusPaths.toolIndexDatabaseFile().path
+        let path = Project2501Paths.toolIndexDatabaseFile().path
         var dbPointer: OpaquePointer?
         let result = sqlite3_open(path, &dbPointer)
         guard result == SQLITE_OK, let connection = dbPointer else {

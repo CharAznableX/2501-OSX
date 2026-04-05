@@ -11,10 +11,10 @@ import Security
 
 public struct RecoveryManager: Sendable {
 
-    /// Generate a recovery code for the given Osaurus ID.
+    /// Generate a recovery code for the given Project2501 ID.
     /// The code is returned in `RecoveryInfo`; caller must present it to the user
     /// and discard it from memory afterward.
-    public static func configure(address: OsaurusID) -> RecoveryInfo {
+    public static func configure(address: Project2501ID) -> RecoveryInfo {
         let code = generateRecoveryCode()
         return RecoveryInfo(code: code)
     }

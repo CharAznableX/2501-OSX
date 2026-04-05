@@ -2,7 +2,7 @@
 //  WorkEngine.swift
 //  project2501
 //
-//  Main coordinator for Osaurus Agents execution flow.
+//  Main coordinator for Project2501 Agents execution flow.
 //  Orchestrates IssueManager and ExecutionEngine via reasoning loop.
 //
 

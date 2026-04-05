@@ -138,7 +138,7 @@ enum WorkFolderToolHelpers {
 
 // MARK: File Tree Tool
 
-struct WorkFileTreeTool: OsaurusTool {
+struct WorkFileTreeTool: Project2501Tool {
     let name = "file_tree"
     let description =
         "List the directory structure of the working directory or a subdirectory. Returns a tree view of files and folders. Skips hidden files and truncates at 300 files."
@@ -240,7 +240,7 @@ struct WorkFileTreeTool: OsaurusTool {
 
 // MARK: File Read Tool
 
-struct WorkFileReadTool: OsaurusTool {
+struct WorkFileReadTool: Project2501Tool {
     let name = "file_read"
     let description =
         "Read the contents of a text file. Cannot read binary files (PDFs, images, etc.). Optionally specify start_line and end_line for partial reads. Line numbers are 1-indexed."
@@ -322,7 +322,7 @@ struct WorkFileReadTool: OsaurusTool {
 
 // MARK: File Write Tool
 
-struct WorkFileWriteTool: OsaurusTool, PermissionedTool {
+struct WorkFileWriteTool: Project2501Tool, PermissionedTool {
     let name = "file_write"
     let description =
         "Create a new file or overwrite an existing file with the provided content. Parent directories will be created if they don't exist. You MUST provide the file contents in the `content` parameter."
@@ -400,7 +400,7 @@ struct WorkFileWriteTool: OsaurusTool, PermissionedTool {
 
 // MARK: File Move Tool
 
-struct WorkFileMoveTool: OsaurusTool, PermissionedTool {
+struct WorkFileMoveTool: Project2501Tool, PermissionedTool {
     let name = "file_move"
     let description = "Move or rename a file or directory."
     let parameters: JSONValue? = .object([
@@ -473,7 +473,7 @@ struct WorkFileMoveTool: OsaurusTool, PermissionedTool {
 
 // MARK: File Copy Tool
 
-struct WorkFileCopyTool: OsaurusTool, PermissionedTool {
+struct WorkFileCopyTool: Project2501Tool, PermissionedTool {
     let name = "file_copy"
     let description = "Copy a file or directory to a new location."
     let parameters: JSONValue? = .object([
@@ -546,7 +546,7 @@ struct WorkFileCopyTool: OsaurusTool, PermissionedTool {
 
 // MARK: File Delete Tool
 
-struct WorkFileDeleteTool: OsaurusTool, PermissionedTool {
+struct WorkFileDeleteTool: Project2501Tool, PermissionedTool {
     let name = "file_delete"
     let description = "Delete a file or directory. This action requires approval."
     let parameters: JSONValue? = .object([
@@ -620,7 +620,7 @@ struct WorkFileDeleteTool: OsaurusTool, PermissionedTool {
 
 // MARK: Directory Create Tool
 
-struct WorkDirCreateTool: OsaurusTool, PermissionedTool {
+struct WorkDirCreateTool: Project2501Tool, PermissionedTool {
     let name = "dir_create"
     let description =
         "Create a new directory. Parent directories will be created if they don't exist."
@@ -681,7 +681,7 @@ struct WorkDirCreateTool: OsaurusTool, PermissionedTool {
 
 // MARK: File Metadata Tool
 
-struct WorkFileMetadataTool: OsaurusTool {
+struct WorkFileMetadataTool: Project2501Tool {
     let name = "file_metadata"
     let description = "Get metadata about a file or directory (size, dates, type)."
     let parameters: JSONValue? = .object([
@@ -763,7 +763,7 @@ struct WorkFileMetadataTool: OsaurusTool {
 
 // MARK: File Edit Tool
 
-struct WorkFileEditTool: OsaurusTool, PermissionedTool {
+struct WorkFileEditTool: Project2501Tool, PermissionedTool {
     let name = "file_edit"
     let description =
         "Edit a file by replacing specific text. old_string must uniquely match exactly one location in the file — include surrounding context lines if needed to ensure uniqueness. The tool will fail if old_string is not found or matches multiple locations. You MUST provide the strings in the parameters."
@@ -849,7 +849,7 @@ struct WorkFileEditTool: OsaurusTool, PermissionedTool {
 
 // MARK: File Search Tool
 
-struct WorkFileSearchTool: OsaurusTool {
+struct WorkFileSearchTool: Project2501Tool {
     let name = "file_search"
     let description =
         "Search for text in files using case-insensitive substring matching. Returns matching lines with file paths and line numbers."
@@ -989,7 +989,7 @@ struct WorkFileSearchTool: OsaurusTool {
 
 // MARK: Shell Run Tool
 
-struct WorkShellRunTool: OsaurusTool, PermissionedTool {
+struct WorkShellRunTool: Project2501Tool, PermissionedTool {
     let name = "shell_run"
     let description =
         "Run a shell command in the working directory. This action requires approval. Output is truncated to 10,000 characters. Use for builds, tests, or other commands."
@@ -1094,7 +1094,7 @@ struct WorkShellRunTool: OsaurusTool, PermissionedTool {
 
 // MARK: Git Status Tool
 
-struct WorkGitStatusTool: OsaurusTool {
+struct WorkGitStatusTool: Project2501Tool {
     let name = "git_status"
     let description = "Show the current git status including branch name and uncommitted changes."
     let parameters: JSONValue? = .object([
@@ -1125,7 +1125,7 @@ struct WorkGitStatusTool: OsaurusTool {
 
 // MARK: Git Diff Tool
 
-struct WorkGitDiffTool: OsaurusTool {
+struct WorkGitDiffTool: Project2501Tool {
     let name = "git_diff"
     let description =
         "Show git diff for files. Can show staged changes, unstaged changes, or diff between commits."
@@ -1186,7 +1186,7 @@ struct WorkGitDiffTool: OsaurusTool {
 
 // MARK: Git Commit Tool
 
-struct WorkGitCommitTool: OsaurusTool, PermissionedTool {
+struct WorkGitCommitTool: Project2501Tool, PermissionedTool {
     let name = "git_commit"
     let description =
         "Stage and commit changes to git. This action requires approval. Optionally specify files to stage, otherwise runs `git add -A` to stage all tracked and untracked changes."
@@ -1261,7 +1261,7 @@ struct WorkGitCommitTool: OsaurusTool, PermissionedTool {
 /// Factory for creating folder tool instances
 enum WorkFolderToolFactory {
     /// Build all core file tools
-    static func buildCoreTools(rootPath: URL) -> [OsaurusTool] {
+    static func buildCoreTools(rootPath: URL) -> [Project2501Tool] {
         return [
             WorkFileTreeTool(rootPath: rootPath),
             WorkFileReadTool(rootPath: rootPath),
@@ -1279,14 +1279,14 @@ enum WorkFolderToolFactory {
     }
 
     /// Build coding tools
-    static func buildCodingTools(rootPath: URL) -> [OsaurusTool] {
+    static func buildCodingTools(rootPath: URL) -> [Project2501Tool] {
         return [
             WorkShellRunTool(rootPath: rootPath)
         ]
     }
 
     /// Build git tools
-    static func buildGitTools(rootPath: URL) -> [OsaurusTool] {
+    static func buildGitTools(rootPath: URL) -> [Project2501Tool] {
         return [
             WorkGitStatusTool(rootPath: rootPath),
             WorkGitDiffTool(rootPath: rootPath),

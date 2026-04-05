@@ -2,7 +2,7 @@
 //  AppControl.swift
 //  project2501
 //
-//  Service for controlling the Osaurus app via distributed notifications and launching it if needed.
+//  Service for controlling the Project2501 app via distributed notifications and launching it if needed.
 //
 
 import Foundation
@@ -49,7 +49,7 @@ public struct AppControl {
         }
         if !launched {
             fputs(
-                "Could not launch Osaurus.app. Install it with Homebrew: brew install --cask project2501\n",
+                "Could not launch Project2501.app. Install it with Homebrew: brew install --cask project2501\n",
                 stderr
             )
             return
@@ -58,13 +58,13 @@ public struct AppControl {
         try? await Task.sleep(nanoseconds: 1_500_000_000)
     }
 
-    /// Attempts to locate the installed Osaurus.app bundle path using common locations and Spotlight.
+    /// Attempts to locate the installed Project2501.app bundle path using common locations and Spotlight.
     private static func findAppBundlePath() -> String? {
         let fm = FileManager.default
         let home = NSHomeDirectory()
         let candidates = [
-            "/Applications/Osaurus.app",
-            "\(home)/Applications/Osaurus.app",
+            "/Applications/Project2501.app",
+            "\(home)/Applications/Project2501.app",
             "/Applications/project2501.app",
             "\(home)/Applications/project2501.app",
         ]

@@ -12,7 +12,7 @@ import Combine
 final class ToolRegistry: ObservableObject {
     static let shared = ToolRegistry()
 
-    @Published private var toolsByName: [String: OsaurusTool] = [:]
+    @Published private var toolsByName: [String: Project2501Tool] = [:]
     @Published private var configuration: ToolConfiguration = ToolConfigurationStore.load()
     /// Names of tools registered via registerBuiltInTools (always loaded).
     private(set) var builtInToolNames: Set<String> = []
@@ -86,7 +86,7 @@ final class ToolRegistry: ObservableObject {
 
     /// Register built-in tools that are always available
     private func registerBuiltInTools() {
-        let builtIns: [OsaurusTool] = [
+        let builtIns: [Project2501Tool] = [
             CapabilitiesSearchTool(),
             CapabilitiesLoadTool(),
             MethodsSaveTool(),
@@ -102,11 +102,11 @@ final class ToolRegistry: ObservableObject {
         }
     }
 
-    func register(_ tool: OsaurusTool) {
+    func register(_ tool: Project2501Tool) {
         toolsByName[tool.name] = tool
     }
 
-    private static func estimateTokenCount(_ tool: OsaurusTool) -> Int {
+    private static func estimateTokenCount(_ tool: Project2501Tool) -> Int {
         tool.asOpenAITool().function.name.count + (tool.description.count / 4)
     }
 
@@ -215,7 +215,7 @@ final class ToolRegistry: ObservableObject {
 
     /// Trampoline that executes the tool outside of MainActor isolation.
     private nonisolated static func runToolBody(
-        _ tool: OsaurusTool,
+        _ tool: Project2501Tool,
         argumentsJSON: String
     ) async throws -> String {
         try await tool.execute(argumentsJSON: argumentsJSON)
@@ -337,7 +337,7 @@ final class ToolRegistry: ObservableObject {
     // MARK: - Sandbox Tool Registration
 
     /// Register a tool that requires the sandbox container.
-    func registerSandboxTool(_ tool: OsaurusTool, runtimeManaged: Bool = false) {
+    func registerSandboxTool(_ tool: Project2501Tool, runtimeManaged: Bool = false) {
         toolsByName[tool.name] = tool
         sandboxToolNames.insert(tool.name)
         if runtimeManaged {
@@ -407,7 +407,7 @@ final class ToolRegistry: ObservableObject {
     // MARK: - MCP Tool Registration
 
     /// Register a tool from a remote MCP provider.
-    func registerMCPTool(_ tool: OsaurusTool) {
+    func registerMCPTool(_ tool: Project2501Tool) {
         toolsByName[tool.name] = tool
         mcpToolNames.insert(tool.name)
         Task {
@@ -432,7 +432,7 @@ final class ToolRegistry: ObservableObject {
     /// Register a tool from a native dylib plugin.
     /// Auto-enables the tool on first registration so it is immediately usable;
     /// subsequent registrations (e.g. hot-reload) preserve the user's choice.
-    func registerPluginTool(_ tool: OsaurusTool) {
+    func registerPluginTool(_ tool: Project2501Tool) {
         let firstTime =
             toolsByName[tool.name] == nil
             && !configuration.enabled.keys.contains(tool.name)

@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - methods_save
 
-final class MethodsSaveTool: OsaurusTool, @unchecked Sendable {
+final class MethodsSaveTool: Project2501Tool, @unchecked Sendable {
     let name = "methods_save"
     let description =
         "Save a reusable method. Provide the tool-call sequence as YAML steps."
@@ -75,7 +75,7 @@ final class MethodsSaveTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - methods_report
 
-final class MethodsReportTool: OsaurusTool, @unchecked Sendable {
+final class MethodsReportTool: Project2501Tool, @unchecked Sendable {
     let name = "methods_report"
     let description =
         "Report the outcome of following a method. "

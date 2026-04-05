@@ -2,7 +2,7 @@
 //  ServerView.swift
 //  project2501
 //
-//  Developer tools and API reference for building with Osaurus.
+//  Developer tools and API reference for building with Project2501.
 //
 
 import AppKit
@@ -222,7 +222,7 @@ private struct AccessKeysSection: View {
 
                 Spacer()
 
-                if OsaurusIdentity.exists() {
+                if Project2501Identity.exists() {
                     Button(action: { showingKeyGenerator = true }) {
                         HStack(spacing: 6) {
                             Image(systemName: "plus")
@@ -786,7 +786,7 @@ private struct APIReferenceTabContent: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(theme.primaryText)
 
-            Text("Available endpoints on your Osaurus server. Expand to test directly.")
+            Text("Available endpoints on your Project2501 server. Expand to test directly.")
                 .font(.system(size: 12))
                 .foregroundColor(theme.secondaryText)
 
@@ -880,7 +880,7 @@ private struct APIReferenceTabContent: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(theme.primaryText)
 
-            Text("Learn how to integrate Osaurus into your applications.")
+            Text("Learn how to integrate Project2501 into your applications.")
                 .font(.system(size: 12))
                 .foregroundColor(theme.secondaryText)
 
@@ -1379,7 +1379,7 @@ struct APIEndpoint {
                 method: "GET",
                 path: "/agents",
                 description: "List all agents with memory counts",
-                compatibility: "Osaurus",
+                compatibility: "Project2501",
                 category: .memory,
                 examplePayload: nil
             ),
@@ -1387,7 +1387,7 @@ struct APIEndpoint {
                 method: "POST",
                 path: "/memory/ingest",
                 description: "Bulk-ingest conversation turns into memory",
-                compatibility: "Osaurus",
+                compatibility: "Project2501",
                 category: .memory,
                 examplePayload: """
                     {
@@ -1427,7 +1427,7 @@ struct APIEndpoint {
                 method: "POST",
                 path: "/agents/{identifier}/dispatch",
                 description: "Dispatch a work or chat task to an agent",
-                compatibility: "Osaurus",
+                compatibility: "Project2501",
                 category: .agents,
                 examplePayload: """
                     {
@@ -1441,7 +1441,7 @@ struct APIEndpoint {
                 method: "GET",
                 path: "/tasks/{task_id}",
                 description: "Poll task status and activity",
-                compatibility: "Osaurus",
+                compatibility: "Project2501",
                 category: .agents,
                 examplePayload: nil
             ),
@@ -1449,7 +1449,7 @@ struct APIEndpoint {
                 method: "DELETE",
                 path: "/tasks/{task_id}",
                 description: "Cancel a running task",
-                compatibility: "Osaurus",
+                compatibility: "Project2501",
                 category: .agents,
                 examplePayload: nil
             ),
@@ -1457,7 +1457,7 @@ struct APIEndpoint {
                 method: "POST",
                 path: "/tasks/{task_id}/clarify",
                 description: "Submit a clarification response to a waiting task",
-                compatibility: "Osaurus",
+                compatibility: "Project2501",
                 category: .agents,
                 examplePayload: "{\n  \"response\": \"Yes, proceed with the changes\"\n}"
             ),

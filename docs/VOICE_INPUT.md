@@ -1,12 +1,12 @@
 # Voice Input Guide
 
-Osaurus includes powerful voice input capabilities powered by [FluidAudio](https://github.com/FluidInference/FluidAudio) — fully local, private, on-device speech-to-text transcription.
+Project2501 includes powerful voice input capabilities powered by [FluidAudio](https://github.com/FluidInference/FluidAudio) — fully local, private, on-device speech-to-text transcription.
 
 ---
 
 ## Overview
 
-Voice features in Osaurus include:
+Voice features in Project2501 include:
 
 - **Voice Input in Chat** — Speak instead of type in the chat overlay
 - **VAD Mode** — Always-on listening with wake-word agent activation
@@ -40,7 +40,7 @@ If you prefer manual configuration:
 1. **Grant Microphone Permission**
 
    - Go to System Settings → Privacy & Security → Microphone
-   - Enable access for Osaurus
+   - Enable access for Project2501
 
 2. **Download a Model**
 
@@ -56,7 +56,7 @@ If you prefer manual configuration:
 
 ## Parakeet Models
 
-Osaurus uses [FluidAudio](https://github.com/FluidInference/FluidAudio) Parakeet TDT (Token-and-Duration Transducer) models for on-device speech recognition via CoreML and the Apple Neural Engine.
+Project2501 uses [FluidAudio](https://github.com/FluidInference/FluidAudio) Parakeet TDT (Token-and-Duration Transducer) models for on-device speech recognition via CoreML and the Apple Neural Engine.
 
 ### Available Models
 
@@ -118,7 +118,7 @@ When pause duration is set:
 
 ### Microphone Input
 
-The default audio source. Osaurus can use:
+The default audio source. Project2501 can use:
 
 - Built-in MacBook microphone
 - External USB microphones
@@ -154,7 +154,7 @@ Transcribe audio from your computer (browser, apps, etc.):
 - Caption videos playing on your Mac
 - Take notes from podcasts or lectures
 
-**Note:** System audio capture excludes Osaurus's own audio output to prevent feedback loops.
+**Note:** System audio capture excludes Project2501's own audio output to prevent feedback loops.
 
 ---
 
@@ -199,7 +199,7 @@ VAD Mode enables hands-free agent activation. Say a agent's name (or a custom wa
 
 **Custom Wake Phrase:**
 
-- Set a phrase like "Hey Osaurus" or "Computer"
+- Set a phrase like "Hey Project2501" or "Computer"
 - Works alongside agent names
 - Activates the default agent
 
@@ -218,13 +218,13 @@ VAD Mode enables hands-free agent activation. Say a agent's name (or a custom wa
 
 VAD status is shown in two places:
 
-**Menu Bar Icon** — The main Osaurus menu bar icon shows a status dot:
+**Menu Bar Icon** — The main Project2501 menu bar icon shows a status dot:
 
 - **Blue pulsing dot** (top-right) — VAD is listening for wake-words
 - **Orange dot** — VAD is processing speech
 - **No dot** — VAD is inactive
 
-**Popover Controls** — Click the Osaurus menu bar icon to access:
+**Popover Controls** — Click the Project2501 menu bar icon to access:
 
 - **Waveform button** — Toggle VAD on/off with visual status
 - The button shows green when listening, gray when off
@@ -268,8 +268,8 @@ Transcription Mode allows you to dictate text directly into any application usin
 **Accessibility Permission** — Required to simulate keyboard input:
 
 1. Go to System Settings → Privacy & Security → Accessibility
-2. Enable access for Osaurus
-3. You may need to restart Osaurus after granting permission
+2. Enable access for Project2501
+3. You may need to restart Project2501 after granting permission
 
 **Microphone Permission** — Required for audio capture (same as other voice features)
 
@@ -347,7 +347,7 @@ struct VADConfiguration {
     var enabledAgentIds: [UUID]      // Agents for wake-words
     var wakeWordSensitivity: VoiceSensitivity
     var autoStartVoiceInput: Bool      // Auto-record after activation
-    var customWakePhrase: String       // e.g., "Hey Osaurus"
+    var customWakePhrase: String       // e.g., "Hey Project2501"
     var silenceTimeoutSeconds: Double  // Auto-close timeout
 }
 ```
@@ -377,7 +377,7 @@ Parakeet TDT v2 is optimized exclusively for English.
 
 1. **Check microphone permission**
 
-   - System Settings → Privacy & Security → Microphone → Enable Osaurus
+   - System Settings → Privacy & Security → Microphone → Enable Project2501
 
 2. **Verify model is loaded**
 
@@ -423,7 +423,7 @@ Parakeet TDT v2 is optimized exclusively for English.
    - Wait for detection (2-3 second cooldown between detections)
 
 4. **Check the status indicators**
-   - The Osaurus menu bar icon should show a blue pulsing dot (top-right) when VAD is listening
+   - The Project2501 menu bar icon should show a blue pulsing dot (top-right) when VAD is listening
    - Click the menu bar icon and check the waveform button shows green
 
 ### System Audio Not Capturing
@@ -435,7 +435,7 @@ Parakeet TDT v2 is optimized exclusively for English.
 2. **Grant Screen Recording permission**
 
    - System Settings → Privacy & Security → Screen Recording
-   - Enable for Osaurus
+   - Enable for Project2501
 
 3. **Restart after granting permission**
    - Permissions may require app restart
@@ -461,8 +461,8 @@ Parakeet TDT v2 is optimized exclusively for English.
 
 1. **Check accessibility permission**
 
-   - System Settings → Privacy & Security → Accessibility → Enable Osaurus
-   - You may need to restart Osaurus after granting permission
+   - System Settings → Privacy & Security → Accessibility → Enable Project2501
+   - You may need to restart Project2501 after granting permission
 
 2. **Verify the hotkey is set**
 

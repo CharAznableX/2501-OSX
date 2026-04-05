@@ -63,8 +63,8 @@ struct KVCacheStore {
     private(set) var totalHotBytes: Int = 0
 
     private let ssdCacheDir: URL = {
-        let dir = OsaurusPaths.cache().appendingPathComponent("kv", isDirectory: true)
-        OsaurusPaths.ensureExistsSilent(dir)
+        let dir = Project2501Paths.cache().appendingPathComponent("kv", isDirectory: true)
+        Project2501Paths.ensureExistsSilent(dir)
         return dir
     }()
 

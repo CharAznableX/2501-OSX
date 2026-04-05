@@ -10,7 +10,7 @@ import Foundation
 // MARK: - Complete Task Tool
 
 /// Tool for work mode to mark the current task as complete
-public struct CompleteTaskTool: OsaurusTool {
+public struct CompleteTaskTool: Project2501Tool {
     public let name = "complete_task"
     public let description =
         "Mark the current task as complete with a summary of the verified result. IMPORTANT: Call share_artifact for any generated files BEFORE calling this tool."
@@ -87,7 +87,7 @@ public struct CompleteTaskTool: OsaurusTool {
 
 /// Unified tool for sharing files or inline content with the user.
 /// Supports any file type, directories, and inline text content.
-public struct ShareArtifactTool: OsaurusTool {
+public struct ShareArtifactTool: Project2501Tool {
     public let name = "share_artifact"
     public let description =
         "Share a file, directory, or text content with the user. The user cannot see any files you create unless you call this tool. Always call this for generated images, charts, websites, reports, code output, etc."
@@ -221,7 +221,7 @@ public struct ShareArtifactTool: OsaurusTool {
 // MARK: - Create Issue Tool
 
 /// Tool for creating follow-up issues discovered during execution
-public struct CreateIssueTool: OsaurusTool {
+public struct CreateIssueTool: Project2501Tool {
     public let name = "create_issue"
     public let description =
         "Create a follow-up issue for work that was discovered but is outside the current task scope. Include detailed context about what you learned so the next execution can pick up without starting from scratch."
@@ -348,7 +348,7 @@ public struct CreateIssueTool: OsaurusTool {
 // MARK: - Request Clarification Tool
 
 /// Tool for requesting clarification from the user when task is ambiguous
-public struct RequestClarificationTool: OsaurusTool {
+public struct RequestClarificationTool: Project2501Tool {
     public let name = "request_clarification"
     public let description =
         "Ask the user a question when the task is critically ambiguous. Only use this for ambiguities that would lead to wrong results if assumed incorrectly. Do NOT use for minor details or preferences."
@@ -421,7 +421,7 @@ public final class WorkToolManager {
 
     /// Cached tool instances (created once, reused)
     /// Note: SubmitPlanTool and ReportDiscoveryTool removed - no longer used with reasoning loop architecture
-    private lazy var tools: [OsaurusTool] = [
+    private lazy var tools: [Project2501Tool] = [
         CompleteTaskTool(),
         CreateIssueTool(),
         RequestClarificationTool(),
@@ -436,7 +436,7 @@ public final class WorkToolManager {
     // MARK: - Folder Tools
 
     /// Folder tools (created dynamically based on folder context)
-    private var folderTools: [OsaurusTool] = []
+    private var folderTools: [Project2501Tool] = []
 
     /// Names of currently registered folder tools
     private var _folderToolNames: [String] = []

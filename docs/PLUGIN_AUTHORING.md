@@ -1,6 +1,6 @@
-# Osaurus Plugin Authoring
+# Project2501 Plugin Authoring
 
-This document describes how to build external plugins for Osaurus using the Generic C ABI. Plugins are `.dylib` shared libraries distributed in a zip file. They can expose tools to the AI, register HTTP routes, ship web frontends, and call back into the host for storage, inference, and agent dispatch.
+This document describes how to build external plugins for Project2501 using the Generic C ABI. Plugins are `.dylib` shared libraries distributed in a zip file. They can expose tools to the AI, register HTTP routes, ship web frontends, and call back into the host for storage, inference, and agent dispatch.
 
 ## Table of Contents
 
@@ -43,10 +43,10 @@ This document describes how to build external plugins for Osaurus using the Gene
 
 ```mermaid
 graph LR
-    Plugin["Plugin (.dylib)"] -- "project2501_plugin_entry_v2(host)" --> Osaurus
-    Osaurus -- "init / get_manifest / invoke / handle_route" --> Plugin
+    Plugin["Plugin (.dylib)"] -- "project2501_plugin_entry_v2(host)" --> Project2501
+    Project2501 -- "init / get_manifest / invoke / handle_route" --> Plugin
     Plugin -- "host->complete / dispatch / db_exec / ..." --> HostAPI["osr_host_api (20 callbacks)"]
-    HostAPI --> Osaurus
+    HostAPI --> Project2501
 ```
 
 ---
@@ -72,7 +72,7 @@ That's it. `project2501 tools dev` will:
 - Detect the project language (Swift or Rust) from the build files
 - Build the plugin in release mode
 - Install the dylib, `SKILL.md`, `README.md`, and `web/` assets into `~/.project2501/Tools/`
-- Launch Osaurus if it isn't already running
+- Launch Project2501 if it isn't already running
 - Send a reload signal so the plugin appears immediately
 - Watch for source file changes and automatically rebuild + hot-reload
 
@@ -96,8 +96,8 @@ The command reads `project2501-plugin.json` (created by `project2501 tools creat
 1. **Detects the language** — looks for `Package.swift` (Swift) or `Cargo.toml` (Rust)
 2. **Builds** — runs `swift build -c release` or `cargo build --release`
 3. **Installs** — copies the dylib, `SKILL.md`, `README.md`, `CHANGELOG.md`, and `web/` directory into `~/.project2501/Tools/<plugin_id>/<version>/`
-4. **Launches Osaurus** — starts the app if it isn't already running
-5. **Sends a reload signal** — the plugin appears in Osaurus immediately
+4. **Launches Project2501** — starts the app if it isn't already running
+5. **Sends a reload signal** — the plugin appears in Project2501 immediately
 6. **Watches for changes** — monitors `Sources/` (Swift) or `src/` (Rust) and asset files; on change, rebuilds and hot-reloads automatically
 
 No signing keys, no manual packaging, no manual installation steps.
@@ -131,7 +131,7 @@ When the proxy is active:
 
 - Requests to `/plugins/<plugin_id>/app/*` are proxied to your local dev server
 - Requests to `/plugins/<plugin_id>/api/*` still hit the dylib
-- Osaurus injects `window.__project2501` context into the proxied HTML
+- Project2501 injects `window.__project2501` context into the proxied HTML
 - CORS headers are handled automatically
 
 This gives you hot module replacement (HMR) and instant feedback during frontend development.
@@ -155,7 +155,7 @@ project2501 tools install ./my-plugin-1.0.0.zip
 project2501 tools install https://example.com/my-plugin-1.0.0.zip
 ```
 
-These paths skip minisign signature verification, TOFU author key checks, and do not grant user consent. They work in DEBUG builds of Osaurus; in release builds, plugins installed this way will fail to load because they cannot pass code signature and consent verification.
+These paths skip minisign signature verification, TOFU author key checks, and do not grant user consent. They work in DEBUG builds of Project2501; in release builds, plugins installed this way will fail to load because they cannot pass code signature and consent verification.
 
 For distribution, always publish to the central registry and install with `project2501 tools install <plugin-id>`, which enforces the full verification chain (minisign, code signing, consent).
 
@@ -165,9 +165,9 @@ For distribution, always publish to the central registry and install with `proje
 
 ### Plugin Lifecycle
 
-Osaurus loads plugins via `dlopen` and resolves entry point symbols. The lifecycle is:
+Project2501 loads plugins via `dlopen` and resolves entry point symbols. The lifecycle is:
 
-1. **Load** — Osaurus opens the `.dylib` and looks for `project2501_plugin_entry_v2` (v2) or `project2501_plugin_entry` (v1).
+1. **Load** — Project2501 opens the `.dylib` and looks for `project2501_plugin_entry_v2` (v2) or `project2501_plugin_entry` (v1).
 2. **Init** — The host calls `init()`, which returns an opaque context pointer owned by the plugin.
 3. **Manifest** — The host calls `get_manifest(ctx)` to discover capabilities (tools, routes, config, etc.).
 4. **Runtime** — The host calls `invoke(ctx, ...)` for tool executions, `handle_route(ctx, ...)` for HTTP requests, and lifecycle callbacks as events occur.
@@ -271,7 +271,7 @@ All v2 capabilities (`routes`, `config`, `web`, `artifact_handler`, `docs`) are 
 
 The C header is available at `Packages/Project2501Core/Tools/PluginABI/project2501_plugin.h`.
 
-Osaurus supports two ABI versions. Existing v1 plugins continue to work without changes.
+Project2501 supports two ABI versions. Existing v1 plugins continue to work without changes.
 
 **v1 ABI (Tools Only):**
 
@@ -300,7 +300,7 @@ See [ABI Reference](#abi-reference) for the full C struct definitions and type s
 
 **Migration from v1 to v2:**
 
-Upgrading is additive. Change your entry point from `project2501_plugin_entry` to `project2501_plugin_entry_v2`, store the host API pointer, set `api.version = 2`, and populate the new function pointers (or leave them `NULL` if unused). Osaurus detects the ABI version from `api->version` and enables features accordingly.
+Upgrading is additive. Change your entry point from `project2501_plugin_entry` to `project2501_plugin_entry_v2`, store the host API pointer, set `api.version = 2`, and populate the new function pointers (or leave them `NULL` if unused). Project2501 detects the ABI version from `api->version` and enables features accordingly.
 
 New in v2:
 - **`on_task_event`**: Set this on `osr_plugin_api` to receive lifecycle events for dispatched tasks. Set to `NULL` to opt out.
@@ -418,7 +418,7 @@ Example tool requiring Full Disk Access (e.g., for reading Messages):
 
 When a tool with system permission requirements is executed:
 
-1. Osaurus checks if the required permissions are granted at the OS level (system permissions are always enforced first, regardless of permission policy)
+1. Project2501 checks if the required permissions are granted at the OS level (system permissions are always enforced first, regardless of permission policy)
 2. If any are missing, execution fails with a clear error message
 3. Users can grant permissions via Settings → System Permissions or when prompted by the tool
 
@@ -430,11 +430,11 @@ Each tool can specify a `permission_policy`:
 - `"auto"` — Executes automatically if all requirements are granted
 - `"deny"` — Blocks execution entirely
 
-Users can override these defaults per-tool via the Osaurus UI.
+Users can override these defaults per-tool via the Project2501 UI.
 
 ### Plugin Secrets
 
-Plugins that require API keys or other credentials can declare them in the manifest. Osaurus stores these securely in the system Keychain and prompts users to configure them during installation.
+Plugins that require API keys or other credentials can declare them in the manifest. Project2501 stores these securely in the system Keychain and prompts users to configure them during installation.
 
 **Declaring Secrets in Manifest:**
 
@@ -476,7 +476,7 @@ Plugins that require API keys or other credentials can declare them in the manif
 
 **Accessing Secrets in Tools:**
 
-When a tool is invoked, Osaurus automatically injects all stored secrets for the plugin into the payload under the `_secrets` key. This includes both manifest-declared secrets and any other keys stored in the plugin's Keychain scope (e.g., tokens saved via `config_set`).
+When a tool is invoked, Project2501 automatically injects all stored secrets for the plugin into the payload under the `_secrets` key. This includes both manifest-declared secrets and any other keys stored in the plugin's Keychain scope (e.g., tokens saved via `config_set`).
 
 ```swift
 private struct WeatherTool {
@@ -495,7 +495,7 @@ private struct WeatherTool {
         }
 
         guard let apiKey = input._secrets?["api_key"] else {
-            return "{\"error\": \"API key not configured. Please configure secrets in Osaurus settings.\"}"
+            return "{\"error\": \"API key not configured. Please configure secrets in Project2501 settings.\"}"
         }
 
         let result = fetchWeather(location: input.location, apiKey: apiKey)
@@ -506,7 +506,7 @@ private struct WeatherTool {
 
 **User Experience:**
 
-1. When a plugin with secrets is installed, Osaurus prompts the user to configure them
+1. When a plugin with secrets is installed, Project2501 prompts the user to configure them
 2. If required secrets are missing, a "Needs API Key" badge appears on the plugin card
 3. Users can configure or edit secrets anytime via the plugin menu → "Configure Secrets"
 4. Secrets are stored securely in the macOS Keychain
@@ -514,7 +514,7 @@ private struct WeatherTool {
 
 ### Folder Context
 
-When a user has a working directory selected in Work Mode, Osaurus automatically injects the folder context into tool payloads. This allows plugins to resolve relative paths provided by the LLM.
+When a user has a working directory selected in Work Mode, Project2501 automatically injects the folder context into tool payloads. This allows plugins to resolve relative paths provided by the LLM.
 
 **Automatic Injection:**
 
@@ -588,7 +588,7 @@ private struct ImageTool {
 
 ### Invocation
 
-When Osaurus needs to execute a capability, it calls `invoke`:
+When Project2501 needs to execute a capability, it calls `invoke`:
 
 - `type`: e.g. `"tool"`
 - `id`: e.g. `"echo_tool"`
@@ -600,7 +600,7 @@ The plugin returns a JSON string response (allocated; host frees it via `free_st
 
 ### HTTP Routes
 
-v2 plugins can register HTTP route handlers exposed through the Osaurus server and relay tunnel. This enables OAuth flows, webhook endpoints, and plugin-hosted web apps.
+v2 plugins can register HTTP route handlers exposed through the Project2501 server and relay tunnel. This enables OAuth flows, webhook endpoints, and plugin-hosted web apps.
 
 #### Route Declaration
 
@@ -663,22 +663,22 @@ Tunnel:  https://0x<agent-address>.agent.project2501.ai/plugins/com.acme.slack/c
 | -------- | ------------------------------------------------------------------------------------------ |
 | `none`   | Public. No auth required. Used for OAuth callbacks and webhook verification.               |
 | `verify` | Same as `none` for HTTP handling. Use this to signal that your plugin performs its own request verification (e.g., Slack signing secret). |
-| `owner`  | Requires a valid Osaurus access key (`osk-v1`). For plugin web UIs and admin endpoints.    |
+| `owner`  | Requires a valid Project2501 access key (`osk-v1`). For plugin web UIs and admin endpoints.    |
 
 Rate limiting is applied to `none` and `verify` dynamic routes at 100 requests/minute per plugin. `owner` routes are unlimited. Static web file serving is not rate-limited.
 
 #### Agent-Scoped Routing
 
-Plugin routes are scoped per agent. When a route request arrives, Osaurus resolves the agent context and makes the plugin's routes accessible.
+Plugin routes are scoped per agent. When a route request arrives, Project2501 resolves the agent context and makes the plugin's routes accessible.
 
-- All plugin route requests require an `X-Osaurus-Agent-Id` header identifying the requesting agent.
+- All plugin route requests require an `X-Project2501-Agent-Id` header identifying the requesting agent.
 - Agent identity is resolved at execution time via the work execution context.
 
 #### Request / Response Schema
 
-When a request hits a plugin route, Osaurus builds a JSON request, calls `handle_route`, and translates the JSON response back to HTTP.
+When a request hits a plugin route, Project2501 builds a JSON request, calls `handle_route`, and translates the JSON response back to HTTP.
 
-**OsaurusHTTPRequest (sent to plugin):**
+**Project2501HTTPRequest (sent to plugin):**
 
 ```json
 {
@@ -705,11 +705,11 @@ The `project2501` context object provides host-resolved metadata:
 
 | Field            | Description                                                                 |
 | ---------------- | --------------------------------------------------------------------------- |
-| `base_url`       | Root URL of the Osaurus server (tunnel or local)                            |
+| `base_url`       | Root URL of the Project2501 server (tunnel or local)                            |
 | `plugin_url`     | Full URL prefix for this plugin's routes                                    |
 | `agent_address`  | Crypto address of the agent this request is scoped to — pass this to `dispatch()` and inference calls |
 
-**OsaurusHTTPResponse (returned by plugin):**
+**Project2501HTTPResponse (returned by plugin):**
 
 ```json
 {
@@ -727,7 +727,7 @@ For binary responses, set `body_encoding` to `"base64"` and base64-encode the bo
 
 ### Configuration UI
 
-Plugins can declare a settings schema in the manifest that Osaurus renders natively in the Management window under the plugin's detail view.
+Plugins can declare a settings schema in the manifest that Project2501 renders natively in the Management window under the plugin's detail view.
 
 #### Manifest Declaration
 
@@ -866,7 +866,7 @@ This lets the plugin react immediately to config changes (e.g., reconnect a WebS
 
 ### Static Web Serving
 
-Plugins can ship a full frontend (React, Svelte, Vue, vanilla JS — anything that builds to static files). Osaurus serves the `web/` directory directly, without calling the dylib for static assets.
+Plugins can ship a full frontend (React, Svelte, Vue, vanilla JS — anything that builds to static files). Project2501 serves the `web/` directory directly, without calling the dylib for static assets.
 
 #### Manifest Declaration
 
@@ -902,7 +902,7 @@ Plugins can ship a full frontend (React, Svelte, Vue, vanilla JS — anything th
 
 #### Context Injection
 
-Osaurus automatically injects a `window.__project2501` context object into HTML responses before `</head>`:
+Project2501 automatically injects a `window.__project2501` context object into HTML responses before `</head>`:
 
 ```html
 <script>
@@ -924,7 +924,7 @@ const res = await fetch(`${window.__project2501.baseUrl}/api/widgets`);
 
 ### Plugin Skills (SKILL.md)
 
-Plugins can bundle a `SKILL.md` file that provides AI-specific guidance for using the plugin's tools. When a plugin includes a skill, Osaurus automatically loads it and makes it available to the AI during conversations. This is the recommended way to teach the AI how to use your plugin effectively.
+Plugins can bundle a `SKILL.md` file that provides AI-specific guidance for using the plugin's tools. When a plugin includes a skill, Project2501 automatically loads it and makes it available to the AI during conversations. This is the recommended way to teach the AI how to use your plugin effectively.
 
 Skills follow the [Agent Skills](https://agentskills.io/specification) specification — a markdown file with YAML frontmatter.
 
@@ -961,14 +961,14 @@ The body after the frontmatter contains the full instructions in markdown. This 
 
 **Packaging:**
 
-Include `SKILL.md` in your plugin's zip archive alongside the `.dylib`. When installing from the central registry, Osaurus searches the entire archive for files named `SKILL.md` (case-insensitive) and copies them into a `skills/` directory within the plugin's install location. If your plugin bundles multiple skills, place each in its own subdirectory; the parent directory name is used as a prefix for disambiguation.
+Include `SKILL.md` in your plugin's zip archive alongside the `.dylib`. When installing from the central registry, Project2501 searches the entire archive for files named `SKILL.md` (case-insensitive) and copies them into a `skills/` directory within the plugin's install location. If your plugin bundles multiple skills, place each in its own subdirectory; the parent directory name is used as a prefix for disambiguation.
 
 When using `project2501 tools dev`, only the root-level `SKILL.md` file is copied. For development, place your skill file at the project root.
 
 **Lifecycle:**
 
 1. When the plugin is installed, `SKILL.md` files are extracted to `<plugin-install-dir>/skills/`.
-2. When the plugin loads, Osaurus parses each skill and registers it with the skill manager.
+2. When the plugin loads, Project2501 parses each skill and registers it with the skill manager.
 3. Plugin skills appear in the Skills UI with a "From: _plugin-name_" badge and are **read-only** — users cannot edit or delete them, but they can enable or disable them.
 4. When the plugin is uninstalled, its skills are automatically unregistered and removed.
 
@@ -987,7 +987,7 @@ The [project2501-pptx](https://github.com/project2501-ai/project2501-pptx) plugi
 
 ### Plugin Documentation
 
-Plugins can include a `README.md` and `CHANGELOG.md` that are displayed in the Osaurus Management window when viewing the plugin's detail page.
+Plugins can include a `README.md` and `CHANGELOG.md` that are displayed in the Project2501 Management window when viewing the plugin's detail page.
 
 #### Manifest Declaration
 
@@ -1048,8 +1048,8 @@ Set `"artifact_handler": true` in the manifest:
 #### How It Works
 
 1. The agent creates an artifact and calls `share_artifact`.
-2. Osaurus saves the artifact locally to `~/.project2501/artifacts/{contextId}/`.
-3. Osaurus checks all loaded plugins for `artifact_handler: true` (requires ABI v2).
+2. Project2501 saves the artifact locally to `~/.project2501/artifacts/{contextId}/`.
+3. Project2501 checks all loaded plugins for `artifact_handler: true` (requires ABI v2).
 4. Each matching plugin receives an `invoke` call with artifact metadata.
 5. The plugin can then use `host->file_read` to read the file contents and `host->http_request` to upload it to an external service.
 
@@ -1509,7 +1509,7 @@ static void my_task_event(osr_plugin_ctx_t ctx, const char* task_id,
 
 ### Inference
 
-v2 plugins can run chat completions and generate embeddings through any model configured in Osaurus — local MLX models, Apple Foundation Models, or remote providers.
+v2 plugins can run chat completions and generate embeddings through any model configured in Project2501 — local MLX models, Apple Foundation Models, or remote providers.
 
 When an `agent_address` is provided, inference resolves the **full agent context** — system prompt, memory, model, temperature, max tokens, and available tools — so the model behaves exactly as the configured agent would.
 
@@ -1539,7 +1539,7 @@ const char* response = host->complete(request);
 | `max_iterations` | int           | No       | Maximum agentic loop iterations (default: `1`). Set higher to enable automatic tool execution |
 | `preflight`      | bool          | No       | When `true`, runs a preflight capability search before inference to auto-discover relevant tools and context |
 
-**Preflight capability search:** When `preflight` is `true` and `tools` is also enabled, Osaurus analyzes the user's message and performs a capability search to find relevant tools and context that might not be explicitly provided. Discovered tools are merged with any tools already in the request (deduplicating by name), and relevant context snippets are appended to the system prompt. The search intensity is controlled by the user's global preflight mode setting (minimal, balanced, or thorough). This is useful for plugins that want the model to dynamically discover and use the best tools for a task without knowing them in advance.
+**Preflight capability search:** When `preflight` is `true` and `tools` is also enabled, Project2501 analyzes the user's message and performs a capability search to find relevant tools and context that might not be explicitly provided. Discovered tools are merged with any tools already in the request (deduplicating by name), and relevant context snippets are appended to the system prompt. The search intensity is controlled by the user's global preflight mode setting (minimal, balanced, or thorough). This is useful for plugins that want the model to dynamically discover and use the best tools for a task without knowing them in advance.
 
 **Agent context resolution:** When `agent_address` is present, the following are resolved from the agent's configuration and applied to the request (unless the request provides explicit values):
 
@@ -1742,7 +1742,7 @@ const char* models_json = host->list_models();
 | `dimensions`     | int    | Embedding vector dimensions (embedding models only)  |
 | `capabilities`   | array  | List of supported capabilities                       |
 
-**Sources:** Models are aggregated from local MLX downloads, Apple Foundation Models (on supported hardware), and any remote providers configured in Osaurus settings.
+**Sources:** Models are aggregated from local MLX downloads, Apple Foundation Models (on supported hardware), and any remote providers configured in Project2501 settings.
 
 ### HTTP Client
 
@@ -1897,7 +1897,7 @@ const char* response = host->file_read(request);
 
 ## Tunnel Endpoints
 
-Osaurus exposes four authenticated HTTP endpoints for managing agent tasks from external callers — scripts, MCP clients, CI pipelines, or any HTTP-capable tool. These are distinct from the in-process C callbacks; use the C callbacks from within plugin dylibs and the tunnel endpoints from outside the process.
+Project2501 exposes four authenticated HTTP endpoints for managing agent tasks from external callers — scripts, MCP clients, CI pipelines, or any HTTP-capable tool. These are distinct from the in-process C callbacks; use the C callbacks from within plugin dylibs and the tunnel endpoints from outside the process.
 
 All tunnel endpoints require `osk-v1` Bearer authentication (loopback connections may bypass this requirement):
 
@@ -2003,7 +2003,7 @@ com.acme.slack-1.0.0.zip
 
 ### Code Signing
 
-**Required:** All distributed macOS plugins (`.dylib`) must be code-signed with a valid Apple developer certificate. Osaurus verifies the code signature at load time and will refuse to load unsigned or invalidly signed plugins.
+**Required:** All distributed macOS plugins (`.dylib`) must be code-signed with a valid Apple developer certificate. Project2501 verifies the code signature at load time and will refuse to load unsigned or invalidly signed plugins.
 
 To sign your plugin:
 
@@ -2029,13 +2029,13 @@ Minisign signature verification is **mandatory** for all plugins installed throu
 
 #### Author Key Binding (Trust on First Use)
 
-Once a plugin is first installed with a minisign public key, Osaurus records that key in the install receipt. On subsequent updates, the new spec's public key is compared against the stored key. If the key has changed, the update is rejected to prevent supply chain attacks.
+Once a plugin is first installed with a minisign public key, Project2501 records that key in the install receipt. On subsequent updates, the new spec's public key is compared against the stored key. If the key has changed, the update is rejected to prevent supply chain attacks.
 
 **Important:** Keep your minisign private key secure. If you lose it, existing users will not be able to update your plugin without manual intervention. There is no key rotation mechanism — a key change is treated as a potential compromise.
 
 ### Central Registry
 
-Osaurus uses a single, git-backed central plugin index maintained by the Osaurus team.
+Project2501 uses a single, git-backed central plugin index maintained by the Project2501 team.
 
 1. Package your plugin with the correct naming convention: `<plugin_id>-<version>.zip`
 2. Code-sign your `.dylib` with a valid Developer ID Application certificate.

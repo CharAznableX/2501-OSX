@@ -195,7 +195,7 @@ public enum MemoryConfigurationStore: Sendable {
     public static func load() -> MemoryConfiguration {
         if let cached = lock.withLock({ $0 }) { return cached }
 
-        let url = OsaurusPaths.memoryConfigFile()
+        let url = Project2501Paths.memoryConfigFile()
         guard FileManager.default.fileExists(atPath: url.path) else {
             let defaults = MemoryConfiguration()
             save(defaults)
@@ -215,8 +215,8 @@ public enum MemoryConfigurationStore: Sendable {
 
     public static func save(_ config: MemoryConfiguration) {
         let validated = config.validated()
-        let url = OsaurusPaths.memoryConfigFile()
-        OsaurusPaths.ensureExistsSilent(url.deletingLastPathComponent())
+        let url = Project2501Paths.memoryConfigFile()
+        Project2501Paths.ensureExistsSilent(url.deletingLastPathComponent())
         do {
             let data = try encoder.encode(validated)
             try data.write(to: url, options: .atomic)

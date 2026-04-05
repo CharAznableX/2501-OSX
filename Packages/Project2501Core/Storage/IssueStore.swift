@@ -2,7 +2,7 @@
 //  IssueStore.swift
 //  project2501
 //
-//  Storage layer for Osaurus Agents issues, dependencies, events, and tasks.
+//  Storage layer for Project2501 Agents issues, dependencies, events, and tasks.
 //  Provides CRUD operations and specialized queries.
 //
 
@@ -772,7 +772,7 @@ public struct IssueStore {
             }
         }
 
-        let dir = OsaurusPaths.contextArtifactsDir(contextId: contextId)
+        let dir = Project2501Paths.contextArtifactsDir(contextId: contextId)
         try? FileManager.default.removeItem(at: dir)
     }
 

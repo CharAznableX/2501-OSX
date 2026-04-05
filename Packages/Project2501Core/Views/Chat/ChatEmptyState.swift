@@ -243,7 +243,7 @@ private struct ChatEmptyStateNoModels: View {
                     .offset(y: hasAppeared ? 0 : 20)
                     .animation(theme.springAnimation().delay(0.1), value: hasAppeared)
 
-                Text("Osaurus needs an AI to work — either a cloud provider or a local model.")
+                Text("Project2501 needs an AI to work — either a cloud provider or a local model.")
                     .font(theme.font(size: CGFloat(theme.bodySize) + 2))
                     .foregroundColor(theme.secondaryText)
                     .multilineTextAlignment(.center)

@@ -296,7 +296,7 @@ struct MemoryView: View {
                         .font(.system(size: 13))
                         .foregroundColor(theme.tertiaryText)
                     Text(
-                        "No profile generated yet. Chat with Osaurus and the memory system will build your profile automatically."
+                        "No profile generated yet. Chat with Project2501 and the memory system will build your profile automatically."
                     )
                     .font(.system(size: 13))
                     .foregroundColor(theme.tertiaryText)
@@ -877,7 +877,7 @@ struct MemoryView: View {
     private func clearAllMemory() {
         let db = MemoryDatabase.shared
         db.close()
-        let dbFile = OsaurusPaths.memoryDatabaseFile()
+        let dbFile = Project2501Paths.memoryDatabaseFile()
         try? FileManager.default.removeItem(at: dbFile)
         try? db.open()
         Task { await MemorySearchService.shared.clearIndex() }

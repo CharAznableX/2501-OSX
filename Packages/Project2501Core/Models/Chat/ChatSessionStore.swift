@@ -15,7 +15,7 @@ enum ChatSessionStore {
     /// Only metadata is loaded (turns are empty). Use `load(id:)` for full session data.
     static func loadAll() -> [ChatSessionData] {
         let directory = sessionsDirectory()
-        OsaurusPaths.ensureExistsSilent(directory)
+        Project2501Paths.ensureExistsSilent(directory)
 
         guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
         else {
@@ -41,7 +41,7 @@ enum ChatSessionStore {
                         agentId: metadata.agentId
                     )
                 } catch {
-                    print("[Osaurus] Failed to load session from \(file.lastPathComponent): \(error)")
+                    print("[Project2501] Failed to load session from \(file.lastPathComponent): \(error)")
                     return nil
                 }
             }
@@ -68,7 +68,7 @@ enum ChatSessionStore {
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(ChatSessionData.self, from: Data(contentsOf: url))
         } catch {
-            print("[Osaurus] Failed to load session \(id): \(error)")
+            print("[Project2501] Failed to load session \(id): \(error)")
             return nil
         }
     }
@@ -76,7 +76,7 @@ enum ChatSessionStore {
     /// Save a session (creates or updates)
     static func save(_ session: ChatSessionData) {
         let url = sessionFileURL(for: session.id)
-        OsaurusPaths.ensureExistsSilent(url.deletingLastPathComponent())
+        Project2501Paths.ensureExistsSilent(url.deletingLastPathComponent())
 
         do {
             let encoder = JSONEncoder()
@@ -84,7 +84,7 @@ enum ChatSessionStore {
             encoder.dateEncodingStrategy = .iso8601
             try encoder.encode(session).write(to: url, options: [.atomic])
         } catch {
-            print("[Osaurus] Failed to save session \(session.id): \(error)")
+            print("[Project2501] Failed to save session \(session.id): \(error)")
         }
     }
 
@@ -97,7 +97,7 @@ enum ChatSessionStore {
     // MARK: - Private
 
     private static func sessionsDirectory() -> URL {
-        OsaurusPaths.resolvePath(new: OsaurusPaths.sessions(), legacy: "ChatSessions")
+        Project2501Paths.resolvePath(new: Project2501Paths.sessions(), legacy: "ChatSessions")
     }
 
     private static func sessionFileURL(for id: UUID) -> URL {

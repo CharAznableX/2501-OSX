@@ -25,7 +25,7 @@ enum LaunchGuard {
         if defaults.bool(forKey: startupInProgressKey) {
             let count = defaults.integer(forKey: crashCountKey) + 1
             defaults.set(count, forKey: crashCountKey)
-            NSLog("[Osaurus] Previous launch did not complete (consecutive crashes: %d)", count)
+            NSLog("[Project2501] Previous launch did not complete (consecutive crashes: %d)", count)
             if count >= crashThreshold {
                 isSafeMode = true
             }

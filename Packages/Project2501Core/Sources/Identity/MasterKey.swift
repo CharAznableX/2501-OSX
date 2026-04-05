@@ -3,7 +3,7 @@
 //  project2501
 //
 //  Manages the secp256k1 Master Key in iCloud Keychain.
-//  This is the root of the Osaurus identity — syncs across devices via iCloud.
+//  This is the root of the Project2501 identity — syncs across devices via iCloud.
 //
 
 import Foundation
@@ -16,17 +16,17 @@ public struct MasterKey: Sendable {
 
     // MARK: - Generate
 
-    /// Generate a new Master Key, store it in iCloud Keychain, and return the Osaurus ID.
+    /// Generate a new Master Key, store it in iCloud Keychain, and return the Project2501 ID.
     @discardableResult
-    public static func generate() throws -> OsaurusID {
+    public static func generate() throws -> Project2501ID {
         var bytes = [UInt8](repeating: 0, count: 32)
         guard SecRandomCopyBytes(kSecRandomDefault, 32, &bytes) == errSecSuccess else {
-            throw OsaurusIdentityError.randomFailed
+            throw Project2501IdentityError.randomFailed
         }
         defer { zeroBytes(&bytes) }
 
         let keyData = Data(bytes)
-        let project2501Id = try deriveOsaurusId(from: keyData)
+        let project2501Id = try deriveProject2501Id(from: keyData)
 
         // Remove any leftover key from a previous failed attempt
         delete()
@@ -36,7 +36,7 @@ public struct MasterKey: Sendable {
         if status != errSecSuccess {
             let fallback = addToKeychain(keyData: keyData, synchronizable: false)
             guard fallback == errSecSuccess else {
-                throw OsaurusIdentityError.keychainWriteFailed
+                throw Project2501IdentityError.keychainWriteFailed
             }
         }
 
@@ -49,7 +49,7 @@ public struct MasterKey: Sendable {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: keyData,
-            kSecAttrLabel as String: "Osaurus Master Key",
+            kSecAttrLabel as String: "Project2501 Master Key",
         ]
         if synchronizable {
             query[kSecAttrSynchronizable as String] = true
@@ -76,11 +76,11 @@ public struct MasterKey: Sendable {
 
     // MARK: - Read
 
-    /// Retrieve the Osaurus ID (triggers biometric auth).
-    public static func getOsaurusId(context: LAContext) throws -> OsaurusID {
+    /// Retrieve the Project2501 ID (triggers biometric auth).
+    public static func getProject2501Id(context: LAContext) throws -> Project2501ID {
         var key = try getPrivateKey(context: context)
         defer { zeroData(&key) }
-        return try deriveOsaurusId(from: key)
+        return try deriveProject2501Id(from: key)
     }
 
     /// Retrieve the raw Master Key bytes from Keychain (triggers biometric auth).
@@ -98,7 +98,7 @@ public struct MasterKey: Sendable {
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
             let data = result as? Data
         else {
-            throw OsaurusIdentityError.keychainReadFailed
+            throw Project2501IdentityError.keychainReadFailed
         }
         return data
     }

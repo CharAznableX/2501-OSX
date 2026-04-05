@@ -26,27 +26,27 @@ public final class WhitelistStore: @unchecked Sendable {
 
     // MARK: - Master-Level
 
-    public func addMaster(address: OsaurusID) {
+    public func addMaster(address: Project2501ID) {
         queue.sync(flags: .barrier) {
             masterAddresses.insert(address.lowercased())
             save()
         }
     }
 
-    public func removeMaster(address: OsaurusID) {
+    public func removeMaster(address: Project2501ID) {
         queue.sync(flags: .barrier) {
             masterAddresses.remove(address.lowercased())
             save()
         }
     }
 
-    public func masterWhitelist() -> Set<OsaurusID> {
+    public func masterWhitelist() -> Set<Project2501ID> {
         queue.sync { masterAddresses }
     }
 
     // MARK: - Per-Agent Overrides
 
-    public func addAgent(address: OsaurusID, forAgent agentAddress: OsaurusID) {
+    public func addAgent(address: Project2501ID, forAgent agentAddress: Project2501ID) {
         queue.sync(flags: .barrier) {
             let key = agentAddress.lowercased()
             var set = agentAddresses[key] ?? []
@@ -56,7 +56,7 @@ public final class WhitelistStore: @unchecked Sendable {
         }
     }
 
-    public func removeAgent(address: OsaurusID, forAgent agentAddress: OsaurusID) {
+    public func removeAgent(address: Project2501ID, forAgent agentAddress: Project2501ID) {
         queue.sync(flags: .barrier) {
             let key = agentAddress.lowercased()
             agentAddresses[key]?.remove(address.lowercased())
@@ -67,7 +67,7 @@ public final class WhitelistStore: @unchecked Sendable {
         }
     }
 
-    public func agentWhitelist(forAgent agentAddress: OsaurusID) -> Set<OsaurusID> {
+    public func agentWhitelist(forAgent agentAddress: Project2501ID) -> Set<Project2501ID> {
         queue.sync { agentAddresses[agentAddress.lowercased()] ?? [] }
     }
 
@@ -76,9 +76,9 @@ public final class WhitelistStore: @unchecked Sendable {
     /// Compute the effective whitelist for a given agent.
     /// Result = master WL + agent-specific WL + {agentAddress, masterAddress} (implicit).
     public func effectiveWhitelist(
-        forAgent agentAddress: OsaurusID,
-        masterAddress: OsaurusID
-    ) -> Set<OsaurusID> {
+        forAgent agentAddress: Project2501ID,
+        masterAddress: Project2501ID
+    ) -> Set<Project2501ID> {
         queue.sync {
             var result = masterAddresses
             if let agentSpecific = agentAddresses[agentAddress.lowercased()] {

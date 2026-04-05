@@ -1,13 +1,13 @@
 //
-//  OsaurusIdentityError.swift
+//  Project2501IdentityError.swift
 //  project2501
 //
-//  Error types for the Osaurus Identity system.
+//  Error types for the Project2501 Identity system.
 //
 
 import Foundation
 
-public enum OsaurusIdentityError: LocalizedError {
+public enum Project2501IdentityError: LocalizedError {
     case randomFailed
     case keychainWriteFailed
     case keychainReadFailed

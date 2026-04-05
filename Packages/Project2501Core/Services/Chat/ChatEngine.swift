@@ -165,13 +165,13 @@ actor ChatEngine: Sendable, ChatEngineProtocol {
             var toolInvocation: (name: String, args: String)? = nil
             var lastDeltaTime = startTime
 
-            print("[Osaurus][Stream] Starting stream wrapper for model: \(model)")
+            print("[Project2501][Stream] Starting stream wrapper for model: \(model)")
 
             do {
                 for try await delta in inner {
                     // Check for task cancellation to allow early termination
                     if Task.isCancelled {
-                        print("[Osaurus][Stream] Task cancelled after \(deltaCount) deltas")
+                        print("[Project2501][Stream] Task cancelled after \(deltaCount) deltas")
                         continuation.finish()
                         return
                     }
@@ -191,7 +191,7 @@ actor ChatEngine: Sendable, ChatEngineProtocol {
                     // Log every 50th delta or if there's a long gap (potential freeze indicator)
                     if deltaCount % 50 == 1 || timeSinceLastDelta > 2.0 {
                         print(
-                            "[Osaurus][Stream] Delta #\(deltaCount): +\(String(format: "%.2f", timeSinceStart))s total, gap=\(String(format: "%.3f", timeSinceLastDelta))s, len=\(delta.count)"
+                            "[Project2501][Stream] Delta #\(deltaCount): +\(String(format: "%.2f", timeSinceStart))s total, gap=\(String(format: "%.3f", timeSinceLastDelta))s, len=\(delta.count)"
                         )
                     }
 
@@ -203,23 +203,23 @@ actor ChatEngine: Sendable, ChatEngineProtocol {
 
                 let totalTime = Date().timeIntervalSince(startTime)
                 print(
-                    "[Osaurus][Stream] Stream completed: \(deltaCount) deltas in \(String(format: "%.2f", totalTime))s"
+                    "[Project2501][Stream] Stream completed: \(deltaCount) deltas in \(String(format: "%.2f", totalTime))s"
                 )
 
                 continuation.finish()
             } catch let inv as ServiceToolInvocation {
-                print("[Osaurus][Stream] Tool invocation: \(inv.toolName)")
+                print("[Project2501][Stream] Tool invocation: \(inv.toolName)")
                 toolInvocation = (inv.toolName, inv.jsonArguments)
                 finishReason = .toolCalls
                 continuation.finish(throwing: inv)
             } catch {
                 // Check if this is a CancellationError (expected when consumer stops)
                 if Task.isCancelled || error is CancellationError {
-                    print("[Osaurus][Stream] Stream cancelled after \(deltaCount) deltas")
+                    print("[Project2501][Stream] Stream cancelled after \(deltaCount) deltas")
                     continuation.finish()
                     return
                 }
-                print("[Osaurus][Stream] Stream error after \(deltaCount) deltas: \(error.localizedDescription)")
+                print("[Project2501][Stream] Stream error after \(deltaCount) deltas: \(error.localizedDescription)")
                 finishReason = .error
                 errorMsg = error.localizedDescription
                 continuation.finish(throwing: error)
@@ -253,7 +253,7 @@ actor ChatEngine: Sendable, ChatEngineProtocol {
         continuation.onTermination = { @Sendable termination in
             switch termination {
             case .cancelled:
-                print("[Osaurus][Stream] Consumer cancelled - stopping producer task")
+                print("[Project2501][Stream] Consumer cancelled - stopping producer task")
                 producerTask.cancel()
             case .finished:
                 // Normal completion, producer should already be done

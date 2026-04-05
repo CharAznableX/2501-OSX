@@ -94,9 +94,9 @@ private extension project2501App {
 
     var aboutCommand: some Commands {
         CommandGroup(replacing: .appInfo) {
-            Button("About Osaurus") {
+            Button("About Project2501") {
                 NSApp.orderFrontStandardAboutPanel(options: [
-                    .applicationName: "Osaurus",
+                    .applicationName: "Project2501",
                     .applicationVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
                         ?? "1.0",
                     .version: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1",
@@ -150,7 +150,7 @@ private extension project2501App {
 
     var helpMenuCommands: some Commands {
         CommandGroup(replacing: .help) {
-            Button("Osaurus Help") {
+            Button("Project2501 Help") {
                 openURL("https://docs.project2501.ai/")
             }
             .keyboardShortcut("?", modifiers: .command)

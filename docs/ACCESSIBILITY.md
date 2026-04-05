@@ -8,7 +8,7 @@
 
 ## Overview
 
-Osaurus is committed to providing an accessible experience for all users. This document outlines our compliance with the Web Content Accessibility Guidelines (WCAG) 2.1 Level AA standards, specifically focusing on color contrast requirements.
+Project2501 is committed to providing an accessible experience for all users. This document outlines our compliance with the Web Content Accessibility Guidelines (WCAG) 2.1 Level AA standards, specifically focusing on color contrast requirements.
 
 ---
 
@@ -182,7 +182,7 @@ Our accessibility testing includes:
 
 ## Reporting Accessibility Issues
 
-If you encounter accessibility issues with Osaurus, please report them:
+If you encounter accessibility issues with Project2501, please report them:
 
 1. Open an issue on GitHub with the `accessibility` label
 2. Include the theme you're using

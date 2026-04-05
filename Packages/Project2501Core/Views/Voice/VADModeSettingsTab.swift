@@ -222,7 +222,7 @@ struct VADModeSettingsTab: View {
                     .foregroundColor(theme.accentColor)
 
                 Text(
-                    "When enabled, Osaurus will continuously listen for agent names. Say a agent's name to automatically open a chat with that agent."
+                    "When enabled, Project2501 will continuously listen for agent names. Say a agent's name to automatically open a chat with that agent."
                 )
                 .font(.system(size: 12))
                 .foregroundColor(theme.secondaryText)
@@ -388,7 +388,7 @@ struct VADModeSettingsTab: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(theme.secondaryText)
 
-                TextField("e.g., Hey Osaurus", text: $customWakePhrase)
+                TextField("e.g., Hey Project2501", text: $customWakePhrase)
                     .textFieldStyle(.plain)
                     .font(.system(size: 14))
                     .foregroundColor(theme.primaryText)

@@ -161,8 +161,8 @@ public struct ToastConfiguration: Codable, Equatable, Sendable {
 /// Persistence layer for toast configuration
 public enum ToastConfigurationStore {
     private static var fileURL: URL {
-        OsaurusPaths.ensureExistsSilent(OsaurusPaths.config())
-        return OsaurusPaths.resolvePath(new: OsaurusPaths.toastConfigFile(), legacy: "ToastConfiguration.json")
+        Project2501Paths.ensureExistsSilent(Project2501Paths.config())
+        return Project2501Paths.resolvePath(new: Project2501Paths.toastConfigFile(), legacy: "ToastConfiguration.json")
     }
 
     public static func load() -> ToastConfiguration {
@@ -170,7 +170,7 @@ public enum ToastConfigurationStore {
         do {
             return try JSONDecoder().decode(ToastConfiguration.self, from: Data(contentsOf: fileURL))
         } catch {
-            print("[Osaurus] Failed to load toast configuration: \(error)")
+            print("[Project2501] Failed to load toast configuration: \(error)")
             return .default
         }
     }
@@ -181,7 +181,7 @@ public enum ToastConfigurationStore {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(configuration).write(to: fileURL, options: [.atomic])
         } catch {
-            print("[Osaurus] Failed to save toast configuration: \(error)")
+            print("[Project2501] Failed to save toast configuration: \(error)")
         }
     }
 }

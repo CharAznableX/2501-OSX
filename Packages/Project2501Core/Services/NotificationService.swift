@@ -76,7 +76,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
     func postSafeModeActive() {
         let content = UNMutableNotificationContent()
-        content.title = "Osaurus started in safe mode"
+        content.title = "Project2501 started in safe mode"
         content.body = "Plugins disabled after repeated crashes. Run \"project2501 tools reset\" in Terminal to recover."
         let request = UNNotificationRequest(identifier: "safe-mode", content: content, trigger: nil)
         center.add(request, withCompletionHandler: nil)

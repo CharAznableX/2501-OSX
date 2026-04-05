@@ -66,14 +66,14 @@ public final class AppConfiguration: ObservableObject {
 
             return config
         } catch {
-            print("[Osaurus] Failed to load ChatConfiguration: \(error)")
+            print("[Project2501] Failed to load ChatConfiguration: \(error)")
             return ChatConfiguration.default
         }
     }
 
     /// Reads core model fields from memory.json and writes them into the chat config.
     private static func migrateCoreModelFromMemoryConfig(into config: ChatConfiguration) -> ChatConfiguration {
-        let memoryURL = OsaurusPaths.memoryConfigFile()
+        let memoryURL = Project2501Paths.memoryConfigFile()
         guard FileManager.default.fileExists(atPath: memoryURL.path),
             let data = try? Data(contentsOf: memoryURL),
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -86,7 +86,7 @@ public final class AppConfiguration: ObservableObject {
         if let name = json["coreModelName"] as? String {
             migrated.coreModelName = name
         }
-        print("[Osaurus] Migrated core model from memory.json: \(migrated.coreModelIdentifier ?? "none")")
+        print("[Project2501] Migrated core model from memory.json: \(migrated.coreModelIdentifier ?? "none")")
         return migrated
     }
 
@@ -101,11 +101,11 @@ public final class AppConfiguration: ObservableObject {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(config).write(to: url, options: .atomic)
         } catch {
-            print("[Osaurus] Failed to save ChatConfiguration: \(error)")
+            print("[Project2501] Failed to save ChatConfiguration: \(error)")
         }
     }
 
     private static func configFileURL() -> URL {
-        OsaurusPaths.resolvePath(new: OsaurusPaths.chatConfigFile(), legacy: "ChatConfiguration.json")
+        Project2501Paths.resolvePath(new: Project2501Paths.chatConfigFile(), legacy: "ChatConfiguration.json")
     }
 }

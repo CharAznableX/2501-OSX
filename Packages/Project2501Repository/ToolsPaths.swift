@@ -3,7 +3,7 @@
 //  project2501
 //
 //  Path management for plugin storage and specifications.
-//  Mirrors OsaurusPaths.root() for use in the Project2501Repository package.
+//  Mirrors Project2501Paths.root() for use in the Project2501Repository package.
 //
 
 import Foundation
@@ -13,7 +13,7 @@ public enum ToolsPaths {
     /// Note: nonisolated(unsafe) since this is only set during test setup before any concurrent access
     public nonisolated(unsafe) static var overrideRoot: URL?
 
-    /// The root data directory for Osaurus: `~/.project2501/`
+    /// The root data directory for Project2501: `~/.project2501/`
     public static func root() -> URL {
         if let override = overrideRoot {
             return override

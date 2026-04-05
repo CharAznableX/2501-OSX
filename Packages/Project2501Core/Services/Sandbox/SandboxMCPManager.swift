@@ -53,7 +53,7 @@ public actor SandboxMCPManager {
             throw SandboxMCPError.restartLimitExceeded(pluginId)
         }
 
-        let pluginDir = OsaurusPaths.inContainerPluginDir(agentName, pluginId)
+        let pluginDir = Project2501Paths.inContainerPluginDir(agentName, pluginId)
         var mergedEnv = secretsEnvironment(agentName: agentName, pluginId: pluginId)
         mergedEnv.merge(env) { _, new in new }
         mergedEnv.merge(spec.env ?? [:]) { _, new in new }

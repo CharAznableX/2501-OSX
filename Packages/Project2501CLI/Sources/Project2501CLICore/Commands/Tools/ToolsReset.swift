@@ -58,7 +58,7 @@ public struct ToolsReset {
         }
 
         AppControl.postDistributedNotification(name: "com.dinoki.project2501.control.toolsReload", userInfo: [:])
-        print("Done. Restart Osaurus to apply changes.")
+        print("Done. Restart Project2501 to apply changes.")
         exit(EXIT_SUCCESS)
     }
 }

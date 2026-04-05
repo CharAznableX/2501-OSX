@@ -239,7 +239,7 @@ public final class ToastWindowController: NSObject {
             }
             .store(in: &cancellables)
 
-        print("[Osaurus] Toast window controller setup complete on screen: \(screen.localizedName)")
+        print("[Project2501] Toast window controller setup complete on screen: \(screen.localizedName)")
     }
 
     /// Teardown the toast window
@@ -273,7 +273,7 @@ public final class ToastWindowController: NSObject {
         // Only update if the screen actually changed
         if panel.frame != targetScreen.visibleFrame {
             panel.setFrame(targetScreen.visibleFrame, display: true)
-            print("[Osaurus] Toast panel moved to screen: \(targetScreen.localizedName)")
+            print("[Project2501] Toast panel moved to screen: \(targetScreen.localizedName)")
         }
     }
 }

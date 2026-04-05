@@ -8,7 +8,7 @@ Skills are packages of instructions, context, and resources that give your AI sp
 
 ## Quick Start
 
-Osaurus comes with 6 built-in skills ready to use:
+Project2501 comes with 6 built-in skills ready to use:
 
 | Skill | Description |
 |-------|-------------|
@@ -38,7 +38,7 @@ Import skills from any GitHub repository that includes a skills marketplace:
 3. Browse available skills and select which to import
 4. Click **Import Selected**
 
-Osaurus looks for `.claude-plugin/marketplace.json` in the repository to discover available skills.
+Project2501 looks for `.claude-plugin/marketplace.json` in the repository to discover available skills.
 
 ### From Files
 
@@ -80,7 +80,7 @@ Export skills to share with others:
 
 1. Expand a skill and click **Export**
 2. Choose a format:
-   - **JSON** — Osaurus format for backup
+   - **JSON** — Project2501 format for backup
    - **Markdown** — Agent Skills compatible `.md` file
    - **ZIP** — Complete package with references and assets
 
@@ -113,7 +113,7 @@ Create your own skills with the built-in editor:
 
 ## Skill Format
 
-Osaurus follows the [Agent Skills specification](https://agentskills.io/), using `SKILL.md` files with YAML frontmatter:
+Project2501 follows the [Agent Skills specification](https://agentskills.io/), using `SKILL.md` files with YAML frontmatter:
 
 ```markdown
 ---
@@ -182,7 +182,7 @@ Add context files that are automatically loaded when the skill is active:
 
 ## Automated Capability Selection
 
-Osaurus uses a RAG-based system to automatically select and inject relevant skills into each conversation. No manual configuration is needed -- the right skills are loaded based on what you're asking about.
+Project2501 uses a RAG-based system to automatically select and inject relevant skills into each conversation. No manual configuration is needed -- the right skills are loaded based on what you're asking about.
 
 ### How It Works
 

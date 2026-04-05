@@ -1,6 +1,6 @@
 # Identity
 
-The Osaurus Identity system gives every participant — human, agent, and device — a cryptographic address. All actions are signed and verifiable, enabling trust without a central authority at runtime.
+The Project2501 Identity system gives every participant — human, agent, and device — a cryptographic address. All actions are signed and verifiable, enabling trust without a central authority at runtime.
 
 This document covers the theory behind the design, the address hierarchy, key derivation, request signing, access keys, and the security properties that follow.
 
@@ -26,7 +26,7 @@ This document covers the theory behind the design, the address hierarchy, key de
 
 AI agents that communicate — internally within an application, or externally with other services and agents — need a trust mechanism. Traditional approaches rely on centralized session tokens or API keys that a server issues and validates. This creates a single point of failure and requires the central authority to be online and reachable for every interaction.
 
-Osaurus takes a different approach: **address-based identity**. Every participant derives a cryptographic keypair and is identified by the address of its public key. When an agent signs a message, any verifier can confirm the signature came from that address without contacting a server. Authority flows from a human-controlled root key down to agents, and from there to devices — forming a verifiable chain of trust.
+Project2501 takes a different approach: **address-based identity**. Every participant derives a cryptographic keypair and is identified by the address of its public key. When an agent signs a message, any verifier can confirm the signature came from that address without contacting a server. Authority flows from a human-controlled root key down to agents, and from there to devices — forming a verifiable chain of trust.
 
 **Design goals:**
 
@@ -64,7 +64,7 @@ The master key is a 32-byte random secret generated via `SecRandomCopyBytes`. It
 
 ### Agent Addresses
 
-Each agent in Osaurus gets a deterministic child key derived from the master key. Agents can sign messages on their own behalf, but their authority always traces back to the master address.
+Each agent in Project2501 gets a deterministic child key derived from the master key. Agents can sign messages on their own behalf, but their authority always traces back to the master address.
 
 - **Derivation:** HMAC-SHA512 with domain separation
 - **Storage:** Agent keys are never stored — they are re-derived on demand from the master key
@@ -168,19 +168,19 @@ Four base64url-encoded segments joined by `.`:
 
 1. **Encode payload** as JSON
 2. **Layer 1 — Identity signature:** Domain-separated secp256k1 signing
-   - Envelope: `\x19Osaurus Signed Message:\n<length><payload>`
+   - Envelope: `\x19Project2501 Signed Message:\n<length><payload>`
    - Hash: Keccak-256 of the envelope
    - Sign: secp256k1 with recovery (produces 65 bytes: r ‖ s ‖ v)
 3. **Layer 2 — Device assertion:** App Attest assertion over SHA-256 of the payload
 4. **Assemble:** `base64url(header).base64url(payload).hex(accountSig).base64url(deviceAssertion)`
 
-The domain prefix `Osaurus Signed Message` prevents signed payloads from being replayed in other protocols that use the same curve.
+The domain prefix `Project2501 Signed Message` prevents signed payloads from being replayed in other protocols that use the same curve.
 
 ---
 
 ## Access Keys (osk-v1)
 
-Access keys are portable, long-lived tokens for external authentication. They allow tools, MCP clients, and remote agents to authenticate against Osaurus without biometric access to the device.
+Access keys are portable, long-lived tokens for external authentication. They allow tools, MCP clients, and remote agents to authenticate against Project2501 without biometric access to the device.
 
 ### Format
 
@@ -198,11 +198,11 @@ Three parts separated by `.`:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `aud` | OsaurusID | Audience address (who this key is for) |
+| `aud` | Project2501ID | Audience address (who this key is for) |
 | `cnt` | uint64 | Counter value at creation time |
 | `exp` | int? | Expiration timestamp (null = never expires) |
 | `iat` | int | Issued-at timestamp |
-| `iss` | OsaurusID | Issuer address (who signed this key) |
+| `iss` | Project2501ID | Issuer address (who signed this key) |
 | `lbl` | string? | Human-readable label |
 | `nonce` | string | Unique identifier for revocation |
 
@@ -228,7 +228,7 @@ When a request arrives with an `osk-v1` token:
 
 1. **Parse** the three segments (prefix, payload, signature)
 2. **Decode** the base64url payload into `AccessKeyPayload`
-3. **Recover** the signer address via `ecrecover` with `Osaurus Signed Access` domain prefix
+3. **Recover** the signer address via `ecrecover` with `Project2501 Signed Access` domain prefix
 4. **Verify issuer** — recovered address must match `payload.iss`
 5. **Check audience** — `payload.aud` must match the agent or master address
 6. **Check whitelist** — `payload.iss` must be in the effective whitelist
@@ -315,7 +315,7 @@ The identity system supports two communication modes:
 
 ### Internal Communication
 
-Agents within the same Osaurus instance authenticate using the full two-layer token system:
+Agents within the same Project2501 instance authenticate using the full two-layer token system:
 
 - **Layer 1:** secp256k1 identity signature (master or agent key)
 - **Layer 2:** App Attest device assertion
@@ -335,7 +335,7 @@ Access keys bridge the gap between the hardware-bound internal identity and the 
 
 ### Future: Cross-Instance Communication
 
-The address-based design naturally extends to agent-to-agent communication across different Osaurus instances. Since every agent has a globally unique address and can sign messages, agents can verify each other's identity without a shared authority — only knowledge of the other agent's address is needed.
+The address-based design naturally extends to agent-to-agent communication across different Project2501 instances. Since every agent has a globally unique address and can sign messages, agents can verify each other's identity without a shared authority — only knowledge of the other agent's address is needed.
 
 ---
 
@@ -347,7 +347,7 @@ The address-based design naturally extends to agent-to-agent communication acros
 | Agent keys never stored | Re-derived on demand via HMAC-SHA512 from master key |
 | Device keys hardware-bound | Secure Enclave P-256 via App Attest (`DCAppAttestService`) |
 | Anti-replay | Per-device monotonic counter (`cnt`) persisted in `UserDefaults`; server rejects seen values |
-| Domain separation | `Osaurus Signed Message` and `Osaurus Signed Access` prefixes prevent cross-protocol signature reuse |
+| Domain separation | `Project2501 Signed Message` and `Project2501 Signed Access` prefixes prevent cross-protocol signature reuse |
 | Recovery code single-use | Generated from `SecRandomCopyBytes`, shown once, never stored on device |
 | Canonical encoding | Access key payloads use sorted-key JSON for deterministic signature verification |
 | Memory safety | Master key bytes are zeroed after use (`memset` / index-level zeroing) |
@@ -361,8 +361,8 @@ The address-based design naturally extends to agent-to-agent communication acros
 | `MasterKey.swift` | Generate, store, read, sign with the secp256k1 master key in iCloud Keychain |
 | `AgentKey.swift` | Deterministic child key derivation (HMAC-SHA512) and signing for per-agent identities |
 | `DeviceKey.swift` | App Attest key generation, attestation, assertion, and software fallback |
-| `OsaurusIdentity.swift` | Public entry point — orchestrates setup and two-layer request signing |
-| `IdentityModels.swift` | Data types: `OsaurusID`, `TokenHeader`, `TokenPayload`, `AccessKeyPayload`, `AccessKeyInfo`, `AgentInfo`, `RevocationSnapshot` |
+| `Project2501Identity.swift` | Public entry point — orchestrates setup and two-layer request signing |
+| `IdentityModels.swift` | Data types: `Project2501ID`, `TokenHeader`, `TokenPayload`, `AccessKeyPayload`, `AccessKeyInfo`, `AgentInfo`, `RevocationSnapshot` |
 | `APIKeyManager.swift` | Generate, persist, and revoke `osk-v1` access keys (metadata in Keychain) |
 | `APIKeyValidator.swift` | Immutable, lock-free access key validation via ecrecover + whitelist + revocation |
 | `WhitelistStore.swift` | Master-level and per-agent address whitelist with Keychain persistence |
@@ -370,4 +370,4 @@ The address-based design naturally extends to agent-to-agent communication acros
 | `CounterStore.swift` | Per-device monotonic counter in `UserDefaults` |
 | `RecoveryManager.swift` | One-time recovery code generation at identity creation |
 | `CryptoHelpers.swift` | Keccak-256, domain-separated signing, ecrecover, address derivation, encoding utilities |
-| `OsaurusIdentityError.swift` | Error types for the identity system |
+| `Project2501IdentityError.swift` | Error types for the identity system |

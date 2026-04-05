@@ -144,7 +144,7 @@ public struct Agent: Codable, Identifiable, Sendable, Equatable {
 
     // MARK: - Built-in Agents
 
-    /// Well-known UUID for the default Osaurus agent
+    /// Well-known UUID for the default Project2501 agent
     public static let defaultId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 
     /// Check whether an agent ID string refers to the default (built-in) agent.

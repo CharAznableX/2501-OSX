@@ -2,7 +2,7 @@
 //  Project2501CLI.swift
 //  project2501
 //
-//  Main entry point for the Osaurus CLI. Parses command-line arguments and routes to appropriate command handlers.
+//  Main entry point for the Project2501 CLI. Parses command-line arguments and routes to appropriate command handlers.
 //
 
 import Foundation
@@ -92,7 +92,7 @@ struct Project2501CLI {
 
     private static func printUsage() {
         let usage = """
-            project2501 - CLI for Osaurus
+            project2501 - CLI for Project2501
 
             Usage:
               project2501 serve [--port N] [--expose] [--yes|-y]
@@ -101,11 +101,11 @@ struct Project2501CLI {
               project2501 stop            Stop the server
               project2501 mcp             Run MCP stdio server proxying to local HTTP
               project2501 version         Show version (also: --version or -v)
-              project2501 status          Check if the Osaurus server is running
+              project2501 status          Check if the Project2501 server is running
               project2501 list            List available model IDs
               project2501 show <model_id> Show metadata for a model
               project2501 run <model_id>  Chat with a downloaded model (interactive)
-              project2501 ui              Show the Osaurus menu popover in the menu bar
+              project2501 ui              Show the Project2501 menu popover in the menu bar
               project2501 tools list      List installed tools
               project2501 tools install <plugin_id|url-or-path>
                                       Install a tool from registry or local/URL

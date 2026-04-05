@@ -2,7 +2,7 @@
 //  WorkExecutionEngine.swift
 //  project2501
 //
-//  Execution engine for Osaurus Agents - reasoning loop based.
+//  Execution engine for Project2501 Agents - reasoning loop based.
 //  Handles iterative task execution where model decides actions.
 //
 
@@ -1145,8 +1145,8 @@ public actor WorkExecutionEngine {
                 .replacingOccurrences(of: "\\n", with: "\n")
                 .replacingOccurrences(of: "\\t", with: "\t")
 
-            let contextDir = OsaurusPaths.contextArtifactsDir(contextId: taskId)
-            OsaurusPaths.ensureExistsSilent(contextDir)
+            let contextDir = Project2501Paths.contextArtifactsDir(contextId: taskId)
+            Project2501Paths.ensureExistsSilent(contextDir)
             let destPath = contextDir.appendingPathComponent("result.md")
             try? content.write(to: destPath, atomically: true, encoding: .utf8)
 

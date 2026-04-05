@@ -2,7 +2,7 @@
 //  CronParser.swift
 //  project2501
 //
-//  A simple, dependency-free cron expression parser for Osaurus.
+//  A simple, dependency-free cron expression parser for Project2501.
 //  Supports: * , - / and standard 5-field format.
 //
 

@@ -1056,7 +1056,7 @@ final class ChatSession: ObservableObject {
 
                         let totalTime = Date().timeIntervalSince(streamStartTime)
                         print(
-                            "[Osaurus][UI] Stream consumption completed: \(uiDeltaCount) deltas in \(String(format: "%.2f", totalTime))s, final contentLen=\(assistantTurn.contentLength)"
+                            "[Project2501][UI] Stream consumption completed: \(uiDeltaCount) deltas in \(String(format: "%.2f", totalTime))s, final contentLen=\(assistantTurn.contentLength)"
                         )
 
                         break  // finished normally
@@ -1087,7 +1087,7 @@ final class ChatSession: ObservableObject {
                             // Log tool execution start
                             let truncatedArgs = inv.jsonArguments.prefix(200)
                             print(
-                                "[Osaurus][Tool] Executing: \(inv.toolName) with args: \(truncatedArgs)\(inv.jsonArguments.count > 200 ? "..." : "")"
+                                "[Project2501][Tool] Executing: \(inv.toolName) with args: \(truncatedArgs)\(inv.jsonArguments.count > 200 ? "..." : "")"
                             )
 
                             if executionMode.usesSandboxTools {
@@ -1150,7 +1150,7 @@ final class ChatSession: ObservableObject {
                             // Log tool success (truncated result)
                             let truncatedResult = resultText.prefix(500)
                             print(
-                                "[Osaurus][Tool] Success: \(inv.toolName) returned \(resultText.count) chars: \(truncatedResult)\(resultText.count > 500 ? "..." : "")"
+                                "[Project2501][Tool] Success: \(inv.toolName) returned \(resultText.count) chars: \(truncatedResult)\(resultText.count > 500 ? "..." : "")"
                             )
                         } catch {
                             // Store rejection/error as the result so UI shows "Rejected" instead of hanging

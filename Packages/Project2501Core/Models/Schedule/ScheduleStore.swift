@@ -12,8 +12,8 @@ public enum ScheduleStore {
     // MARK: - Directory Management
 
     private static var schedulesDirectory: URL {
-        let dir = OsaurusPaths.resolvePath(new: OsaurusPaths.schedules(), legacy: "Schedules")
-        OsaurusPaths.ensureExistsSilent(dir)
+        let dir = Project2501Paths.resolvePath(new: Project2501Paths.schedules(), legacy: "Schedules")
+        Project2501Paths.ensureExistsSilent(dir)
         return dir
     }
 
@@ -43,7 +43,7 @@ public enum ScheduleStore {
                 let schedule = try decoder.decode(Schedule.self, from: data)
                 schedules.append(schedule)
             } catch {
-                print("[Osaurus] Failed to load schedule from \(file.lastPathComponent): \(error)")
+                print("[Project2501] Failed to load schedule from \(file.lastPathComponent): \(error)")
             }
         }
 
@@ -62,7 +62,7 @@ public enum ScheduleStore {
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(Schedule.self, from: data)
         } catch {
-            print("[Osaurus] Failed to load schedule \(id): \(error)")
+            print("[Project2501] Failed to load schedule \(id): \(error)")
             return nil
         }
     }
@@ -78,7 +78,7 @@ public enum ScheduleStore {
             let data = try encoder.encode(schedule)
             try data.write(to: url, options: [.atomic])
         } catch {
-            print("[Osaurus] Failed to save schedule \(schedule.id): \(error)")
+            print("[Project2501] Failed to save schedule \(schedule.id): \(error)")
         }
     }
 
@@ -92,7 +92,7 @@ public enum ScheduleStore {
             try FileManager.default.removeItem(at: url)
             return true
         } catch {
-            print("[Osaurus] Failed to delete schedule \(id): \(error)")
+            print("[Project2501] Failed to delete schedule \(id): \(error)")
             return false
         }
     }

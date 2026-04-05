@@ -65,9 +65,9 @@ final class PluginDatabase: @unchecked Sendable {
         try queue.sync {
             guard db == nil else { return }
 
-            OsaurusPaths.ensureExistsSilent(OsaurusPaths.pluginDataDirectory(for: pluginId))
+            Project2501Paths.ensureExistsSilent(Project2501Paths.pluginDataDirectory(for: pluginId))
 
-            let path = OsaurusPaths.pluginDatabaseFile(for: pluginId).path
+            let path = Project2501Paths.pluginDatabaseFile(for: pluginId).path
             var dbPointer: OpaquePointer?
             let result = sqlite3_open(path, &dbPointer)
             guard result == SQLITE_OK, let connection = dbPointer else {

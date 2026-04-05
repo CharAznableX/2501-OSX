@@ -9,7 +9,7 @@ import Foundation
 import Project2501Repository
 
 public struct Configuration {
-    /// Root data directory for Osaurus (`~/.project2501/`)
+    /// Root data directory for Project2501 (`~/.project2501/`)
     public static func root() -> URL {
         ToolsPaths.root()
     }

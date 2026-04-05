@@ -9,7 +9,7 @@ import Foundation
 import MCP
 
 /// A tool provided by a remote MCP server
-final class MCPProviderTool: OsaurusTool, PermissionedTool, @unchecked Sendable {
+final class MCPProviderTool: Project2501Tool, PermissionedTool, @unchecked Sendable {
     let name: String
     let description: String
     let parameters: JSONValue?
@@ -74,7 +74,7 @@ final class MCPProviderTool: OsaurusTool, PermissionedTool, @unchecked Sendable 
 
     // MARK: - Schema Conversion
 
-    /// Convert MCP Value schema to Osaurus JSONValue
+    /// Convert MCP Value schema to Project2501 JSONValue
     private static func convertInputSchema(_ schema: MCP.Value?) -> JSONValue? {
         guard let schema = schema else {
             // Return a basic object schema if none provided

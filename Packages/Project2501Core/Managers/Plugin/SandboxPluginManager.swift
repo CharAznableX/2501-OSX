@@ -87,7 +87,7 @@ public final class SandboxPluginManager: ObservableObject {
                     agentId: agentId
                 )
             )
-            let pluginDir = OsaurusPaths.inContainerPluginDir(agentName, plugin.id)
+            let pluginDir = Project2501Paths.inContainerPluginDir(agentName, plugin.id)
             let mkdirResult = try await SandboxManager.shared.execAsAgent(
                 agentName,
                 command: "mkdir -p \(pluginDir)"
@@ -164,7 +164,7 @@ public final class SandboxPluginManager: ObservableObject {
         installedPlugins[agentId] = list
 
         let agentName = SandboxAgentProvisioner.linuxName(for: agentId)
-        let pluginDir = OsaurusPaths.inContainerPluginDir(agentName, pluginId)
+        let pluginDir = Project2501Paths.inContainerPluginDir(agentName, pluginId)
 
         if await SandboxManager.shared.status().isRunning {
             _ = try? await SandboxManager.shared.execAsAgent(
@@ -372,7 +372,7 @@ public final class SandboxPluginManager: ObservableObject {
     public func removeAgentState(for agentId: String) -> Bool {
         let agentName = SandboxAgentProvisioner.linuxName(for: agentId)
         let storeDir = storeDirectory(for: agentId)
-        let hostPluginsDir = OsaurusPaths.containerAgentDir(agentName)
+        let hostPluginsDir = Project2501Paths.containerAgentDir(agentName)
             .appendingPathComponent("plugins", isDirectory: true)
 
         let hadInstalledState = installedPlugins.removeValue(forKey: agentId) != nil
@@ -395,7 +395,7 @@ public final class SandboxPluginManager: ObservableObject {
     }
 
     private func storeDirectory(for agentId: String) -> URL {
-        OsaurusPaths.agents()
+        Project2501Paths.agents()
             .appendingPathComponent(agentId, isDirectory: true)
             .appendingPathComponent("sandbox-plugins", isDirectory: true)
     }
@@ -406,7 +406,7 @@ public final class SandboxPluginManager: ObservableObject {
 
     private func loadAllInstalled() {
         let fm = FileManager.default
-        let agentsDir = OsaurusPaths.agents()
+        let agentsDir = Project2501Paths.agents()
         guard
             let agentDirs = try? fm.contentsOfDirectory(
                 at: agentsDir,
@@ -429,7 +429,7 @@ public final class SandboxPluginManager: ObservableObject {
 
     private func saveInstalled(for agentId: String) {
         let dir = storeDirectory(for: agentId)
-        OsaurusPaths.ensureExistsSilent(dir)
+        Project2501Paths.ensureExistsSilent(dir)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
@@ -487,7 +487,7 @@ public final class SandboxPluginManager: ObservableObject {
     }
 
     private func hostPluginDir(agentName: String, pluginId: String) -> URL {
-        OsaurusPaths.containerWorkspace()
+        Project2501Paths.containerWorkspace()
             .appendingPathComponent("agents/\(agentName)/plugins/\(pluginId)")
     }
 

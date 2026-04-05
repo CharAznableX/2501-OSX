@@ -107,7 +107,7 @@ public final class AgentManager: ObservableObject {
     /// Update an existing agent
     public func update(_ agent: Agent) {
         guard !agent.isBuiltIn else {
-            print("[Osaurus] Cannot update built-in agent")
+            print("[Project2501] Cannot update built-in agent")
             return
         }
         var updated = agent
@@ -123,7 +123,7 @@ public final class AgentManager: ObservableObject {
         guard !agent.isBuiltIn, agent.agentAddress == nil else { return }
         guard MasterKey.exists() else { return }
 
-        let context = OsaurusIdentityContext.biometric()
+        let context = Project2501IdentityContext.biometric()
         var masterKeyData = try MasterKey.getPrivateKey(context: context)
         defer {
             masterKeyData.withUnsafeMutableBytes { ptr in
@@ -227,8 +227,8 @@ public final class AgentManager: ObservableObject {
         guard UserDefaults.standard.string(forKey: Self.activeAgentKey) == nil else { return }
 
         let legacyFiles = [
-            OsaurusPaths.agents().appendingPathComponent("active.txt"),
-            OsaurusPaths.root().appendingPathComponent("ActivePersonaId.txt"),
+            Project2501Paths.agents().appendingPathComponent("active.txt"),
+            Project2501Paths.root().appendingPathComponent("ActivePersonaId.txt"),
         ]
         let fm = FileManager.default
         for file in legacyFiles {
@@ -396,7 +396,7 @@ extension AgentManager {
         // Handle custom agents
         guard var agent = agent(for: agentId) else { return }
         guard !agent.isBuiltIn else {
-            print("[Osaurus] Cannot update built-in agent's model")
+            print("[Project2501] Cannot update built-in agent's model")
             return
         }
 

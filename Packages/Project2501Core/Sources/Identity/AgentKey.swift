@@ -23,9 +23,9 @@ public struct AgentKey: Sendable {
         return Data(hmac.prefix(32))
     }
 
-    public static func deriveAddress(masterKey: Data, index: UInt32) throws -> OsaurusID {
+    public static func deriveAddress(masterKey: Data, index: UInt32) throws -> Project2501ID {
         let childKey = derive(masterKey: masterKey, index: index)
-        return try deriveOsaurusId(from: childKey)
+        return try deriveProject2501Id(from: childKey)
     }
 
     static func sign(payload: Data, masterKey: Data, index: UInt32) throws -> Data {

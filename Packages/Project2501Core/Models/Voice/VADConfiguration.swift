@@ -21,7 +21,7 @@ public struct VADConfiguration: Codable, Equatable, Sendable {
     /// Whether to automatically start voice input after agent activation
     public var autoStartVoiceInput: Bool
 
-    /// Custom wake phrase (e.g., "Hey Osaurus"). Empty = use agent names only
+    /// Custom wake phrase (e.g., "Hey Project2501"). Empty = use agent names only
     public var customWakePhrase: String
 
     private enum CodingKeys: String, CodingKey {
@@ -95,14 +95,14 @@ public enum VADConfigurationStore {
         do {
             return try JSONDecoder().decode(VADConfiguration.self, from: Data(contentsOf: url))
         } catch {
-            print("[Osaurus] Failed to load VADConfiguration: \(error)")
+            print("[Project2501] Failed to load VADConfiguration: \(error)")
             return VADConfiguration.default
         }
     }
 
     public static func save(_ configuration: VADConfiguration) {
         let url = configurationFileURL()
-        OsaurusPaths.ensureExistsSilent(url.deletingLastPathComponent())
+        Project2501Paths.ensureExistsSilent(url.deletingLastPathComponent())
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -111,11 +111,11 @@ public enum VADConfigurationStore {
                 NotificationCenter.default.post(name: .voiceConfigurationChanged, object: nil)
             }
         } catch {
-            print("[Osaurus] Failed to save VADConfiguration: \(error)")
+            print("[Project2501] Failed to save VADConfiguration: \(error)")
         }
     }
 
     private static func configurationFileURL() -> URL {
-        OsaurusPaths.resolvePath(new: OsaurusPaths.vadConfigFile(), legacy: "VADConfiguration.json")
+        Project2501Paths.resolvePath(new: Project2501Paths.vadConfigFile(), legacy: "VADConfiguration.json")
     }
 }

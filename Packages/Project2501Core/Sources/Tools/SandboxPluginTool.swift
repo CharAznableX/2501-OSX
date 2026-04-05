@@ -2,14 +2,14 @@
 //  SandboxPluginTool.swift
 //  project2501
 //
-//  Wraps a sandbox plugin tool spec as an OsaurusTool.
+//  Wraps a sandbox plugin tool spec as an Project2501Tool.
 //  Translates LLM tool calls into `container exec` commands with
 //  agent/plugin secrets and PARAM_* arguments as environment variables.
 //
 
 import Foundation
 
-final class SandboxPluginTool: OsaurusTool, @unchecked Sendable {
+final class SandboxPluginTool: Project2501Tool, @unchecked Sendable {
     let name: String
     let description: String
     let parameters: JSONValue?

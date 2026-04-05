@@ -14,7 +14,7 @@ public final class AgentNameDetector {
     /// IDs of agents enabled for VAD detection
     private let enabledAgentIds: [UUID]
 
-    /// Custom wake phrase (e.g., "Hey Osaurus")
+    /// Custom wake phrase (e.g., "Hey Project2501")
     private let customWakePhrase: String
 
     /// Cached agent names for matching

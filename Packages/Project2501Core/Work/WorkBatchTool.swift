@@ -11,7 +11,7 @@ import Foundation
 // MARK: - Batch Tool
 
 /// Tool for executing multiple operations in a single call
-struct WorkBatchTool: OsaurusTool {
+struct WorkBatchTool: Project2501Tool {
     let name = "batch"
     let description = "Execute multiple tool operations in sequence (max 30). Continues on error and reports results."
 

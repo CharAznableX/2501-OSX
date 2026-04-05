@@ -217,7 +217,7 @@ public struct OnboardingView: View {
     }
 
     private func navigateToIdentityOrNext() {
-        if !forceShowIdentity && OsaurusIdentity.exists() {
+        if !forceShowIdentity && Project2501Identity.exists() {
             proceedAfterIdentity()
         } else {
             navigateTo(.identitySetup, direction: .forward)

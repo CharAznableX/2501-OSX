@@ -116,7 +116,7 @@ struct project2501Tests {
 
         let root = router.route(method: "GET", path: "/")
         #expect(root.status == .ok)
-        #expect(root.body.contains("Osaurus Server is running"))
+        #expect(root.body.contains("Project2501 Server is running"))
     }
 
     @Test func router_models_endpoint_returns_list() async throws {

@@ -41,11 +41,11 @@ public actor SkillSearchService {
     public func initialize() async {
         guard !isInitialized else { return }
 
-        let storageDir = OsaurusPaths.skills().appendingPathComponent("vectura", isDirectory: true)
+        let storageDir = Project2501Paths.skills().appendingPathComponent("vectura", isDirectory: true)
 
         for attempt in 1 ... 2 {
             do {
-                OsaurusPaths.ensureExistsSilent(storageDir)
+                Project2501Paths.ensureExistsSilent(storageDir)
 
                 let config = try VecturaConfig(
                     name: "project2501-skills",

@@ -8,7 +8,7 @@
 import Foundation
 
 /// Saves notes to persistent storage (backed by IssueEvent).
-final class SaveNotesTool: OsaurusTool, @unchecked Sendable {
+final class SaveNotesTool: Project2501Tool, @unchecked Sendable {
     let name = "save_notes"
     let description =
         "Save important findings, decisions, or progress notes that persist across context resets. "
@@ -51,7 +51,7 @@ final class SaveNotesTool: OsaurusTool, @unchecked Sendable {
 }
 
 /// Reads previously saved notes for the current task.
-final class ReadNotesTool: OsaurusTool, @unchecked Sendable {
+final class ReadNotesTool: Project2501Tool, @unchecked Sendable {
     let name = "read_notes"
     let description =
         "Read previously saved notes for the current task. "

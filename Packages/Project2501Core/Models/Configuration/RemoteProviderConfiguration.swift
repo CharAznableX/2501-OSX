@@ -359,26 +359,26 @@ public enum RemoteProviderConfigurationStore {
         } catch {
             // Return empty in-memory config but never overwrite the existing file;
             // that would permanently destroy the user's providers.
-            print("[Osaurus] Failed to load RemoteProviderConfiguration: \(error)")
+            print("[Project2501] Failed to load RemoteProviderConfiguration: \(error)")
             return RemoteProviderConfiguration()
         }
     }
 
     public static func save(_ configuration: RemoteProviderConfiguration) {
         let url = configurationFileURL()
-        OsaurusPaths.ensureExistsSilent(url.deletingLastPathComponent())
+        Project2501Paths.ensureExistsSilent(url.deletingLastPathComponent())
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(configuration).write(to: url, options: [.atomic])
         } catch {
-            print("[Osaurus] Failed to save RemoteProviderConfiguration: \(error)")
+            print("[Project2501] Failed to save RemoteProviderConfiguration: \(error)")
         }
     }
 
     private static func configurationFileURL() -> URL {
-        OsaurusPaths.resolvePath(
-            new: OsaurusPaths.remoteProviderConfigFile(),
+        Project2501Paths.resolvePath(
+            new: Project2501Paths.remoteProviderConfigFile(),
             legacy: "RemoteProviderConfiguration.json"
         )
     }

@@ -776,11 +776,11 @@ struct ThemeEditorView: View {
 
         themeToSave.metadata.updatedAt = Date()
 
-        print("[Osaurus] ThemeEditor: Saving theme '\(themeToSave.metadata.name)' (id: \(themeToSave.metadata.id))")
+        print("[Project2501] ThemeEditor: Saving theme '\(themeToSave.metadata.name)' (id: \(themeToSave.metadata.id))")
         themeManager.saveTheme(themeToSave)
         themeManager.applyCustomTheme(themeToSave)
         themeManager.refreshInstalledThemes()
-        print("[Osaurus] ThemeEditor: Theme saved and applied successfully")
+        print("[Project2501] ThemeEditor: Theme saved and applied successfully")
 
         withAnimation { showSaveConfirmation = true }
 
@@ -803,10 +803,10 @@ struct ThemeEditorView: View {
                 editingTheme.background.imageData = resizedData.base64EncodedString()
                 editingTheme.background.type = .image
             } catch {
-                print("[Osaurus] Failed to import image: \(error)")
+                print("[Project2501] Failed to import image: \(error)")
             }
         case .failure(let error):
-            print("[Osaurus] Image import failed: \(error)")
+            print("[Project2501] Image import failed: \(error)")
         }
     }
 

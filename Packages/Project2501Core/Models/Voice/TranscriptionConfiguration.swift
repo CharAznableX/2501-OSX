@@ -70,14 +70,14 @@ public enum TranscriptionConfigurationStore {
         do {
             return try JSONDecoder().decode(TranscriptionConfiguration.self, from: Data(contentsOf: url))
         } catch {
-            print("[Osaurus] Failed to load TranscriptionConfiguration: \(error)")
+            print("[Project2501] Failed to load TranscriptionConfiguration: \(error)")
             return TranscriptionConfiguration.default
         }
     }
 
     public static func save(_ configuration: TranscriptionConfiguration) {
         let url = configurationFileURL()
-        OsaurusPaths.ensureExistsSilent(url.deletingLastPathComponent())
+        Project2501Paths.ensureExistsSilent(url.deletingLastPathComponent())
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -86,12 +86,12 @@ public enum TranscriptionConfigurationStore {
                 NotificationCenter.default.post(name: .transcriptionConfigurationChanged, object: nil)
             }
         } catch {
-            print("[Osaurus] Failed to save TranscriptionConfiguration: \(error)")
+            print("[Project2501] Failed to save TranscriptionConfiguration: \(error)")
         }
     }
 
     private static func configurationFileURL() -> URL {
-        OsaurusPaths.resolvePath(new: OsaurusPaths.transcriptionConfigFile(), legacy: "TranscriptionConfiguration.json")
+        Project2501Paths.resolvePath(new: Project2501Paths.transcriptionConfigFile(), legacy: "TranscriptionConfiguration.json")
     }
 }
 

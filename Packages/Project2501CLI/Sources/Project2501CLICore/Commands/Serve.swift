@@ -2,7 +2,7 @@
 //  Serve.swift
 //  project2501
 //
-//  Command to start the Osaurus server with optional port configuration and network exposure settings.
+//  Command to start the Project2501 server with optional port configuration and network exposure settings.
 //
 
 import Foundation
@@ -37,7 +37,7 @@ public struct ServeCommand: Command {
         if expose && !assumeYes {
             // Security warning prompt
             let warning = """
-                WARNING: Exposing Osaurus to the local network will allow other devices on your LAN
+                WARNING: Exposing Project2501 to the local network will allow other devices on your LAN
                 to connect to your server. Make sure you trust your network and understand the risks.
                 Proceed with exposure? [y/N]: 
                 """
@@ -101,9 +101,9 @@ public struct ServeCommand: Command {
             Failed to start server on port \(portToCheck)
             Hints:
               - The port may be busy. Try: project2501 serve --port \(altPort)
-              - Ensure Osaurus.app is installed: brew install --cask project2501
+              - Ensure Project2501.app is installed: brew install --cask project2501
               - Try launching the app first, then serve:
-                open -a /Applications/Osaurus.app && project2501 serve
+                open -a /Applications/Project2501.app && project2501 serve
               - You can also open the UI: project2501 ui
             """.appending("\n"),
             stderr

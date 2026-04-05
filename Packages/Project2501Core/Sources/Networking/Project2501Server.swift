@@ -1,5 +1,5 @@
 //
-//  OsaurusServer.swift
+//  Project2501Server.swift
 //  project2501
 //
 //  Actor-owned NIO server lifecycle (start / stop).
@@ -11,7 +11,7 @@ import NIOCore
 import NIOHTTP1
 import NIOPosix
 
-public actor OsaurusServer: Sendable {
+public actor Project2501Server: Sendable {
     public struct Config: Sendable {
         public var host: String
         public var port: Int
@@ -66,7 +66,7 @@ public actor OsaurusServer: Sendable {
         let ch = try await bootstrap.bind(host: config.host, port: config.port).get()
         self.group = group
         self.channel = ch
-        print("[Osaurus] OsaurusServer started on http://\(config.host):\(config.port)")
+        print("[Project2501] Project2501Server started on http://\(config.host):\(config.port)")
     }
 
     public func stop(gracefully: Bool = true) async {
@@ -80,7 +80,7 @@ public actor OsaurusServer: Sendable {
             }
             self.group = nil
         }
-        print("[Osaurus] OsaurusServer stopped")
+        print("[Project2501] Project2501Server stopped")
     }
 
     // MARK: - Validator Construction
@@ -101,8 +101,8 @@ public actor OsaurusServer: Sendable {
                 }
             }
 
-            let masterAddress = try deriveOsaurusId(from: masterKeyData)
-            let agentAddress: OsaurusID =
+            let masterAddress = try deriveProject2501Id(from: masterKeyData)
+            let agentAddress: Project2501ID =
                 if let idx = agentIndex {
                     try AgentKey.deriveAddress(masterKey: masterKeyData, index: idx)
                 } else {
@@ -120,7 +120,7 @@ public actor OsaurusServer: Sendable {
                 hasKeys: !APIKeyManager.shared.listKeys().isEmpty
             )
         } catch {
-            print("[Osaurus] Failed to build validator: \(error). Falling back to empty validator.")
+            print("[Project2501] Failed to build validator: \(error). Falling back to empty validator.")
             return .empty
         }
     }

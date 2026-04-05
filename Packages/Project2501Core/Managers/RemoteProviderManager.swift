@@ -207,7 +207,7 @@ public final class RemoteProviderManager: ObservableObject {
             state.lastError = nil
             providerStates[providerId] = state
 
-            print("[Osaurus] Remote Provider '\(provider.name)': Connected with \(models.count) models")
+            print("[Project2501] Remote Provider '\(provider.name)': Connected with \(models.count) models")
 
             notifyStatusChanged()
             notifyModelsChanged()
@@ -225,7 +225,7 @@ public final class RemoteProviderManager: ObservableObject {
                 Task { await service.invalidateSession() }
             }
 
-            print("[Osaurus] Remote Provider '\(provider.name)': Connection failed - \(error)")
+            print("[Project2501] Remote Provider '\(provider.name)': Connection failed - \(error)")
 
             notifyStatusChanged()
             throw error
@@ -248,7 +248,7 @@ public final class RemoteProviderManager: ObservableObject {
         }
 
         if let provider = configuration.provider(id: providerId) {
-            print("[Osaurus] Remote Provider '\(provider.name)': Disconnected")
+            print("[Project2501] Remote Provider '\(provider.name)': Disconnected")
         }
 
         notifyStatusChanged()
@@ -267,7 +267,7 @@ public final class RemoteProviderManager: ObservableObject {
             do {
                 try await connect(providerId: provider.id)
             } catch {
-                print("[Osaurus] Failed to auto-connect to '\(provider.name)': \(error)")
+                print("[Project2501] Failed to auto-connect to '\(provider.name)': \(error)")
             }
         }
     }
@@ -392,11 +392,11 @@ public final class RemoteProviderManager: ObservableObject {
 
         // OpenAI-compatible and Gemini providers use /models endpoint
         guard let url = tempProvider.url(for: "/models") else {
-            print("[Osaurus] Test Connection: Invalid URL")
+            print("[Project2501] Test Connection: Invalid URL")
             throw RemoteProviderError.invalidURL
         }
 
-        print("[Osaurus] Test Connection: Requesting \(url.absoluteString)")
+        print("[Project2501] Test Connection: Requesting \(url.absoluteString)")
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -409,9 +409,9 @@ public final class RemoteProviderManager: ObservableObject {
             if key.lowercased() == "authorization" || key.lowercased() == "x-api-key"
                 || key.lowercased() == "x-goog-api-key"
             {
-                print("[Osaurus] Test Connection: Adding header \(key)=***")
+                print("[Project2501] Test Connection: Adding header \(key)=***")
             } else {
-                print("[Osaurus] Test Connection: Adding header \(key)=\(value)")
+                print("[Project2501] Test Connection: Adding header \(key)=\(value)")
             }
             request.setValue(value, forHTTPHeaderField: key)
         }
@@ -420,15 +420,15 @@ public final class RemoteProviderManager: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("[Osaurus] Test Connection: Invalid response type")
+                print("[Project2501] Test Connection: Invalid response type")
                 throw RemoteProviderError.connectionFailed("Invalid response")
             }
 
-            print("[Osaurus] Test Connection: HTTP \(httpResponse.statusCode)")
+            print("[Project2501] Test Connection: HTTP \(httpResponse.statusCode)")
 
             if httpResponse.statusCode >= 400 {
                 let errorMessage = extractErrorMessage(from: data, statusCode: httpResponse.statusCode)
-                print("[Osaurus] Test Connection: Error response: \(errorMessage)")
+                print("[Project2501] Test Connection: Error response: \(errorMessage)")
                 throw RemoteProviderError.connectionFailed(errorMessage)
             }
 
@@ -441,17 +441,17 @@ public final class RemoteProviderManager: ObservableObject {
                         return methods.contains("generateContent")
                     }
                     .map { $0.modelId }
-                print("[Osaurus] Test Connection (Gemini): Success - found \(models.count) models")
+                print("[Project2501] Test Connection (Gemini): Success - found \(models.count) models")
                 return models
             } else {
                 let modelsResponse = try JSONDecoder().decode(ModelsResponse.self, from: data)
-                print("[Osaurus] Test Connection: Success - found \(modelsResponse.data.count) models")
+                print("[Project2501] Test Connection: Success - found \(modelsResponse.data.count) models")
                 return modelsResponse.data.map { $0.id }
             }
         } catch let error as RemoteProviderError {
             throw error
         } catch {
-            print("[Osaurus] Test Connection: Network error: \(error)")
+            print("[Project2501] Test Connection: Network error: \(error)")
             throw RemoteProviderError.connectionFailed(error.localizedDescription)
         }
     }
@@ -495,21 +495,21 @@ public final class RemoteProviderManager: ObservableObject {
         -> [String]
     {
         guard let baseURL = tempProvider.url(for: "/models") else {
-            print("[Osaurus] Test Connection (Anthropic): Invalid URL")
+            print("[Project2501] Test Connection (Anthropic): Invalid URL")
             throw RemoteProviderError.invalidURL
         }
 
-        print("[Osaurus] Test Connection (Anthropic): Requesting \(baseURL.absoluteString)")
+        print("[Project2501] Test Connection (Anthropic): Requesting \(baseURL.absoluteString)")
 
         do {
             let models = try await RemoteProviderService.fetchAnthropicModels(
                 baseURL: baseURL,
                 headers: testHeaders
             )
-            print("[Osaurus] Test Connection (Anthropic): Success - found \(models.count) models")
+            print("[Project2501] Test Connection (Anthropic): Success - found \(models.count) models")
             return models
         } catch {
-            print("[Osaurus] Test Connection (Anthropic): Error: \(error)")
+            print("[Project2501] Test Connection (Anthropic): Error: \(error)")
             throw RemoteProviderError.connectionFailed(error.localizedDescription)
         }
     }

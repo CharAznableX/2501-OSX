@@ -26,7 +26,7 @@ public final class RevocationStore: @unchecked Sendable {
     // MARK: - Individual Revocation
 
     /// Revoke a specific access key identified by its signer address and nonce.
-    public func revokeKey(address: OsaurusID, nonce: String) {
+    public func revokeKey(address: Project2501ID, nonce: String) {
         let key = RevocationSnapshot.revocationKey(address: address, nonce: nonce)
         queue.sync(flags: .barrier) {
             revokedKeys.insert(key)
@@ -37,7 +37,7 @@ public final class RevocationStore: @unchecked Sendable {
     // MARK: - Bulk Revocation
 
     /// Revoke all access keys from `address` with counter values <= `counter`.
-    public func revokeAllBefore(address: OsaurusID, counter: UInt64) {
+    public func revokeAllBefore(address: Project2501ID, counter: UInt64) {
         let normalized = address.lowercased()
         queue.sync(flags: .barrier) {
             let existing = counterThresholds[normalized] ?? 0
@@ -49,7 +49,7 @@ public final class RevocationStore: @unchecked Sendable {
     // MARK: - Query
 
     /// Check if a specific key is revoked (either individually or by counter threshold).
-    public func isRevoked(address: OsaurusID, nonce: String, cnt: UInt64) -> Bool {
+    public func isRevoked(address: Project2501ID, nonce: String, cnt: UInt64) -> Bool {
         queue.sync {
             let key = RevocationSnapshot.revocationKey(address: address, nonce: nonce)
             if revokedKeys.contains(key) { return true }

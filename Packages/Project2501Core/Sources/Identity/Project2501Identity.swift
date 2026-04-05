@@ -1,8 +1,8 @@
 //
-//  OsaurusIdentity.swift
+//  Project2501Identity.swift
 //  project2501
 //
-//  Public entry point for the Osaurus Identity system.
+//  Public entry point for the Project2501 Identity system.
 //  Orchestrates Master Key, Device Key, counter, and recovery code
 //  to produce two-layer signed tokens for every API request.
 //
@@ -11,7 +11,7 @@ import CryptoKit
 import Foundation
 import LocalAuthentication
 
-public struct OsaurusIdentity: Sendable {
+public struct Project2501Identity: Sendable {
 
     // MARK: - Setup
 
@@ -42,8 +42,8 @@ public struct OsaurusIdentity: Sendable {
         path: String,
         audience: String
     ) async throws -> URLRequest {
-        let context = OsaurusIdentityContext.biometric()
-        let project2501Id = try MasterKey.getOsaurusId(context: context)
+        let context = Project2501IdentityContext.biometric()
+        let project2501Id = try MasterKey.getProject2501Id(context: context)
 
         return try await buildSignedRequest(
             project2501Id: project2501Id,
@@ -57,7 +57,7 @@ public struct OsaurusIdentity: Sendable {
     // MARK: - Private
 
     private static func buildSignedRequest(
-        project2501Id: OsaurusID,
+        project2501Id: Project2501ID,
         method: String,
         path: String,
         audience: String,

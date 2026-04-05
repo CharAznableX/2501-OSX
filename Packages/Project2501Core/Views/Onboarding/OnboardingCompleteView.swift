@@ -60,7 +60,7 @@ struct OnboardingCompleteView: View {
             VStack(spacing: 12) {
                 CompleteOptionCard(
                     title: "Quick walkthrough",
-                    description: "See what Osaurus can do",
+                    description: "See what Project2501 can do",
                     icon: "play.circle",
                     action: onWalkthrough
                 )

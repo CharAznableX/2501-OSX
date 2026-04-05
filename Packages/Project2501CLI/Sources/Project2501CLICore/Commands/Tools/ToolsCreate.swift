@@ -141,7 +141,7 @@ public struct ToolsCreate {
         let pluginSwift = """
             import Foundation
 
-            // MARK: - Osaurus Injected Context
+            // MARK: - Project2501 Injected Context
 
             private struct FolderContext: Decodable {
                 let working_directory: String
@@ -396,12 +396,12 @@ public struct ToolsCreate {
         let readme = """
             # \(name)
 
-            An Osaurus plugin (v2 ABI).
+            An Project2501 plugin (v2 ABI).
 
             ## Development
 
             Start dev mode from the project root. This builds the plugin, installs it
-            into Osaurus, and watches for source changes with automatic rebuild + reload:
+            into Project2501, and watches for source changes with automatic rebuild + reload:
 
             ```bash
             project2501 tools dev
@@ -491,7 +491,7 @@ public struct ToolsCreate {
             use std::ffi::{c_char, c_void, CStr, CString};
             use std::ptr;
 
-            // ── Host API (provided by Osaurus at init) ──
+            // ── Host API (provided by Project2501 at init) ──
 
             // Config + Storage + Logging
             type OsrConfigGetFn = unsafe extern "C" fn(*const c_char) -> *const c_char;
@@ -548,7 +548,7 @@ public struct ToolsCreate {
                 http_request: Option<OsrHttpRequestFn>,
             }
 
-            // ── Plugin API (returned to Osaurus) ──
+            // ── Plugin API (returned to Project2501) ──
 
             #[repr(C)]
             struct OsrPluginApi {
@@ -747,12 +747,12 @@ public struct ToolsCreate {
         let readme = """
             # \(name)
 
-            An Osaurus plugin (v2 ABI) written in Rust.
+            An Project2501 plugin (v2 ABI) written in Rust.
 
             ## Development
 
             Start dev mode from the project root. This builds the plugin, installs it
-            into Osaurus, and watches for source changes with automatic rebuild + reload:
+            into Project2501, and watches for source changes with automatic rebuild + reload:
 
             ```bash
             project2501 tools dev
@@ -813,9 +813,9 @@ public struct ToolsCreate {
         let isSwift = language == "swift"
 
         let claudeMd = """
-            # \(displayName) - Osaurus Plugin
+            # \(displayName) - Project2501 Plugin
 
-            This is an Osaurus plugin project. Use this guide to develop, test, and submit the plugin.
+            This is an Project2501 plugin project. Use this guide to develop, test, and submit the plugin.
 
             ## Project Structure
 
@@ -842,9 +842,9 @@ public struct ToolsCreate {
 
             ## Architecture Overview
 
-            Osaurus plugins use a C ABI interface (v2). The plugin exports `project2501_plugin_entry_v2(host)` which receives
+            Project2501 plugins use a C ABI interface (v2). The plugin exports `project2501_plugin_entry_v2(host)` which receives
             host callbacks and returns a function table. A v1 fallback (`project2501_plugin_entry`) is also exported for
-            compatibility with older Osaurus versions.
+            compatibility with older Project2501 versions.
 
             **Plugin API (returned to host):**
             - `init()` - Initialize plugin, return context pointer
@@ -1334,7 +1334,7 @@ public struct ToolsCreate {
                 
                 struct Args: Decodable {
                     let query: String
-                    let _secrets: [String: String]?  // Secrets injected by Osaurus
+                    let _secrets: [String: String]?  // Secrets injected by Project2501
                 }
                 
                 func run(args: String) -> String {
@@ -1401,7 +1401,7 @@ public struct ToolsCreate {
 
             ## Using Folder Context (Working Directory)
 
-            When a user has a working directory selected in Work Mode, Osaurus automatically injects the folder context into tool payloads. This allows your plugin to resolve relative file paths.
+            When a user has a working directory selected in Work Mode, Project2501 automatically injects the folder context into tool payloads. This allows your plugin to resolve relative file paths.
 
             ### Automatic Injection
 
@@ -1429,7 +1429,7 @@ public struct ToolsCreate {
                 
                 struct Args: Decodable {
                     let path: String
-                    let _context: FolderContext?  // Folder context injected by Osaurus
+                    let _context: FolderContext?  // Folder context injected by Project2501
                 }
                 
                 func run(args: String) -> String {
@@ -1519,9 +1519,9 @@ public struct ToolsCreate {
 
             ### From MCP (Model Context Protocol)
 
-            MCP tools map directly to Osaurus tools:
+            MCP tools map directly to Project2501 tools:
 
-            | MCP Concept | Osaurus Equivalent |
+            | MCP Concept | Project2501 Equivalent |
             |-------------|-------------------|
             | Tool name | `id` in manifest |
             | Input schema | `parameters` (JSON Schema) |
@@ -1544,7 +1544,7 @@ public struct ToolsCreate {
             }
             ```
 
-            Becomes this Osaurus manifest entry:
+            Becomes this Project2501 manifest entry:
             ```json
             {
               "id": "get_weather",
@@ -1693,12 +1693,12 @@ public struct ToolsCreate {
             project2501 tools dev
             ```
 
-            This builds the plugin, installs it into Osaurus, and watches for source changes.
+            This builds the plugin, installs it into Project2501, and watches for source changes.
             Any edits to source files trigger an automatic rebuild and hot-reload.
 
-            ### 2. Test in Osaurus
+            ### 2. Test in Project2501
 
-            1. Open Osaurus app
+            1. Open Project2501 app
             2. Go to Tools settings (Cmd+Shift+M → Tools)
             3. Verify your plugin appears
             4. Test each tool by asking the AI to use it
@@ -1784,7 +1784,7 @@ public struct ToolsCreate {
 
             ## Submission Checklist
 
-            Before submitting to the Osaurus plugin registry:
+            Before submitting to the Project2501 plugin registry:
 
             - [ ] Plugin builds without warnings
             - [ ] `project2501 manifest extract` returns valid JSON

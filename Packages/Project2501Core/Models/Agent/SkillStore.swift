@@ -15,7 +15,7 @@ public enum SkillStore {
     /// Load all skills sorted by name, including built-ins
     public static func loadAll() async -> [Skill] {
         let directory = skillsDirectory()
-        OsaurusPaths.ensureExistsSilent(directory)
+        Project2501Paths.ensureExistsSilent(directory)
         migrateOldFormat()
 
         var savedSkills: [UUID: Skill] = [:]
@@ -156,7 +156,7 @@ public enum SkillStore {
                 )
             }
         } catch {
-            print("[Osaurus] Failed to save skill \(skill.id): \(error)")
+            print("[Project2501] Failed to save skill \(skill.id): \(error)")
         }
     }
 
@@ -245,7 +245,7 @@ public enum SkillStore {
     // MARK: - Private
 
     private static func skillsDirectory() -> URL {
-        OsaurusPaths.skills()
+        Project2501Paths.skills()
     }
 
     private static func loadFromDirectory(_ directoryURL: URL) -> Skill? {
@@ -274,7 +274,7 @@ public enum SkillStore {
                 pluginId: parsed.pluginId
             )
         } catch {
-            print("[Osaurus] Failed to load skill from \(directoryURL.lastPathComponent): \(error)")
+            print("[Project2501] Failed to load skill from \(directoryURL.lastPathComponent): \(error)")
             return nil
         }
     }
@@ -310,7 +310,7 @@ public enum SkillStore {
             let skillMdPath = skillDir.appendingPathComponent("SKILL.md")
             try skill.toAgentSkillsFormatWithId().write(to: skillMdPath, atomically: true, encoding: .utf8)
         } catch {
-            print("[Osaurus] Failed to save built-in skill state: \(error)")
+            print("[Project2501] Failed to save built-in skill state: \(error)")
         }
     }
 
@@ -351,9 +351,9 @@ public enum SkillStore {
                     encoding: .utf8
                 )
                 try FileManager.default.removeItem(at: file)
-                print("[Osaurus] Migrated skill: \(skill.name)")
+                print("[Project2501] Migrated skill: \(skill.name)")
             } catch {
-                print("[Osaurus] Failed to migrate \(file.lastPathComponent): \(error)")
+                print("[Project2501] Failed to migrate \(file.lastPathComponent): \(error)")
             }
         }
     }

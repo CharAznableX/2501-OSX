@@ -17,7 +17,7 @@ enum BuiltinSandboxTools {
     @MainActor
     static func register(agentId: String, agentName: String, config: AutonomousExecConfig?) {
         let registry = ToolRegistry.shared
-        let home = OsaurusPaths.inContainerAgentHome(agentName)
+        let home = Project2501Paths.inContainerAgentHome(agentName)
 
         // Always available (read-only)
         registry.registerSandboxTool(
@@ -342,7 +342,7 @@ private func installResultJSON(packages: [String], result: ContainerExecResult) 
 
 // MARK: - sandbox_read_file
 
-private struct SandboxReadFileTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxReadFileTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_read_file"
     let description = "Read a file's contents from the sandbox environment. Supports line ranges and log tails."
     let agentName: String
@@ -430,7 +430,7 @@ private struct SandboxReadFileTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_list_directory
 
-private struct SandboxListDirectoryTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxListDirectoryTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_list_directory"
     let description = "List files and directories in the sandbox environment."
     let agentName: String
@@ -474,7 +474,7 @@ private struct SandboxListDirectoryTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_search_files
 
-private struct SandboxSearchFilesTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxSearchFilesTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_search_files"
     let description =
         "Search file contents with ripgrep in the sandbox. Returns matching lines with file paths and line numbers. For finding files by name, use sandbox_find_files instead."
@@ -546,7 +546,7 @@ private struct SandboxSearchFilesTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_find_files
 
-private struct SandboxFindFilesTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxFindFilesTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_find_files"
     let description =
         "Find files by name pattern in the sandbox. Use this to locate files by glob (e.g. '*.py', '*.swift'). For searching file contents, use sandbox_search_files instead."
@@ -590,7 +590,7 @@ private struct SandboxFindFilesTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_write_file
 
-private struct SandboxWriteFileTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxWriteFileTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_write_file"
     let description = "Write content to a file in the sandbox. Creates parent directories."
     let agentName: String
@@ -639,7 +639,7 @@ private struct SandboxWriteFileTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_edit_file
 
-private struct SandboxEditFileTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxEditFileTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_edit_file"
     let description =
         "Edit a file by replacing an exact string match. old_string must uniquely match exactly one location in the file — include surrounding context lines if needed. Fails if old_string is not found or matches multiple locations. Prefer this over sandbox_write_file for targeted edits."
@@ -748,7 +748,7 @@ private struct SandboxEditFileTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_move
 
-private struct SandboxMoveTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxMoveTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_move"
     let description = "Move or rename a file/directory in the sandbox."
     let agentName: String
@@ -786,7 +786,7 @@ private struct SandboxMoveTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_delete
 
-private struct SandboxDeleteTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxDeleteTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_delete"
     let description = "Delete a file or directory in the sandbox."
     let agentName: String
@@ -825,7 +825,7 @@ private struct SandboxDeleteTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_exec
 
-private struct SandboxExecTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxExecTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_exec"
     let description = "Run a shell command in the agent's sandbox environment."
     let agentId: String
@@ -901,7 +901,7 @@ private struct SandboxExecTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_exec_background
 
-private struct SandboxExecBackgroundTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxExecBackgroundTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_exec_background"
     let description = "Start a background process in the sandbox. Log output is written to the agent's home directory."
     let agentId: String
@@ -953,7 +953,7 @@ private struct SandboxExecBackgroundTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_exec_kill
 
-private struct SandboxExecKillTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxExecKillTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_exec_kill"
     let description = "Kill a background process in the sandbox."
     let agentName: String
@@ -987,7 +987,7 @@ private struct SandboxExecKillTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_install
 
-private struct SandboxInstallTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxInstallTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_install"
     let description =
         "Install system packages via apk (runs as root). Example args: {\"packages\": [\"ffmpeg\", \"imagemagick\"]}"
@@ -1030,7 +1030,7 @@ private struct SandboxInstallTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_pip_install
 
-private struct SandboxPipInstallTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxPipInstallTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_pip_install"
     let description =
         "Install Python packages via pip (runs as agent user). Example args: {\"packages\": [\"numpy\", \"flask\"]}"
@@ -1087,7 +1087,7 @@ private struct SandboxPipInstallTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_npm_install
 
-private struct SandboxNpmInstallTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxNpmInstallTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_npm_install"
     let description =
         "Install Node packages via npm (runs as agent user). Example args: {\"packages\": [\"express\", \"lodash\"]}"
@@ -1142,7 +1142,7 @@ private struct SandboxNpmInstallTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_run_script
 
-private struct SandboxRunScriptTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxRunScriptTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_run_script"
     let description =
         "Write and execute a script in the sandbox. Saves to a temp file and runs it. "
@@ -1230,7 +1230,7 @@ private struct SandboxRunScriptTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_whoami
 
-private struct SandboxWhoamiTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxWhoamiTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_whoami"
     let description = "Get current agent identity and sandbox environment info."
     let agentName: String
@@ -1309,7 +1309,7 @@ private struct SandboxWhoamiTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - sandbox_processes
 
-private struct SandboxProcessesTool: OsaurusTool, @unchecked Sendable {
+private struct SandboxProcessesTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_processes"
     let description = "List running processes for this agent in the sandbox."
     let agentName: String

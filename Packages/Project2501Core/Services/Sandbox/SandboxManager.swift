@@ -31,7 +31,7 @@
 
         /// Host-side Unix socket path for the bridge server (relayed into guest via vsock)
         private static var bridgeSocketPath: String {
-            OsaurusPaths.container().appendingPathComponent("bridge.sock").path
+            Project2501Paths.container().appendingPathComponent("bridge.sock").path
         }
         /// Where the bridge socket appears inside the guest container
         private static let guestBridgeSocketPath = "/tmp/project2501-bridge.sock"
@@ -85,13 +85,13 @@
         }
 
         private var staleContainerDir: URL {
-            OsaurusPaths.container().appendingPathComponent("containers/\(Self.containerID)")
+            Project2501Paths.container().appendingPathComponent("containers/\(Self.containerID)")
         }
 
         private var hasRequiredAssets: Bool {
             let fm = FileManager.default
-            return fm.fileExists(atPath: OsaurusPaths.containerKernelFile().path)
-                && fm.fileExists(atPath: OsaurusPaths.containerInitFSFile().path)
+            return fm.fileExists(atPath: Project2501Paths.containerKernelFile().path)
+                && fm.fileExists(atPath: Project2501Paths.containerInitFSFile().path)
         }
 
         public func refreshStatus() -> ContainerStatus {
@@ -143,12 +143,12 @@
                     var manager = try ContainerManager(
                         kernel: kernel,
                         initfs: initfs,
-                        root: OsaurusPaths.container()
+                        root: Project2501Paths.container()
                     )
 
                     await setProvisioningPhase(isRestart ? "Booting container..." : "Creating container...")
 
-                    let workspace = OsaurusPaths.containerWorkspace().path
+                    let workspace = Project2501Paths.containerWorkspace().path
                     let bridgeSocketPath = Self.bridgeSocketPath
                     let guestBridgeSocketPath = Self.guestBridgeSocketPath
 
@@ -254,10 +254,10 @@
 
         public func removeContainer() async throws {
             try await stopContainer()
-            let containerDir = OsaurusPaths.container()
+            let containerDir = Project2501Paths.container()
             try? FileManager.default.removeItem(at: containerDir.appendingPathComponent("containers"))
-            try? FileManager.default.removeItem(at: OsaurusPaths.containerKernelFile())
-            try? FileManager.default.removeItem(at: OsaurusPaths.containerInitFSFile())
+            try? FileManager.default.removeItem(at: Project2501Paths.containerKernelFile())
+            try? FileManager.default.removeItem(at: Project2501Paths.containerInitFSFile())
             _status = .notProvisioned
             _removedByUser = true
             syncStatus()
@@ -328,7 +328,7 @@
             streamToLogs: Bool = false,
             logSource: String? = nil
         ) async throws -> ContainerExecResult {
-            let cwd = pluginName.map { OsaurusPaths.inContainerPluginDir(agentName, $0) }
+            let cwd = pluginName.map { Project2501Paths.inContainerPluginDir(agentName, $0) }
             return try await exec(
                 user: "agent-\(agentName)",
                 command: command,
@@ -346,7 +346,7 @@
             let checkResult = try await exec(command: "id agent-\(agentName) 2>/dev/null")
             if checkResult.succeeded { return }
 
-            let homeDir = OsaurusPaths.inContainerAgentHome(agentName)
+            let homeDir = Project2501Paths.inContainerAgentHome(agentName)
             let addResult = try await execAsRoot(command: "adduser -D -h \(homeDir) agent-\(agentName)")
             guard addResult.succeeded else {
                 throw SandboxError.userCreationFailed(addResult.stderr)
@@ -369,7 +369,7 @@
             let checkResult = try await exec(command: "id \(linuxUser) 2>/dev/null")
             guard checkResult.succeeded else { return false }
 
-            let homeDir = OsaurusPaths.inContainerAgentHome(agentName)
+            let homeDir = Project2501Paths.inContainerAgentHome(agentName)
             let removeResult = try await execAsRoot(
                 command:
                     "pkill -u \(linuxUser) >/dev/null 2>&1 || true; deluser \(linuxUser) >/dev/null 2>&1 || true; rm -rf '\(homeDir)'"
@@ -535,11 +535,11 @@
         // MARK: - Private: InitFS Management
 
         private func ensureInitFS() async throws -> Containerization.Mount {
-            let stagedPath = OsaurusPaths.containerInitFSFile()
+            let stagedPath = Project2501Paths.containerInitFSFile()
 
             if !FileManager.default.fileExists(atPath: stagedPath.path) {
                 await setProvisioningPhase("Downloading init filesystem...")
-                try OsaurusPaths.ensureExists(OsaurusPaths.container())
+                try Project2501Paths.ensureExists(Project2501Paths.container())
                 try await downloadFile(from: Self.initfsDownloadURLs, to: stagedPath)
             }
 
@@ -554,7 +554,7 @@
         // MARK: - Private: Kernel Management
 
         private func ensureKernel() async throws -> Kernel {
-            let kernelPath = OsaurusPaths.containerKernelFile()
+            let kernelPath = Project2501Paths.containerKernelFile()
 
             if FileManager.default.fileExists(atPath: kernelPath.path) {
                 return Kernel(path: kernelPath, platform: .linuxArm)
@@ -562,8 +562,8 @@
 
             await setProvisioningPhase("Downloading Linux kernel...")
 
-            let kernelDir = OsaurusPaths.containerKernelDir()
-            try OsaurusPaths.ensureExists(kernelDir)
+            let kernelDir = Project2501Paths.containerKernelDir()
+            try Project2501Paths.ensureExists(kernelDir)
 
             let stableTarball = kernelDir.appendingPathComponent("kata.tar.xz")
             try await downloadFile(from: Self.kernelDownloadURLs, to: stableTarball)
@@ -775,10 +775,10 @@
         // MARK: - Private Helpers
 
         private func ensureHostDirectories() throws {
-            try OsaurusPaths.ensureExists(OsaurusPaths.container())
-            try OsaurusPaths.ensureExists(OsaurusPaths.containerWorkspace())
-            try OsaurusPaths.ensureExists(OsaurusPaths.containerAgentsDir())
-            try OsaurusPaths.ensureExists(OsaurusPaths.containerSharedDir())
+            try Project2501Paths.ensureExists(Project2501Paths.container())
+            try Project2501Paths.ensureExists(Project2501Paths.containerWorkspace())
+            try Project2501Paths.ensureExists(Project2501Paths.containerAgentsDir())
+            try Project2501Paths.ensureExists(Project2501Paths.containerSharedDir())
         }
 
         private func configureSandbox() async throws {
@@ -787,7 +787,7 @@
 
             // Install project2501-host shell shim via host mount
             let shimScript = Self.project2501HostShimScript
-            let shimStagingPath = OsaurusPaths.containerWorkspace().appendingPathComponent(".project2501-host-shim")
+            let shimStagingPath = Project2501Paths.containerWorkspace().appendingPathComponent(".project2501-host-shim")
             try shimScript.write(to: shimStagingPath, atomically: true, encoding: .utf8)
             _ = try await execAsRoot(
                 command:
@@ -805,7 +805,7 @@
             API="http://localhost/api"
             USER=$(whoami)
             PLUGIN="${OSAURUS_PLUGIN:-$(basename "$(pwd)")}"
-            H="-H X-Osaurus-User:$USER -H X-Osaurus-Plugin:$PLUGIN"
+            H="-H X-Project2501-User:$USER -H X-Project2501-Plugin:$PLUGIN"
 
             _call() {
               _tmp=$(mktemp)
@@ -863,7 +863,7 @@
                   *) echo "Usage: project2501-host plugin create < plugin.json" >&2; exit 1 ;;
                 esac ;;
               log)
-                curl -sf --unix-socket "$SOCK" -X POST -H "X-Osaurus-User:$USER" "$API/log" \
+                curl -sf --unix-socket "$SOCK" -X POST -H "X-Project2501-User:$USER" "$API/log" \
                   -d "{\\"level\\":\\"$2\\",\\"message\\":\\"$3\\"}" > /dev/null ;;
               *) echo "Usage: project2501-host <secrets|config|inference|agent|events|plugin|log> ..." >&2; exit 1 ;;
             esac

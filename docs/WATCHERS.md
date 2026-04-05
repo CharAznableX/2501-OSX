@@ -1,12 +1,12 @@
 # Watchers
 
-Osaurus Watchers monitor folders for file system changes and automatically trigger AI agent tasks. Use Watchers to automate file organization, processing, and other workflows that respond to changes in your file system.
+Project2501 Watchers monitor folders for file system changes and automatically trigger AI agent tasks. Use Watchers to automate file organization, processing, and other workflows that respond to changes in your file system.
 
 ---
 
 ## Overview
 
-Watchers extend Osaurus with event-driven automation. While Schedules run on a timed basis, Watchers react to real-world events — files being added, modified, or removed from a folder. When a change is detected, the watcher dispatches an AI agent task with your custom instructions.
+Watchers extend Project2501 with event-driven automation. While Schedules run on a timed basis, Watchers react to real-world events — files being added, modified, or removed from a folder. When a change is detected, the watcher dispatches an AI agent task with your custom instructions.
 
 Common use cases include:
 
@@ -130,7 +130,7 @@ Each watcher operates as a state machine:
 
 ### Folder Access
 
-Watchers use **security-scoped bookmarks** to persist folder access across app restarts. When you select a folder, macOS grants Osaurus permission to monitor it. If a bookmark becomes stale (e.g., the folder is moved or deleted), the watcher will indicate the issue and you can re-select the folder.
+Watchers use **security-scoped bookmarks** to persist folder access across app restarts. When you select a folder, macOS grants Project2501 permission to monitor it. If a bookmark becomes stale (e.g., the folder is moved or deleted), the watcher will indicate the issue and you can re-select the folder.
 
 ---
 
@@ -192,7 +192,7 @@ Process shared files that arrive in a synced folder:
 
 ### Smart Exclusion
 
-When you have multiple watchers monitoring nested directories (e.g., one watching `~/Documents` and another watching `~/Documents/Projects`), Osaurus automatically excludes nested watched folders from their parent watcher's monitoring. This prevents duplicate triggers and conflicts.
+When you have multiple watchers monitoring nested directories (e.g., one watching `~/Documents` and another watching `~/Documents/Projects`), Project2501 automatically excludes nested watched folders from their parent watcher's monitoring. This prevents duplicate triggers and conflicts.
 
 ### Idempotent Instructions
 
@@ -234,7 +234,7 @@ This context helps the agent understand what changed and what action to take.
 
 - Edit the watcher and click **Browse** to re-select the folder
 - If the folder was moved or renamed, select the new location
-- Restart Osaurus if the issue persists
+- Restart Project2501 if the issue persists
 
 ---
 

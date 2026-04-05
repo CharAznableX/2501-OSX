@@ -2,7 +2,7 @@
 //  IdentityView.swift
 //  project2501
 //
-//  Osaurus Identity management UI: master address, agent addresses,
+//  Project2501 Identity management UI: master address, agent addresses,
 //  device status, setup flow, and recovery code handling.
 //
 
@@ -73,7 +73,7 @@ struct IdentityView: View {
         case .checking:
             "Loading identity..."
         case .noIdentity:
-            "Set up your Osaurus Identity"
+            "Set up your Project2501 Identity"
         case .recoveryPrompt:
             "Save your recovery code"
         case .ready:
@@ -84,7 +84,7 @@ struct IdentityView: View {
     // MARK: - State Machine
 
     private func checkIdentityStatus() {
-        if OsaurusIdentity.exists() {
+        if Project2501Identity.exists() {
             loadExistingIdentity()
         } else {
             phase = .noIdentity
@@ -94,8 +94,8 @@ struct IdentityView: View {
     private func loadExistingIdentity() {
         do {
             let deviceId = try DeviceKey.currentDeviceId()
-            let context = OsaurusIdentityContext.biometric()
-            let project2501Id = try MasterKey.getOsaurusId(context: context)
+            let context = Project2501IdentityContext.biometric()
+            let project2501Id = try MasterKey.getProject2501Id(context: context)
             phase = .ready(project2501Id: project2501Id, deviceId: deviceId)
         } catch {
             phase = .noIdentity
@@ -106,7 +106,7 @@ struct IdentityView: View {
         phase = .recoveryPrompt(info: info)
     }
 
-    private func handleRecoveryDismissed(_ project2501Id: OsaurusID, _ deviceId: String) {
+    private func handleRecoveryDismissed(_ project2501Id: Project2501ID, _ deviceId: String) {
         phase = .ready(project2501Id: project2501Id, deviceId: deviceId)
     }
 }
@@ -117,12 +117,12 @@ private enum IdentityPhase {
     case checking
     case noIdentity
     case recoveryPrompt(info: IdentityInfo)
-    case ready(project2501Id: OsaurusID, deviceId: String)
+    case ready(project2501Id: Project2501ID, deviceId: String)
 }
 
 // MARK: - Biometric Context Helper
 
-enum OsaurusIdentityContext {
+enum Project2501IdentityContext {
     static func biometric() -> LAContext {
         let context = LAContext()
         context.touchIDAuthenticationAllowableReuseDuration = 300
@@ -150,7 +150,7 @@ private struct IdentitySetupCard: View {
                 .foregroundStyle(theme.accentColor)
 
             VStack(spacing: 8) {
-                Text("Create Your Osaurus Identity")
+                Text("Create Your Project2501 Identity")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundColor(theme.primaryText)
 
@@ -216,7 +216,7 @@ private struct IdentitySetupCard: View {
 
         Task {
             do {
-                let info = try await OsaurusIdentity.setup()
+                let info = try await Project2501Identity.setup()
                 await MainActor.run {
                     isCreating = false
                     onCreated(info)
@@ -238,7 +238,7 @@ private struct RecoveryPromptCard: View {
     private var theme: ThemeProtocol { themeManager.currentTheme }
 
     let info: IdentityInfo
-    let onDismiss: (OsaurusID, String) -> Void
+    let onDismiss: (Project2501ID, String) -> Void
 
     var body: some View {
         VStack(spacing: 20) {
@@ -319,7 +319,7 @@ private struct RecoveryPromptCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 bulletPoint("Single-use — consumed on recovery")
                 bulletPoint("Store in a safe place")
-                bulletPoint("Cannot be retrieved by Osaurus")
+                bulletPoint("Cannot be retrieved by Project2501")
             }
 
             Text("Generated: \(formattedDate)")
@@ -379,7 +379,7 @@ private struct RecoveryPromptCard: View {
 
             • Single-use — consumed on recovery
             • Store in a safe place
-            • Cannot be retrieved by Osaurus
+            • Cannot be retrieved by Project2501
 
             Generated: \(formattedDate)
             """
@@ -407,7 +407,7 @@ private struct MasterAddressSection: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     private var theme: ThemeProtocol { themeManager.currentTheme }
 
-    let project2501Id: OsaurusID
+    let project2501Id: Project2501ID
 
     @State private var copied = false
 
@@ -493,9 +493,9 @@ private struct AgentAddressesSection: View {
     @ObservedObject private var agentManager = AgentManager.shared
     private var theme: ThemeProtocol { themeManager.currentTheme }
 
-    let masterAddress: OsaurusID
+    let masterAddress: Project2501ID
 
-    @State private var copiedAddress: OsaurusID?
+    @State private var copiedAddress: Project2501ID?
     @State private var errorMessage: String?
 
     private var customAgents: [Agent] {
@@ -601,7 +601,7 @@ private struct AgentAddressesSection: View {
         }
     }
 
-    private func copyAddress(_ address: OsaurusID) {
+    private func copyAddress(_ address: Project2501ID) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(address, forType: .string)
         withAnimation { copiedAddress = address }

@@ -32,7 +32,7 @@ actor CapabilityLoadBuffer {
 
 // MARK: - capabilities_search
 
-final class CapabilitiesSearchTool: OsaurusTool, @unchecked Sendable {
+final class CapabilitiesSearchTool: Project2501Tool, @unchecked Sendable {
     let name = "capabilities_search"
     let description =
         "Search for additional methods, tools, and skills beyond what was pre-loaded. "
@@ -130,7 +130,7 @@ final class CapabilitiesSearchTool: OsaurusTool, @unchecked Sendable {
 
 // MARK: - capabilities_load
 
-final class CapabilitiesLoadTool: OsaurusTool, @unchecked Sendable {
+final class CapabilitiesLoadTool: Project2501Tool, @unchecked Sendable {
     let name = "capabilities_load"
     let description =
         "Load additional capabilities into the current session by ID (from capabilities_search results). "

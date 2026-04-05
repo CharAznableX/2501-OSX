@@ -71,7 +71,7 @@ public final class MemoryDatabase: @unchecked Sendable {
     public func open() throws {
         try queue.sync {
             guard db == nil else { return }
-            OsaurusPaths.ensureExistsSilent(OsaurusPaths.memory())
+            Project2501Paths.ensureExistsSilent(Project2501Paths.memory())
             try openConnection()
             try runMigrations()
         }
@@ -137,7 +137,7 @@ public final class MemoryDatabase: @unchecked Sendable {
     }
 
     private func openConnection() throws {
-        let path = OsaurusPaths.memoryDatabaseFile().path
+        let path = Project2501Paths.memoryDatabaseFile().path
         var dbPointer: OpaquePointer?
         let result = sqlite3_open(path, &dbPointer)
         guard result == SQLITE_OK, let connection = dbPointer else {
@@ -1563,7 +1563,7 @@ public final class MemoryDatabase: @unchecked Sendable {
     // MARK: - Database Info
 
     public func databaseSizeBytes() -> Int64 {
-        let path = OsaurusPaths.memoryDatabaseFile().path
+        let path = Project2501Paths.memoryDatabaseFile().path
         let attrs = try? FileManager.default.attributesOfItem(atPath: path)
         return (attrs?[.size] as? Int64) ?? 0
     }

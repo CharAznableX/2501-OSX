@@ -18,20 +18,20 @@ enum ServerConfigurationStore {
         do {
             return try JSONDecoder().decode(ServerConfiguration.self, from: Data(contentsOf: url))
         } catch {
-            print("[Osaurus] Failed to load ServerConfiguration: \(error)")
+            print("[Project2501] Failed to load ServerConfiguration: \(error)")
             return nil
         }
     }
 
     static func save(_ configuration: ServerConfiguration) {
         let url = configurationFileURL()
-        OsaurusPaths.ensureExistsSilent(url.deletingLastPathComponent())
+        Project2501Paths.ensureExistsSilent(url.deletingLastPathComponent())
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(configuration).write(to: url, options: [.atomic])
         } catch {
-            print("[Osaurus] Failed to save ServerConfiguration: \(error)")
+            print("[Project2501] Failed to save ServerConfiguration: \(error)")
         }
     }
 
@@ -39,6 +39,6 @@ enum ServerConfigurationStore {
         if let dir = overrideDirectory {
             return dir.appendingPathComponent("server.json")
         }
-        return OsaurusPaths.resolvePath(new: OsaurusPaths.serverConfigFile(), legacy: "ServerConfiguration.json")
+        return Project2501Paths.resolvePath(new: Project2501Paths.serverConfigFile(), legacy: "ServerConfiguration.json")
     }
 }

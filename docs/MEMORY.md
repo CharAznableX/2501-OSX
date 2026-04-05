@@ -1,6 +1,6 @@
 # Memory
 
-Osaurus includes a persistent memory system that learns from your conversations and provides personalized context to every AI interaction. Memory runs entirely in the background -- it extracts knowledge automatically, deduplicates entries, detects contradictions, and injects relevant context into each new conversation.
+Project2501 includes a persistent memory system that learns from your conversations and provides personalized context to every AI interaction. Memory runs entirely in the background -- it extracts knowledge automatically, deduplicates entries, detects contradictions, and injects relevant context into each new conversation.
 
 ---
 
@@ -340,11 +340,11 @@ User overrides are explicit facts that always appear in context. Use these for i
 
 ## API Integration
 
-Osaurus exposes its memory system through the HTTP API, enabling any OpenAI-compatible client to benefit from persistent, personalized context.
+Project2501 exposes its memory system through the HTTP API, enabling any OpenAI-compatible client to benefit from persistent, personalized context.
 
-### Memory Context Injection — `X-Osaurus-Agent-Id`
+### Memory Context Injection — `X-Project2501-Agent-Id`
 
-Add the `X-Osaurus-Agent-Id` header to any `POST /chat/completions` request. Osaurus will automatically assemble relevant memory (user profile, working memory, conversation summaries, knowledge graph) and prepend it to the system prompt before the request reaches the model.
+Add the `X-Project2501-Agent-Id` header to any `POST /chat/completions` request. Project2501 will automatically assemble relevant memory (user profile, working memory, conversation summaries, knowledge graph) and prepend it to the system prompt before the request reaches the model.
 
 The header value is an arbitrary string that identifies the agent or user session whose memory should be retrieved. When the header is absent or empty, the request is processed normally without memory injection.
 
@@ -354,7 +354,7 @@ from openai import OpenAI
 client = OpenAI(
     base_url="http://127.0.0.1:1337/v1",
     api_key="project2501",
-    default_headers={"X-Osaurus-Agent-Id": "my-agent"},
+    default_headers={"X-Project2501-Agent-Id": "my-agent"},
 )
 
 response = client.chat.completions.create(
@@ -390,7 +390,7 @@ Memory extraction runs asynchronously in the background — ingested turns are p
 
 ### List Agents — `GET /agents`
 
-Returns all configured agents with their memory entry counts. Use this to discover valid agent IDs for the `X-Osaurus-Agent-Id` header.
+Returns all configured agents with their memory entry counts. Use this to discover valid agent IDs for the `X-Project2501-Agent-Id` header.
 
 ```bash
 curl http://127.0.0.1:1337/agents
@@ -404,7 +404,7 @@ See the [API Guide](OpenAI_API_GUIDE.md#memory-api) for additional examples and 
 
 We evaluate memory quality using the [LoCoMo benchmark](https://arxiv.org/abs/2401.15665) (ACL 2024) via [EasyLocomo](https://github.com/playeriv65/EasyLocomo). LoCoMo tests how well systems recall facts, events, and relationships from multi-session conversations spanning weeks to months.
 
-Our goal is to achieve state-of-the-art on this benchmark. Osaurus uses Apple Foundation Models as the base memory extraction model, making the cost of memory effectively zero for on-device use.
+Our goal is to achieve state-of-the-art on this benchmark. Project2501 uses Apple Foundation Models as the base memory extraction model, making the cost of memory effectively zero for on-device use.
 
 ### LoCoMo Leaderboard
 
@@ -415,12 +415,12 @@ Our goal is to achieve state-of-the-art on this benchmark. Osaurus uses Apple Fo
 | Human baseline | ~88% |
 | Memobase | 85% (temporal) |
 | Mem0 | 66.9% |
-| **Osaurus (Gemini 2.5 Flash)** | **57.08%** |
+| **Project2501 (Gemini 2.5 Flash)** | **57.08%** |
 | OpenAI Memory | 52.9% |
 | GPT-3.5-turbo-16K (no memory) | 37.8% |
 | GPT-4-turbo (no memory) | ~32% |
 
-### Osaurus Breakdown by Category
+### Project2501 Breakdown by Category
 
 | Category | Count | F1 Score |
 |----------|-------|----------|
@@ -455,7 +455,7 @@ You may want to temporarily increase token budgets in the memory configuration f
 
 ### Memory-Augmented Evaluation
 
-Osaurus uses a no-context evaluation mode where the LLM receives no conversation transcript — only the memory context assembled by the retrieval system. The `X-Osaurus-Agent-Id` header routes each question to the correct agent's memory store. This tests pure memory retrieval quality rather than full-context recall.
+Project2501 uses a no-context evaluation mode where the LLM receives no conversation transcript — only the memory context assembled by the retrieval system. The `X-Project2501-Agent-Id` header routes each question to the correct agent's memory store. This tests pure memory retrieval quality rather than full-context recall.
 
 ---
 

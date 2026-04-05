@@ -219,7 +219,7 @@ private func parseEngineJSON(_ string: String) throws -> [String: Any]? {
     return try JSONSerialization.jsonObject(with: data) as? [String: Any]
 }
 
-private struct NoopTestTool: OsaurusTool {
+private struct NoopTestTool: Project2501Tool {
     let name = "noop_test"
     let description = "No-op test tool."
     let parameters: JSONValue? = .object(["type": .string("object")])

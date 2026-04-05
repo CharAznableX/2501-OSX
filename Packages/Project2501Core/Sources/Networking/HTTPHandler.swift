@@ -150,7 +150,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
 
                 let message: String
                 if !apiKeyValidator.hasKeys {
-                    message = "No access keys configured. Create one in Osaurus settings."
+                    message = "No access keys configured. Create one in Project2501 settings."
                 } else {
                     let result = apiKeyValidator.validate(rawKey: token)
                     switch result {
@@ -216,7 +216,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
             else if head.method == .GET, path == "/" {
                 var headers = [("Content-Type", "text/plain; charset=utf-8")]
                 headers.append(contentsOf: stateRef.value.corsHeaders)
-                let rootBody = "Osaurus Server is running! 🦕"
+                let rootBody = "Project2501 Server is running! 🦕"
                 sendResponse(
                     context: context,
                     version: head.version,
@@ -437,7 +437,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
                 context: context,
                 head: head,
                 status: .unauthorized,
-                message: "Plugin routes require an agent context (X-Osaurus-Agent-Id header)",
+                message: "Plugin routes require an agent context (X-Project2501-Agent-Id header)",
                 corsHeaders: corsHeaders,
                 startTime: startTime,
                 method: method,
@@ -651,7 +651,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
                 )
             }
 
-            let queryParams = OsaurusHTTPRequest.parseQueryParams(from: uri)
+            let queryParams = Project2501HTTPRequest.parseQueryParams(from: uri)
 
             var bodyString = ""
             var bodyEncoding = "utf8"
@@ -679,7 +679,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
             let baseURL = tunnelURL ?? localBaseURL
             let pluginURL = "\(baseURL)/plugins/\(pluginId)"
 
-            let request = OsaurusHTTPRequest(
+            let request = Project2501HTTPRequest(
                 route_id: route.id,
                 method: method,
                 path: subpath,
@@ -718,7 +718,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
                 let responseJSON = try await loaded.plugin.handleRoute(requestJSON: requestJSON, agentId: agentUUID)
 
                 guard let responseData = responseJSON.data(using: .utf8),
-                    let response = try? JSONDecoder().decode(OsaurusHTTPResponse.self, from: responseData)
+                    let response = try? JSONDecoder().decode(Project2501HTTPResponse.self, from: responseData)
                 else {
                     return self.sendPluginErrorFromTask(
                         loop: loop,
@@ -967,7 +967,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
         headers.append(("Cache-Control", "public, max-age=3600"))
 
         if ext == "html" || ext == "htm", var html = String(data: fileData, encoding: .utf8) {
-            Self.injectOsaurusContext(into: &html, pluginId: pluginId)
+            Self.injectProject2501Context(into: &html, pluginId: pluginId)
             sendPluginResponse(
                 loop: loop,
                 ctxBound: ctxBound,
@@ -1006,7 +1006,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
     }
 
     /// Injects the `window.__project2501` context object into an HTML string before `</head>`.
-    private static func injectOsaurusContext(into html: inout String, pluginId: String) {
+    private static func injectProject2501Context(into html: inout String, pluginId: String) {
         let script = """
             <script>
             window.__project2501 = {
@@ -1023,7 +1023,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
 
     /// Loads the dev proxy URL for a plugin from the dev-proxy.json config file.
     private static func loadDevProxyURL(for pluginId: String) -> String? {
-        let configFile = OsaurusPaths.config().appendingPathComponent("dev-proxy.json")
+        let configFile = Project2501Paths.config().appendingPathComponent("dev-proxy.json")
         guard let data = try? Data(contentsOf: configFile),
             let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let configPluginId = obj["plugin_id"] as? String,
@@ -1092,7 +1092,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
             headers.append(("Access-Control-Allow-Origin", "*"))
 
             if contentType.contains("text/html"), var html = String(data: data, encoding: .utf8) {
-                Self.injectOsaurusContext(into: &html, pluginId: pluginId)
+                Self.injectProject2501Context(into: &html, pluginId: pluginId)
                 sendPluginResponse(
                     loop: loop,
                     ctxBound: ctxBound,
@@ -1221,7 +1221,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         // Log and close the connection to avoid NIO debug preconditions crashing the app
-        print("[Osaurus][NIO] errorCaught: \(error)")
+        print("[Project2501][NIO] errorCaught: \(error)")
         context.close(promise: nil)
     }
 
@@ -1291,7 +1291,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
     // MARK: - Chat handlers
 
     /// Enrich a chat request with the agent's system prompt and memory context
-    /// when an agent ID is provided via the `X-Osaurus-Agent-Id` header.
+    /// when an agent ID is provided via the `X-Project2501-Agent-Id` header.
     private static func enrichWithAgentContext(
         _ request: ChatCompletionRequest,
         agentId: String?
@@ -2082,7 +2082,7 @@ final class HTTPHandler: ChannelInboundHandler, Sendable {
             "chatcmpl-\(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(12))"
         let model = req.model
 
-        let memoryAgentId = head.headers.first(name: "X-Osaurus-Agent-Id")
+        let memoryAgentId = head.headers.first(name: "X-Project2501-Agent-Id")
 
         if wantsSSE {
             let writer = SSEResponseWriter()

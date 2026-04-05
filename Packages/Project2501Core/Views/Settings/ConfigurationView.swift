@@ -114,7 +114,7 @@ struct ConfigurationView: View {
                                     // Start at Login
                                     SettingsToggle(
                                         title: "Start at Login",
-                                        description: "Launch Osaurus when you sign in",
+                                        description: "Launch Project2501 when you sign in",
                                         isOn: $tempStartAtLogin
                                     )
 
@@ -313,7 +313,7 @@ struct ConfigurationView: View {
                                                     .font(.system(size: 12))
                                             }
                                             Text(
-                                                "Automatically detect and offer text from any app as context. Includes 'grab selection' feature when summoning Osaurus."
+                                                "Automatically detect and offer text from any app as context. Includes 'grab selection' feature when summoning Project2501."
                                             )
                                             .font(.system(size: 11))
                                             .foregroundColor(theme.tertiaryText)
@@ -633,7 +633,7 @@ struct ConfigurationView: View {
     private var headerView: some View {
         ManagerHeaderWithActions(
             title: "Settings",
-            subtitle: "Configure your Osaurus settings"
+            subtitle: "Configure your Project2501 settings"
         ) {
             HeaderSecondaryButton("Reset", icon: "arrow.counterclockwise") {
                 resetToDefaults()
@@ -1038,9 +1038,9 @@ extension ConfigurationView {
         }
 
         // Check for project2501 binary in Products (might be named this in some builds)
-        let debugOsaurus = productsDir.appendingPathComponent("project2501", isDirectory: false)
-        if fm.fileExists(atPath: debugOsaurus.path), fm.isExecutableFile(atPath: debugOsaurus.path) {
-            return debugOsaurus
+        let debugProject2501 = productsDir.appendingPathComponent("project2501", isDirectory: false)
+        if fm.fileExists(atPath: debugProject2501.path), fm.isExecutableFile(atPath: debugProject2501.path) {
+            return debugProject2501
         }
 
         // Check Release folder
@@ -1050,9 +1050,9 @@ extension ConfigurationView {
             return releaseCLI
         }
 
-        let releaseOsaurus = releaseDir.appendingPathComponent("project2501", isDirectory: false)
-        if fm.fileExists(atPath: releaseOsaurus.path), fm.isExecutableFile(atPath: releaseOsaurus.path) {
-            return releaseOsaurus
+        let releaseProject2501 = releaseDir.appendingPathComponent("project2501", isDirectory: false)
+        if fm.fileExists(atPath: releaseProject2501.path), fm.isExecutableFile(atPath: releaseProject2501.path) {
+            return releaseProject2501
         }
 
         // 4. Check inside Release app bundle's Helpers folder

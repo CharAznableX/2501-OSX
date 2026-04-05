@@ -15,7 +15,7 @@ public enum AgentStore {
     public static func loadAll() -> [Agent] {
         var agents = Agent.builtInAgents
         let directory = agentsDirectory()
-        OsaurusPaths.ensureExistsSilent(directory)
+        Project2501Paths.ensureExistsSilent(directory)
 
         guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
         else {
@@ -33,7 +33,7 @@ public enum AgentStore {
                     agents.append(agent)
                 }
             } catch {
-                print("[Osaurus] Failed to load agent from \(file.lastPathComponent): \(error)")
+                print("[Project2501] Failed to load agent from \(file.lastPathComponent): \(error)")
             }
         }
 
@@ -62,7 +62,7 @@ public enum AgentStore {
             decoder.dateDecodingStrategy = .iso8601
             return try decoder.decode(Agent.self, from: data)
         } catch {
-            print("[Osaurus] Failed to load agent \(id): \(error)")
+            print("[Project2501] Failed to load agent \(id): \(error)")
             return nil
         }
     }
@@ -70,12 +70,12 @@ public enum AgentStore {
     /// Save an agent (creates or updates). Cannot save built-in agents.
     public static func save(_ agent: Agent) {
         guard !agent.isBuiltIn else {
-            print("[Osaurus] Cannot save built-in agent: \(agent.name)")
+            print("[Project2501] Cannot save built-in agent: \(agent.name)")
             return
         }
 
         let url = agentFileURL(for: agent.id)
-        OsaurusPaths.ensureExistsSilent(url.deletingLastPathComponent())
+        Project2501Paths.ensureExistsSilent(url.deletingLastPathComponent())
 
         do {
             let encoder = JSONEncoder()
@@ -84,7 +84,7 @@ public enum AgentStore {
             let data = try encoder.encode(agent)
             try data.write(to: url, options: [.atomic])
         } catch {
-            print("[Osaurus] Failed to save agent \(agent.id): \(error)")
+            print("[Project2501] Failed to save agent \(agent.id): \(error)")
         }
     }
 
@@ -92,7 +92,7 @@ public enum AgentStore {
     @discardableResult
     public static func delete(id: UUID) -> Bool {
         if Agent.builtInAgents.contains(where: { $0.id == id }) {
-            print("[Osaurus] Cannot delete built-in agent")
+            print("[Project2501] Cannot delete built-in agent")
             return false
         }
 
@@ -100,7 +100,7 @@ public enum AgentStore {
             try FileManager.default.removeItem(at: agentFileURL(for: id))
             return true
         } catch {
-            print("[Osaurus] Failed to delete agent \(id): \(error)")
+            print("[Project2501] Failed to delete agent \(id): \(error)")
             return false
         }
     }
@@ -114,7 +114,7 @@ public enum AgentStore {
     // MARK: - Private
 
     private static func agentsDirectory() -> URL {
-        OsaurusPaths.resolvePath(new: OsaurusPaths.agents(), legacy: "Personas")
+        Project2501Paths.resolvePath(new: Project2501Paths.agents(), legacy: "Personas")
     }
 
     private static func agentFileURL(for id: UUID) -> URL {

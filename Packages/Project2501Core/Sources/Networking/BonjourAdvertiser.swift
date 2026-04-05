@@ -2,21 +2,21 @@
 //  BonjourAdvertiser.swift
 //  project2501
 //
-//  Advertises Osaurus agents as Bonjour (mDNS/DNS-SD) services on the local network,
+//  Advertises Project2501 agents as Bonjour (mDNS/DNS-SD) services on the local network,
 //  enabling other devices and apps to discover them without manual configuration.
 //
 
 import Combine
 import Foundation
 
-/// Manages Bonjour advertisement of Osaurus agents.
+/// Manages Bonjour advertisement of Project2501 agents.
 /// Each agent is published as a `_project2501._tcp` service carrying the agent's
 /// id, description, and crypto address in its TXT record.
 @MainActor
 public final class BonjourAdvertiser: NSObject {
     public static let shared = BonjourAdvertiser()
 
-    /// Bonjour service type for Osaurus agents.
+    /// Bonjour service type for Project2501 agents.
     public static let serviceType = "_project2501._tcp."
 
     private var services: [UUID: NetService] = [:]

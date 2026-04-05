@@ -35,25 +35,25 @@ public struct RelayConfiguration: Codable, Equatable, Sendable {
 @MainActor
 enum RelayConfigurationStore {
     static func load() -> RelayConfiguration {
-        let url = OsaurusPaths.relayConfigFile()
+        let url = Project2501Paths.relayConfigFile()
         guard FileManager.default.fileExists(atPath: url.path) else { return .default }
         do {
             return try JSONDecoder().decode(RelayConfiguration.self, from: Data(contentsOf: url))
         } catch {
-            print("[Osaurus] Failed to load RelayConfiguration: \(error)")
+            print("[Project2501] Failed to load RelayConfiguration: \(error)")
             return .default
         }
     }
 
     static func save(_ configuration: RelayConfiguration) {
-        let url = OsaurusPaths.relayConfigFile()
-        OsaurusPaths.ensureExistsSilent(url.deletingLastPathComponent())
+        let url = Project2501Paths.relayConfigFile()
+        Project2501Paths.ensureExistsSilent(url.deletingLastPathComponent())
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(configuration).write(to: url, options: [.atomic])
         } catch {
-            print("[Osaurus] Failed to save RelayConfiguration: \(error)")
+            print("[Project2501] Failed to save RelayConfiguration: \(error)")
         }
     }
 }

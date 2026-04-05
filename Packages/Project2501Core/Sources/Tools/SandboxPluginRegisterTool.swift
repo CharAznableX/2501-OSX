@@ -10,7 +10,7 @@
 
 import Foundation
 
-struct SandboxPluginRegisterTool: OsaurusTool, @unchecked Sendable {
+struct SandboxPluginRegisterTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_plugin_register"
     let description =
         "Register a sandbox plugin you created. Reads plugin.json from your plugins/{plugin_id}/ directory, "
@@ -81,7 +81,7 @@ struct SandboxPluginRegisterTool: OsaurusTool, @unchecked Sendable {
     // MARK: - Private
 
     private func loadPlugin(pluginId: String) -> (SandboxPlugin?, String?) {
-        let pluginDir = OsaurusPaths.containerWorkspace()
+        let pluginDir = Project2501Paths.containerWorkspace()
             .appendingPathComponent("agents/\(agentName)/plugins/\(pluginId)")
         let pluginFile = pluginDir.appendingPathComponent("plugin.json")
 

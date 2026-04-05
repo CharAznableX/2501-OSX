@@ -37,7 +37,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelega
         }
 
         // App has launched
-        NSLog("Osaurus server app launched")
+        NSLog("Project2501 server app launched")
 
         // Configure local notifications
         NotificationService.shared.configureOnLaunch()
@@ -62,9 +62,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelega
                 image.isTemplate = true
                 button.image = image
             } else {
-                button.title = "Osaurus"
+                button.title = "Project2501"
             }
-            button.toolTip = "Osaurus Server"
+            button.toolTip = "Project2501 Server"
             button.target = self
             button.action = #selector(togglePopover(_:))
 
@@ -489,7 +489,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelega
             do {
                 try await SandboxManager.shared.stopContainer()
             } catch {
-                NSLog("[Osaurus] Sandbox stop failed: \(error)")
+                NSLog("[Project2501] Sandbox stop failed: \(error)")
             }
             NSApp.reply(toApplicationShouldTerminate: true)
         }
@@ -497,7 +497,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelega
     }
 
     public func applicationWillTerminate(_ notification: Notification) {
-        NSLog("Osaurus server app terminating")
+        NSLog("Project2501 server app terminating")
         PluginRepositoryService.shared.stopBackgroundRefresh()
         ToastWindowController.shared.teardown()
         NotchWindowController.shared.teardown()
@@ -595,17 +595,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelega
             switch serverController.serverHealth {
             case .stopped:
                 tooltip =
-                    serverController.isRestarting ? "Osaurus — Restarting…" : "Osaurus — Ready to start"
+                    serverController.isRestarting ? "Project2501 — Restarting…" : "Project2501 — Ready to start"
             case .starting:
-                tooltip = "Osaurus — Starting…"
+                tooltip = "Project2501 — Starting…"
             case .restarting:
-                tooltip = "Osaurus — Restarting…"
+                tooltip = "Project2501 — Restarting…"
             case .running:
-                tooltip = "Osaurus — Running on port \(serverController.port)"
+                tooltip = "Project2501 — Running on port \(serverController.port)"
             case .stopping:
-                tooltip = "Osaurus — Stopping…"
+                tooltip = "Project2501 — Stopping…"
             case .error(let message):
-                tooltip = "Osaurus — Error: \(message)"
+                tooltip = "Project2501 — Error: \(message)"
             }
             if serverController.activeRequestCount > 0 {
                 tooltip += " — Generating…"
@@ -805,7 +805,7 @@ extension AppDelegate {
         let cfg = ChatConfigurationStore.load()
         HotKeyManager.shared.register(hotkey: cfg.hotkey) { [weak self] in
             Task { @MainActor in
-                // if opening (about to be shown), and clipboard monitoring is enabled, trigger a selection grab before showing Osaurus
+                // if opening (about to be shown), and clipboard monitoring is enabled, trigger a selection grab before showing Project2501
                 // to capture content from the currently active application.
                 if !ChatWindowManager.shared.hasVisibleWindows && cfg.enableClipboardMonitoring {
                     // start grabbing selection in the background before we take focus
@@ -841,7 +841,7 @@ extension AppDelegate {
             if await ModelManager.shared.resolveModelIfMLXCompatible(byRepoId: modelId) == nil {
                 let alert = NSAlert()
                 alert.messageText = "Unsupported model"
-                alert.informativeText = "Osaurus only supports MLX-compatible Hugging Face repositories."
+                alert.informativeText = "Project2501 only supports MLX-compatible Hugging Face repositories."
                 alert.alertStyle = .warning
                 alert.addButton(withTitle: "OK")
                 alert.runModal()

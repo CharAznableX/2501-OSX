@@ -665,7 +665,7 @@ private extension SandboxView {
 
                 toggleRow(
                     title: "Auto-Start",
-                    description: "Start container when Osaurus launches",
+                    description: "Start container when Project2501 launches",
                     isOn: $pendingConfig.autoStart
                 )
                 .onChange(of: pendingConfig.autoStart) { _, _ in

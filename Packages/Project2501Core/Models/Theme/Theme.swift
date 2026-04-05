@@ -535,14 +535,14 @@ public class ThemeManager: ObservableObject {
     public var isCustomThemeActive: Bool { activeCustomTheme != nil }
 
     private init() {
-        print("[Osaurus] ThemeManager: Initializing...")
+        print("[Project2501] ThemeManager: Initializing...")
 
         // Install built-in themes if needed
         ThemeConfigurationStore.installBuiltInThemesIfNeeded()
 
         // Load installed themes into a local variable first
         let loadedThemes = ThemeConfigurationStore.listThemes()
-        print("[Osaurus] ThemeManager: Found \(loadedThemes.count) installed themes")
+        print("[Project2501] ThemeManager: Found \(loadedThemes.count) installed themes")
 
         // Load saved appearance mode
         let config = ServerConfigurationStore.load() ?? ServerConfiguration.default
@@ -550,7 +550,7 @@ public class ThemeManager: ObservableObject {
         // Initialize all stored properties before using self
         // Check for active custom theme (user-selected)
         if let customTheme = ThemeConfigurationStore.loadActiveTheme() {
-            print("[Osaurus] ThemeManager: Restoring active theme '\(customTheme.metadata.name)'")
+            print("[Project2501] ThemeManager: Restoring active theme '\(customTheme.metadata.name)'")
             self.activeCustomTheme = customTheme
             let themeInstance = CustomizableTheme(config: customTheme)
             self.currentTheme = themeInstance
@@ -560,13 +560,13 @@ public class ThemeManager: ObservableObject {
             // Don't set activeCustomTheme so appearance mode changes will work
             let builtInTheme = Self.resolveBuiltInTheme(for: config.appearanceMode, from: loadedThemes)
             if let theme = builtInTheme {
-                print("[Osaurus] ThemeManager: Using built-in '\(theme.metadata.name)' theme (auto)")
+                print("[Project2501] ThemeManager: Using built-in '\(theme.metadata.name)' theme (auto)")
                 let themeInstance = CustomizableTheme(config: theme)
                 self.currentTheme = themeInstance
                 self.chatTheme = themeInstance
             } else {
                 // Fallback to default CustomTheme if built-in themes aren't installed
-                print("[Osaurus] ThemeManager: No built-in theme found, using fallback")
+                print("[Project2501] ThemeManager: No built-in theme found, using fallback")
                 let fallbackTheme =
                     Self.isDarkMode(for: config.appearanceMode) ? CustomTheme.darkDefault : CustomTheme.lightDefault
                 let themeInstance = CustomizableTheme(config: fallbackTheme)
@@ -587,7 +587,7 @@ public class ThemeManager: ObservableObject {
             object: nil
         )
 
-        print("[Osaurus] ThemeManager: Initialization complete")
+        print("[Project2501] ThemeManager: Initialization complete")
     }
 
     /// Find the appropriate built-in theme based on appearance mode
@@ -694,7 +694,7 @@ public class ThemeManager: ObservableObject {
     /// Refresh the list of installed themes
     func refreshInstalledThemes() {
         installedThemes = ThemeConfigurationStore.listThemes()
-        print("[Osaurus] ThemeManager: Refreshed themes, found \(installedThemes.count) themes")
+        print("[Project2501] ThemeManager: Refreshed themes, found \(installedThemes.count) themes")
     }
 
     /// Save a theme and refresh the list
@@ -715,7 +715,7 @@ public class ThemeManager: ObservableObject {
         // Check if theme exists and is not built-in
         if let theme = installedThemes.first(where: { $0.metadata.id == id }) {
             if theme.isBuiltIn {
-                print("[Osaurus] Cannot delete built-in theme: \(theme.metadata.name)")
+                print("[Project2501] Cannot delete built-in theme: \(theme.metadata.name)")
                 return false
             }
         }

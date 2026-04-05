@@ -2,7 +2,7 @@
 //  BonjourBrowser.swift
 //  project2501
 //
-//  Discovers remote Osaurus agents advertised as Bonjour services on the local
+//  Discovers remote Project2501 agents advertised as Bonjour services on the local
 //  network, enabling the agent selector to list peers from other devices.
 //
 
@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - DiscoveredAgent
 
-/// A remote Osaurus agent discovered via Bonjour on the local network.
+/// A remote Project2501 agent discovered via Bonjour on the local network.
 public struct DiscoveredAgent: Identifiable, Equatable {
     public let id: UUID
     public let name: String

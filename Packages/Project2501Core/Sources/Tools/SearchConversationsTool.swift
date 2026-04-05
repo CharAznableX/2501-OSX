@@ -8,7 +8,7 @@
 
 import Foundation
 
-final class SearchConversationsTool: OsaurusTool, @unchecked Sendable {
+final class SearchConversationsTool: Project2501Tool, @unchecked Sendable {
     let name = "search_conversations"
     let description = "Search past conversation transcripts. Returns matching excerpts with timestamps and context."
 

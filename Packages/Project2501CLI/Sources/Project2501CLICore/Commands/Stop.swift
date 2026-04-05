@@ -2,7 +2,7 @@
 //  Stop.swift
 //  project2501
 //
-//  Command to stop the running Osaurus server via distributed notification.
+//  Command to stop the running Project2501 server via distributed notification.
 //
 
 import Foundation

@@ -1,6 +1,6 @@
 # Remote Providers
 
-Remote Providers allow you to connect Osaurus to external APIs (OpenAI, Anthropic, Open Responses, and compatible endpoints), giving you access to cloud models alongside your local MLX models.
+Remote Providers allow you to connect Project2501 to external APIs (OpenAI, Anthropic, Open Responses, and compatible endpoints), giving you access to cloud models alongside your local MLX models.
 
 ---
 
@@ -8,7 +8,7 @@ Remote Providers allow you to connect Osaurus to external APIs (OpenAI, Anthropi
 
 With Remote Providers, you can:
 
-- Access cloud models (ChatGPT, Claude via OpenRouter, etc.) through Osaurus
+- Access cloud models (ChatGPT, Claude via OpenRouter, etc.) through Project2501
 - Use multiple inference backends simultaneously
 - Switch between local and remote models seamlessly
 - Keep API keys secure in the macOS Keychain
@@ -28,7 +28,7 @@ With Remote Providers, you can:
 
 ### Provider Presets
 
-Osaurus includes presets for common providers:
+Project2501 includes presets for common providers:
 
 | Preset         | Host              | Port | Base Path | API Format | Auth             |
 | -------------- | ----------------- | ---- | --------- | ---------- | ---------------- |
@@ -74,7 +74,7 @@ Osaurus includes presets for common providers:
 | Setting            | Description                               | Default |
 | ------------------ | ----------------------------------------- | ------- |
 | **Enabled**        | Whether the provider is active            | true    |
-| **Auto-connect**   | Connect automatically when Osaurus starts | true    |
+| **Auto-connect**   | Connect automatically when Project2501 starts | true    |
 | **Timeout**        | Request timeout in seconds                | 60      |
 | **Custom Headers** | Additional HTTP headers to send           | {}      |
 

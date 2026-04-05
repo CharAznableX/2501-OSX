@@ -2,7 +2,7 @@
 //  UI.swift
 //  project2501
 //
-//  Command to show the Osaurus menu bar popover UI by sending a distributed notification to the app.
+//  Command to show the Project2501 menu bar popover UI by sending a distributed notification to the app.
 //
 
 import Foundation

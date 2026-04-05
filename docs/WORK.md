@@ -1,12 +1,12 @@
 # Agents
 
-Osaurus Agents provide autonomous task execution with built-in issue tracking, planning, and file operations. Use Agents for complex, multi-step tasks that benefit from systematic execution and progress tracking.
+Project2501 Agents provide autonomous task execution with built-in issue tracking, planning, and file operations. Use Agents for complex, multi-step tasks that benefit from systematic execution and progress tracking.
 
 ---
 
 ## Overview
 
-Agents extend Osaurus beyond simple chat interactions. While Chat Mode is ideal for quick questions and single-turn interactions, Work Mode excels at:
+Agents extend Project2501 beyond simple chat interactions. While Chat Mode is ideal for quick questions and single-turn interactions, Work Mode excels at:
 
 - **Multi-step tasks** — Building features, refactoring code, or writing documentation
 - **File operations** — Reading, writing, and editing files within a project
@@ -108,7 +108,7 @@ The working directory provides a sandboxed environment for file operations.
 
 ### Project Detection
 
-Osaurus automatically detects your project type based on manifest files:
+Project2501 automatically detects your project type based on manifest files:
 
 | Project Type | Detected By                                      |
 | ------------ | ------------------------------------------------ |
@@ -216,7 +216,7 @@ Tasks continue running even when:
 
 - The Agent window is closed
 - You switch to Chat Mode
-- Osaurus is minimized
+- Project2501 is minimized
 
 Background task progress appears in:
 
@@ -255,7 +255,7 @@ Each task is associated with a **agent**:
 
 Capabilities are automatically selected via **preflight RAG search**:
 
-- Before each agent loop, Osaurus searches indexed skills, methods, and tools using the task context
+- Before each agent loop, Project2501 searches indexed skills, methods, and tools using the task context
 - Relevant skill instructions and method workflows are injected into the system prompt
 - Matching tool definitions are merged into the active tool set
 - The agent can dynamically discover and load additional capabilities at runtime via `capabilities_search` and `capabilities_load`

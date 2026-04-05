@@ -617,7 +617,7 @@ public struct CustomTheme: Codable, Equatable, Sendable {
             metadata: ThemeMetadata(
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
                 name: "Dark",
-                author: "Osaurus"
+                author: "Project2501"
             ),
             colors: .darkDefaults,
             background: .default,
@@ -638,7 +638,7 @@ public struct CustomTheme: Codable, Equatable, Sendable {
             metadata: ThemeMetadata(
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
                 name: "Light",
-                author: "Osaurus"
+                author: "Project2501"
             ),
             colors: .lightDefaults,
             background: .default,
@@ -664,7 +664,7 @@ public struct CustomTheme: Codable, Equatable, Sendable {
             metadata: ThemeMetadata(
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
                 name: "Neon",
-                author: "Osaurus"
+                author: "Project2501"
             ),
             colors: ThemeColors(
                 primaryText: "#f0f0f0",  // ~18:1 contrast ✓
@@ -746,7 +746,7 @@ public struct CustomTheme: Codable, Equatable, Sendable {
             metadata: ThemeMetadata(
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000004")!,
                 name: "Nord",
-                author: "Osaurus"
+                author: "Project2501"
             ),
             colors: ThemeColors(
                 primaryText: "#eceff4",  // ~10:1 contrast ✓
@@ -817,7 +817,7 @@ public struct CustomTheme: Codable, Equatable, Sendable {
             metadata: ThemeMetadata(
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000005")!,
                 name: "Paper",
-                author: "Osaurus"
+                author: "Project2501"
             ),
             colors: ThemeColors(
                 primaryText: "#3d3d3d",  // ~9:1 contrast ✓
@@ -908,7 +908,7 @@ public struct CustomTheme: Codable, Equatable, Sendable {
             metadata: ThemeMetadata(
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000006")!,
                 name: "Terminal",
-                author: "Osaurus"
+                author: "Project2501"
             ),
             colors: ThemeColors(
                 primaryText: "#00ff41",  // Classic phosphor green

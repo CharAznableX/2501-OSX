@@ -156,7 +156,7 @@ public final class MCPProviderManager: ObservableObject {
 
             // Create MCP client
             let client = MCP.Client(
-                name: "Osaurus",
+                name: "Project2501",
                 version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
             )
 
@@ -177,7 +177,7 @@ public final class MCPProviderManager: ObservableObject {
                 updatedState.lastError = nil
                 providerStates[providerId] = updatedState
                 print(
-                    "[Osaurus] MCP Provider '\(provider.name)': Connected with \(updatedState.discoveredToolCount) tools"
+                    "[Project2501] MCP Provider '\(provider.name)': Connected with \(updatedState.discoveredToolCount) tools"
                 )
             }
             notifyStatusChanged()
@@ -201,7 +201,7 @@ public final class MCPProviderManager: ObservableObject {
             discoveredTools.removeValue(forKey: providerId)
             registeredTools.removeValue(forKey: providerId)
 
-            print("[Osaurus] MCP Provider '\(provider.name)': Connection failed - \(error)")
+            print("[Project2501] MCP Provider '\(provider.name)': Connection failed - \(error)")
             notifyStatusChanged()
             throw error
         }
@@ -230,7 +230,7 @@ public final class MCPProviderManager: ObservableObject {
         }
 
         if let provider = configuration.provider(id: providerId) {
-            print("[Osaurus] MCP Provider '\(provider.name)': Disconnected")
+            print("[Project2501] MCP Provider '\(provider.name)': Disconnected")
         }
 
         notifyStatusChanged()
@@ -248,7 +248,7 @@ public final class MCPProviderManager: ObservableObject {
             do {
                 try await connect(providerId: provider.id)
             } catch {
-                print("[Osaurus] Failed to auto-connect to '\(provider.name)': \(error)")
+                print("[Project2501] Failed to auto-connect to '\(provider.name)': \(error)")
             }
         }
     }
@@ -346,7 +346,7 @@ public final class MCPProviderManager: ObservableObject {
         )
 
         let client = MCP.Client(
-            name: "Osaurus",
+            name: "Project2501",
             version: "1.0.0"
         )
 

@@ -2,7 +2,7 @@
 
 Run agent code in an isolated Linux virtual machine — safely, locally, and with full dev environment capabilities.
 
-The Sandbox is a shared Linux container powered by Apple's [Containerization](https://developer.apple.com/documentation/containerization) framework. It gives every Osaurus agent access to a real Linux environment with shell, package managers, compilers, and file system access — all running natively on Apple Silicon with zero risk to your Mac.
+The Sandbox is a shared Linux container powered by Apple's [Containerization](https://developer.apple.com/documentation/containerization) framework. It gives every Project2501 agent access to a real Linux environment with shell, package managers, compilers, and file system access — all running natively on Apple Silicon with zero risk to your Mac.
 
 ---
 
@@ -30,7 +30,7 @@ Everything runs on-device using Apple's Virtualization framework. No Docker, no 
 
 ### Seamless Host Bridge
 
-Despite running in isolation, agents inside the VM retain full access to Osaurus services — inference, memory, secrets, agent dispatch, and events — via a vsock bridge. The sandbox is isolated but not disconnected.
+Despite running in isolation, agents inside the VM retain full access to Project2501 services — inference, memory, secrets, agent dispatch, and events — via a vsock bridge. The sandbox is isolated but not disconnected.
 
 ---
 
@@ -68,7 +68,7 @@ Switch to the **Plugins** tab to browse, import, or create sandbox plugins that 
 │                        macOS Host                            │
 │                                                              │
 │  ┌──────────────┐     ┌──────────────────────────────┐       │
-│  │   Osaurus    │     │   Linux VM (Alpine)          │       │
+│  │   Project2501    │     │   Linux VM (Alpine)          │       │
 │  │              │     │                              │       │
 │  │  SandboxMgr ─┼─────┤→ /workspace (VirtioFS)      │       │
 │  │              │     │→ /output    (VirtioFS)       │       │
@@ -103,7 +103,7 @@ Configure the container via the Management window → **Sandbox** → **Containe
 | CPUs | 1–8 | 2 | Virtual CPU cores allocated to the VM |
 | Memory | 1–8 GB | 2 GB | RAM allocated to the VM |
 | Network | outbound / none | outbound | NAT networking for outbound internet access |
-| Auto-Start | on / off | on | Automatically start the container when Osaurus launches |
+| Auto-Start | on / off | on | Automatically start the container when Project2501 launches |
 
 Changes require a container restart to take effect.
 
@@ -312,14 +312,14 @@ Registered plugins are saved to the `SandboxPluginLibrary` and survive app resta
 
 ## Host API Bridge
 
-The Host API Bridge connects the container to Osaurus services on the host. Inside the container, the `project2501-host` CLI communicates with the bridge server over a vsock-relayed Unix socket.
+The Host API Bridge connects the container to Project2501 services on the host. Inside the container, the `project2501-host` CLI communicates with the bridge server over a vsock-relayed Unix socket.
 
 | Command | Description |
 |---------|-------------|
 | `project2501-host secrets get <name>` | Read a secret from the macOS Keychain |
 | `project2501-host config get <key>` | Read a plugin config value |
 | `project2501-host config set <key> <value>` | Write a plugin config value |
-| `project2501-host inference chat -m <message>` | Run a chat completion through Osaurus |
+| `project2501-host inference chat -m <message>` | Run a chat completion through Project2501 |
 | `project2501-host agent dispatch <id> <task>` | Dispatch a task to an agent |
 | `project2501-host agent memory query <text>` | Search agent memory |
 | `project2501-host agent memory store <text>` | Store a memory entry |

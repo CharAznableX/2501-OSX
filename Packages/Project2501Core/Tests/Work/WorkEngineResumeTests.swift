@@ -215,7 +215,7 @@ private func noopResumeToolSpec() -> Tool {
     )
 }
 
-private struct NoopResumeTestTool: OsaurusTool {
+private struct NoopResumeTestTool: Project2501Tool {
     let name = "noop_resume_test"
     let description = "No-op resume test tool."
     let parameters: JSONValue? = .object(["type": .string("object")])

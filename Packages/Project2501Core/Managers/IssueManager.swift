@@ -2,7 +2,7 @@
 //  IssueManager.swift
 //  project2501
 //
-//  Manager for issue lifecycle in Osaurus Agents.
+//  Manager for issue lifecycle in Project2501 Agents.
 //  Handles issue creation, status transitions, and dependency management.
 //
 

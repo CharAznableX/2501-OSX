@@ -2,7 +2,7 @@
 //  WorkModels.swift
 //  project2501
 //
-//  Data models for Osaurus Agents issue tracking system.
+//  Data models for Project2501 Agents issue tracking system.
 //  Defines Issue, Dependency, Event, and Task structures.
 //
 
@@ -98,7 +98,7 @@ public enum DependencyType: String, Codable, Sendable {
 
 // MARK: - Issue
 
-/// The fundamental unit of work in Osaurus Agents
+/// The fundamental unit of work in Project2501 Agents
 public struct Issue: Identifiable, Codable, Sendable, Equatable {
     /// Unique ID (hash-based, e.g., "os-a1b2c3d4")
     public let id: String
@@ -846,8 +846,8 @@ extension SharedArtifact {
         let hasContent = parsed.metadata["has_content"] as? Bool ?? false
         let path = parsed.metadata["path"] as? String
 
-        let contextDir = OsaurusPaths.contextArtifactsDir(contextId: contextId)
-        OsaurusPaths.ensureExistsSilent(contextDir)
+        let contextDir = Project2501Paths.contextArtifactsDir(contextId: contextId)
+        Project2501Paths.ensureExistsSilent(contextDir)
         let destPath = contextDir.appendingPathComponent(parsed.filename)
 
         // Branch: inline content vs. file-path-based artifact
@@ -901,7 +901,7 @@ extension SharedArtifact {
 
             let fileSize =
                 isDirectory
-                ? OsaurusPaths.directorySize(at: destPath)
+                ? Project2501Paths.directorySize(at: destPath)
                 : (try? fm.attributesOfItem(atPath: destPath.path)[.size] as? Int) ?? 0
             let resolvedMime = isDirectory ? "inode/directory" : mimeType
 
@@ -975,8 +975,8 @@ extension SharedArtifact {
         switch executionMode {
         case .sandbox:
             let agent = sandboxAgentName ?? "default"
-            let agentDir = OsaurusPaths.containerAgentDir(agent)
-            let containerHome = OsaurusPaths.inContainerAgentHome(agent)
+            let agentDir = Project2501Paths.containerAgentDir(agent)
+            let containerHome = Project2501Paths.inContainerAgentHome(agent)
             let fm = FileManager.default
 
             var relativePath = path
@@ -984,7 +984,7 @@ extension SharedArtifact {
                 relativePath = String(relativePath.dropFirst(containerHome.count + 1))
             } else if relativePath.hasPrefix("/workspace/") {
                 let stripped = String(relativePath.dropFirst("/workspace/".count))
-                let candidate = OsaurusPaths.containerWorkspace().appendingPathComponent(stripped)
+                let candidate = Project2501Paths.containerWorkspace().appendingPathComponent(stripped)
                 if fm.fileExists(atPath: candidate.path) { return candidate }
             }
             if relativePath.hasPrefix("./") {

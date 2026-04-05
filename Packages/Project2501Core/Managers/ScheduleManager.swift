@@ -65,7 +65,7 @@ public final class ScheduleManager {
             }
         }
 
-        print("[Osaurus] ScheduleManager initialized with \(schedules.count) schedules")
+        print("[Project2501] ScheduleManager initialized with \(schedules.count) schedules")
     }
 
     deinit {
@@ -115,7 +115,7 @@ public final class ScheduleManager {
         scheduleNextTimer()
 
         NotificationCenter.default.post(name: .schedulesChanged, object: nil)
-        print("[Osaurus] Created schedule: \(schedule.name)")
+        print("[Project2501] Created schedule: \(schedule.name)")
 
         return schedule
     }
@@ -129,7 +129,7 @@ public final class ScheduleManager {
         scheduleNextTimer()
 
         NotificationCenter.default.post(name: .schedulesChanged, object: nil)
-        print("[Osaurus] Updated schedule: \(schedule.name)")
+        print("[Project2501] Updated schedule: \(schedule.name)")
     }
 
     /// Delete a schedule
@@ -148,7 +148,7 @@ public final class ScheduleManager {
         scheduleNextTimer()
 
         NotificationCenter.default.post(name: .schedulesChanged, object: nil)
-        print("[Osaurus] Deleted schedule: \(id)")
+        print("[Project2501] Deleted schedule: \(id)")
 
         return true
     }
@@ -206,7 +206,7 @@ public final class ScheduleManager {
         // Find the next schedule to run
         let enabledSchedules = schedules.filter { $0.isEnabled }
         guard !enabledSchedules.isEmpty else {
-            print("[Osaurus] No enabled schedules, timer cancelled")
+            print("[Project2501] No enabled schedules, timer cancelled")
             return
         }
 
@@ -228,13 +228,13 @@ public final class ScheduleManager {
         }
 
         guard let fireDate = soonestDate else {
-            print("[Osaurus] No upcoming schedule runs")
+            print("[Project2501] No upcoming schedule runs")
             return
         }
 
         let delay = max(0, fireDate.timeIntervalSince(now))
         print(
-            "[Osaurus] Next schedule timer in \(String(format: "%.1f", delay)) seconds (\(schedulesToRun.count) schedule(s))"
+            "[Project2501] Next schedule timer in \(String(format: "%.1f", delay)) seconds (\(schedulesToRun.count) schedule(s))"
         )
 
         // Use Task with sleep - clean async/await approach that works with @MainActor
@@ -295,7 +295,7 @@ public final class ScheduleManager {
             if case .once(let date) = schedule.frequency {
                 // If the once date is in the past but hasn't run yet
                 if date <= now && schedule.lastRunAt == nil {
-                    print("[Osaurus] Found missed once schedule: \(schedule.name)")
+                    print("[Project2501] Found missed once schedule: \(schedule.name)")
                     executeSchedule(schedule)
                 }
             } else {
@@ -305,7 +305,7 @@ public final class ScheduleManager {
                     if let nextAfterLast = schedule.frequency.nextRunDate(after: lastRun),
                         nextAfterLast <= now
                     {
-                        print("[Osaurus] Found missed recurring schedule: \(schedule.name)")
+                        print("[Project2501] Found missed recurring schedule: \(schedule.name)")
                         executeSchedule(schedule)
                     }
                 }
@@ -327,11 +327,11 @@ public final class ScheduleManager {
             folderBookmark: schedule.folderBookmark
         )
 
-        print("[Osaurus] Executing schedule: \(schedule.name) (\(schedule.mode.displayName) mode)")
+        print("[Project2501] Executing schedule: \(schedule.name) (\(schedule.mode.displayName) mode)")
 
         let task = Task { @MainActor in
             guard let handle = await TaskDispatcher.shared.dispatch(request) else {
-                print("[Osaurus] Failed to dispatch schedule: \(schedule.name)")
+                print("[Project2501] Failed to dispatch schedule: \(schedule.name)")
                 return
             }
 
@@ -380,13 +380,13 @@ public final class ScheduleManager {
                     "agentId": schedule.agentId ?? Agent.defaultId,
                 ]
             )
-            print("[Osaurus] Schedule completed: \(schedule.name)")
+            print("[Project2501] Schedule completed: \(schedule.name)")
 
         case .cancelled:
-            print("[Osaurus] Schedule cancelled: \(schedule.name)")
+            print("[Project2501] Schedule cancelled: \(schedule.name)")
 
         case .failed(let error):
-            print("[Osaurus] Schedule failed: \(schedule.name) - \(error)")
+            print("[Project2501] Schedule failed: \(schedule.name) - \(error)")
         }
     }
 }

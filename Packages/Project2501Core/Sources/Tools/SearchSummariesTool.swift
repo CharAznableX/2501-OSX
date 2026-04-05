@@ -8,7 +8,7 @@
 
 import Foundation
 
-final class SearchSummariesTool: OsaurusTool, @unchecked Sendable {
+final class SearchSummariesTool: Project2501Tool, @unchecked Sendable {
     let name = "search_summaries"
     let description = "Search past conversation summaries. Returns matching summaries with dates and agents."
 

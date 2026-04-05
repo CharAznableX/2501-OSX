@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - Request (Host → Plugin)
 
-struct OsaurusHTTPRequest: Encodable {
+struct Project2501HTTPRequest: Encodable {
     let route_id: String
     let method: String
     let path: String
@@ -19,9 +19,9 @@ struct OsaurusHTTPRequest: Encodable {
     let body_encoding: String
     let remote_addr: String
     let plugin_id: String
-    let project2501: OsaurusContext
+    let project2501: Project2501Context
 
-    struct OsaurusContext: Encodable {
+    struct Project2501Context: Encodable {
         let base_url: String
         let plugin_url: String
         let agent_address: String
@@ -30,7 +30,7 @@ struct OsaurusHTTPRequest: Encodable {
 
 // MARK: - Response (Plugin → Host)
 
-struct OsaurusHTTPResponse: Decodable {
+struct Project2501HTTPResponse: Decodable {
     let status: Int
     let headers: [String: String]?
     let body: String?
@@ -39,7 +39,7 @@ struct OsaurusHTTPResponse: Decodable {
 
 // MARK: - Helpers
 
-extension OsaurusHTTPRequest {
+extension Project2501HTTPRequest {
     /// Parse query string parameters from a URI
     static func parseQueryParams(from uri: String) -> [String: String] {
         guard let queryIndex = uri.firstIndex(of: "?") else { return [:] }

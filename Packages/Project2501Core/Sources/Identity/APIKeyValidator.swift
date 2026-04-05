@@ -26,9 +26,9 @@ public struct APIKeyValidator: Sendable {
     )
 
     public init(
-        agentAddress: OsaurusID,
-        masterAddress: OsaurusID,
-        effectiveWhitelist: Set<OsaurusID>,
+        agentAddress: Project2501ID,
+        masterAddress: Project2501ID,
+        effectiveWhitelist: Set<Project2501ID>,
         revocationSnapshot: RevocationSnapshot,
         hasKeys: Bool
     ) {
@@ -64,12 +64,12 @@ public struct APIKeyValidator: Sendable {
             return .invalid(reason: "Malformed payload")
         }
 
-        let recoveredAddress: OsaurusID
+        let recoveredAddress: Project2501ID
         do {
             recoveredAddress = try recoverAddress(
                 payload: payloadData,
                 signature: signatureData,
-                domainPrefix: "Osaurus Signed Access"
+                domainPrefix: "Project2501 Signed Access"
             )
         } catch {
             return .invalid(reason: "Signature recovery failed")

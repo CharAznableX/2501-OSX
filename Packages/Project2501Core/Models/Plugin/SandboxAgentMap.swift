@@ -14,7 +14,7 @@ public enum SandboxAgentMap {
     nonisolated(unsafe) private static var cache: [String: String]?
 
     private static var mapURL: URL {
-        OsaurusPaths.config().appendingPathComponent("sandbox-agent-map.json")
+        Project2501Paths.config().appendingPathComponent("sandbox-agent-map.json")
     }
 
     // MARK: - Public API
@@ -81,7 +81,7 @@ public enum SandboxAgentMap {
     }
 
     private static func save(_ map: [String: String]) {
-        OsaurusPaths.ensureExistsSilent(OsaurusPaths.config())
+        Project2501Paths.ensureExistsSilent(Project2501Paths.config())
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         do {

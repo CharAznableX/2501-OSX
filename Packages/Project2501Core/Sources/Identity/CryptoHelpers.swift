@@ -2,7 +2,7 @@
 //  CryptoHelpers.swift
 //  project2501
 //
-//  Low-level cryptographic helpers for Osaurus Identity:
+//  Low-level cryptographic helpers for Project2501 Identity:
 //  Keccak-256, payload signing, and encoding utilities.
 //
 
@@ -136,7 +136,7 @@ enum Keccak256 {
 private func domainHash(payload: Data, prefix domainPrefix: String) throws -> Data {
     let header = "\u{19}\(domainPrefix):\n\(payload.count)"
     guard let headerData = header.data(using: .utf8) else {
-        throw OsaurusIdentityError.signingFailed
+        throw Project2501IdentityError.signingFailed
     }
     return Keccak256.hash(data: headerData + payload)
 }
@@ -157,11 +157,11 @@ private func signWithPrefix(_ payload: Data, privateKey: Data, prefix domainPref
 }
 
 func signPayload(_ payload: Data, privateKey: Data) throws -> Data {
-    try signWithPrefix(payload, privateKey: privateKey, prefix: "Osaurus Signed Message")
+    try signWithPrefix(payload, privateKey: privateKey, prefix: "Project2501 Signed Message")
 }
 
 func signAccessPayload(_ payload: Data, privateKey: Data) throws -> Data {
-    try signWithPrefix(payload, privateKey: privateKey, prefix: "Osaurus Signed Access")
+    try signWithPrefix(payload, privateKey: privateKey, prefix: "Project2501 Signed Access")
 }
 
 /// EIP-191 personal_sign compatible signing.
@@ -173,11 +173,11 @@ func signEIP191Message(_ message: String, privateKey: Data) throws -> Data {
 
 // MARK: - Address Recovery (ecrecover)
 
-/// Recover the signer's Osaurus address from a payload and its 65-byte recoverable signature.
+/// Recover the signer's Project2501 address from a payload and its 65-byte recoverable signature.
 /// The `domainPrefix` must match the prefix used during signing.
-func recoverAddress(payload: Data, signature: Data, domainPrefix: String) throws -> OsaurusID {
+func recoverAddress(payload: Data, signature: Data, domainPrefix: String) throws -> Project2501ID {
     guard signature.count == 65 else {
-        throw OsaurusIdentityError.signingFailed
+        throw Project2501IdentityError.signingFailed
     }
 
     let hash = try domainHash(payload: payload, prefix: domainPrefix)
@@ -203,8 +203,8 @@ func recoverAddress(payload: Data, signature: Data, domainPrefix: String) throws
 
 // MARK: - Address Derivation
 
-/// Derive a checksummed Osaurus ID from a secp256k1 private key.
-func deriveOsaurusId(from privateKey: Data) throws -> OsaurusID {
+/// Derive a checksummed Project2501 ID from a secp256k1 private key.
+func deriveProject2501Id(from privateKey: Data) throws -> Project2501ID {
     let signingKey = try P256K.Signing.PrivateKey(
         dataRepresentation: privateKey,
         format: .uncompressed
@@ -218,7 +218,7 @@ func deriveOsaurusId(from privateKey: Data) throws -> OsaurusID {
     return checksumEncode(raw: raw)
 }
 
-/// Mixed-case checksum encoding for an Osaurus ID.
+/// Mixed-case checksum encoding for an Project2501 ID.
 func checksumEncode(raw: String) -> String {
     let hashHex = Keccak256.hash(data: Data(raw.utf8))
         .map { String(format: "%02x", $0) }

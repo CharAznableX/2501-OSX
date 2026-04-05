@@ -2,7 +2,7 @@
 //  Status.swift
 //  project2501
 //
-//  Command to check if the Osaurus server is currently running and healthy.
+//  Command to check if the Project2501 server is currently running and healthy.
 //
 
 import Foundation

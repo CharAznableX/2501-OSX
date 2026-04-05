@@ -43,7 +43,7 @@ final class ServerController: ObservableObject {
 
     private var eventLoopGroup: MultiThreadedEventLoopGroup?
     private var serverChannel: Channel?
-    private var serverActor: OsaurusServer?
+    private var serverActor: Project2501Server?
     private var agentsCancellable: AnyCancellable?
 
     // Singleton holder to allow async access to the current controller instance when injected as EnvironmentObject
@@ -102,12 +102,12 @@ final class ServerController: ObservableObject {
             self.localNetworkAddress =
                 configuration.exposeToNetwork ? self.getLocalIPAddress() : "127.0.0.1"
 
-            print("[Osaurus] Starting NIO server on \(bindHost):\(configuration.port)")
+            print("[Project2501] Starting NIO server on \(bindHost):\(configuration.port)")
 
             // Ensure any previous instance is shut down
             try await stopServerIfNeeded()
 
-            let server = OsaurusServer()
+            let server = Project2501Server()
             try await server.start(
                 .init(host: bindHost, port: configuration.port, trustLoopback: !configuration.exposeToNetwork),
                 serverConfiguration: self.configuration
@@ -118,7 +118,7 @@ final class ServerController: ObservableObject {
             isRunning = true
             serverHealth = .running
             lastErrorMessage = nil
-            print("[Osaurus] NIO server started successfully on port \(configuration.port)")
+            print("[Project2501] NIO server started successfully on port \(configuration.port)")
 
             if configuration.exposeToNetwork {
                 BonjourAdvertiser.shared.startAdvertising(port: configuration.port)
@@ -148,7 +148,7 @@ final class ServerController: ObservableObject {
         // If nothing to stop, return
         guard serverActor != nil || serverChannel != nil || eventLoopGroup != nil else { return }
         if !isRestarting { serverHealth = .stopping }
-        print("[Osaurus] Stopping NIO server...")
+        print("[Project2501] Stopping NIO server...")
 
         RelayTunnelManager.shared.disconnectAll()
         BonjourAdvertiser.shared.stopAdvertising()
@@ -164,14 +164,14 @@ final class ServerController: ObservableObject {
         await cleanupRuntime()
 
         if !isRestarting { serverHealth = .stopped }
-        print("[Osaurus] Server stopped successfully")
+        print("[Project2501] Server stopped successfully")
     }
 
     /// Ensures the server is properly shut down before app termination
     func ensureShutdown() async {
         guard serverActor != nil || serverChannel != nil || eventLoopGroup != nil else { return }
 
-        print("[Osaurus] Ensuring NIO server shutdown before app termination")
+        print("[Project2501] Ensuring NIO server shutdown before app termination")
         RelayTunnelManager.shared.disconnectAll()
         isRunning = false
         serverHealth = .stopping
@@ -184,7 +184,7 @@ final class ServerController: ObservableObject {
         localNetworkAddress = "127.0.0.1"
         await cleanupRuntime()
 
-        print("[Osaurus] Server shutdown completed")
+        print("[Project2501] Server shutdown completed")
     }
 
     // Capture singleton pointer on init attach to UI
@@ -219,7 +219,7 @@ final class ServerController: ObservableObject {
             let (_, response) = try await URLSession.shared.data(from: url)
             return (response as? HTTPURLResponse)?.statusCode == 200
         } catch {
-            print("[Osaurus] Health check failed: \(error)")
+            print("[Project2501] Health check failed: \(error)")
             return false
         }
     }
@@ -245,7 +245,7 @@ final class ServerController: ObservableObject {
 
     /// Handles server startup errors
     private func handleServerError(_ error: Error) {
-        print("[Osaurus] Failed to start server: \(error)")
+        print("[Project2501] Failed to start server: \(error)")
         isRunning = false
         let desc = error.localizedDescription.lowercased()
         if desc.contains("address already in use") || desc.contains("eaddrinuse") {
@@ -379,7 +379,7 @@ final class ServerController: ObservableObject {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 group.shutdownGracefully { error in
                     if let error {
-                        print("[Osaurus] Error shutting down EventLoopGroup: \(error)")
+                        print("[Project2501] Error shutting down EventLoopGroup: \(error)")
                     }
                     continuation.resume()
                 }

@@ -2,7 +2,7 @@
 //  Version.swift
 //  project2501
 //
-//  Command to display the Osaurus version and build number from environment variables.
+//  Command to display the Project2501 version and build number from environment variables.
 //
 
 import Foundation
@@ -19,11 +19,11 @@ public struct VersionCommand: Command {
 
         let output: String
         if let v = versionString, let b = buildString, !b.isEmpty {
-            output = "Osaurus \(v) (\(b))"
+            output = "Project2501 \(v) (\(b))"
         } else if let v = versionString {
-            output = "Osaurus \(v)"
+            output = "Project2501 \(v)"
         } else {
-            output = "Osaurus dev"
+            output = "Project2501 dev"
         }
         print(output)
         exit(EXIT_SUCCESS)

@@ -148,7 +148,7 @@ public final class NotchWindowController: NSObject, ObservableObject {
             .store(in: &cancellables)
 
         print(
-            "[Osaurus] Notch window controller setup on screen: \(screen.localizedName) (notch: \(metrics.hasHardwareNotch), w: \(metrics.notchWidth), h: \(metrics.notchHeight))"
+            "[Project2501] Notch window controller setup on screen: \(screen.localizedName) (notch: \(metrics.hasHardwareNotch), w: \(metrics.notchWidth), h: \(metrics.notchHeight))"
         )
     }
 

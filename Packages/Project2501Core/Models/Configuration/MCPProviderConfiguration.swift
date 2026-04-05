@@ -167,7 +167,7 @@ public enum MCPProviderConfigurationStore {
             do {
                 return try JSONDecoder().decode(MCPProviderConfiguration.self, from: Data(contentsOf: url))
             } catch {
-                print("[Osaurus] Failed to load MCPProviderConfiguration: \(error)")
+                print("[Project2501] Failed to load MCPProviderConfiguration: \(error)")
             }
         }
         let defaults = MCPProviderConfiguration()
@@ -177,17 +177,17 @@ public enum MCPProviderConfigurationStore {
 
     public static func save(_ configuration: MCPProviderConfiguration) {
         let url = configurationFileURL()
-        OsaurusPaths.ensureExistsSilent(url.deletingLastPathComponent())
+        Project2501Paths.ensureExistsSilent(url.deletingLastPathComponent())
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(configuration).write(to: url, options: [.atomic])
         } catch {
-            print("[Osaurus] Failed to save MCPProviderConfiguration: \(error)")
+            print("[Project2501] Failed to save MCPProviderConfiguration: \(error)")
         }
     }
 
     private static func configurationFileURL() -> URL {
-        OsaurusPaths.resolvePath(new: OsaurusPaths.mcpProviderConfigFile(), legacy: "MCPProviderConfiguration.json")
+        Project2501Paths.resolvePath(new: Project2501Paths.mcpProviderConfigFile(), legacy: "MCPProviderConfiguration.json")
     }
 }

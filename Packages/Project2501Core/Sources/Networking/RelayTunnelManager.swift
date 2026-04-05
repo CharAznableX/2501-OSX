@@ -367,7 +367,7 @@ public final class RelayTunnelManager: ObservableObject {
         return uuid.uuidString
     }
 
-    /// Proxy a relay request frame to the local Osaurus server and send result frames
+    /// Proxy a relay request frame to the local Project2501 server and send result frames
     /// through the WebSocket. Detects streaming responses (SSE / NDJSON) and uses the
     /// relay streaming protocol (stream_start / stream_chunk / stream_end) so chunks
     /// are forwarded incrementally instead of buffered.
@@ -424,7 +424,7 @@ public final class RelayTunnelManager: ObservableObject {
             request.setValue(value, forHTTPHeaderField: key)
         }
         if let agentUUID {
-            request.setValue(agentUUID, forHTTPHeaderField: "X-Osaurus-Agent-Id")
+            request.setValue(agentUUID, forHTTPHeaderField: "X-Project2501-Agent-Id")
         }
         if let body = frame.body, !body.isEmpty {
             request.httpBody = body.data(using: .utf8)
@@ -626,8 +626,8 @@ public final class RelayTunnelManager: ObservableObject {
     // MARK: - Helpers
 
     private func obtainMasterKey() -> Data? {
-        guard OsaurusIdentity.exists() else { return nil }
-        let context = OsaurusIdentityContext.biometric()
+        guard Project2501Identity.exists() else { return nil }
+        let context = Project2501IdentityContext.biometric()
         return try? MasterKey.getPrivateKey(context: context)
     }
 

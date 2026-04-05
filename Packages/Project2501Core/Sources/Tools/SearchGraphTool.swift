@@ -8,7 +8,7 @@
 
 import Foundation
 
-final class SearchGraphTool: OsaurusTool, @unchecked Sendable {
+final class SearchGraphTool: Project2501Tool, @unchecked Sendable {
     let name = "search_graph"
     let description =
         "Search the knowledge graph for entity relationships. Traverses connections between people, companies, places, projects, tools, and concepts. Use to answer questions like 'Who does Sarah work with?' or 'What projects use React?'."

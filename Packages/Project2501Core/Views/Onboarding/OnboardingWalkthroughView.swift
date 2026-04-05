@@ -2,7 +2,7 @@
 //  OnboardingWalkthroughView.swift
 //  project2501
 //
-//  6-step walkthrough tutorial showcasing Osaurus features with rich illustrations.
+//  6-step walkthrough tutorial showcasing Project2501 features with rich illustrations.
 //
 
 import SwiftUI
@@ -51,7 +51,7 @@ private enum WalkthroughStepType: Int, CaseIterable {
                 "Create different agents for different tasks. Talk hands-free with voice. Customize how everything looks."
         case .memory:
             return
-                "Osaurus builds a layered memory from your conversations — profile, working context, summaries, and a knowledge graph. Agents recall relevant facts automatically. Your memory stays with you, not a provider."
+                "Project2501 builds a layered memory from your conversations — profile, working context, summaries, and a knowledge graph. Agents recall relevant facts automatically. Your memory stays with you, not a provider."
         case .privacy:
             return "Conversations stay on your Mac. Switch providers anytime — your history comes with you."
         }
@@ -334,7 +334,7 @@ struct OnboardingWalkthroughView: View {
 
             Group {
                 if isLastStep {
-                    OnboardingShimmerButton(title: "Start using Osaurus") {
+                    OnboardingShimmerButton(title: "Start using Project2501") {
                         onComplete()
                     }
                 } else {

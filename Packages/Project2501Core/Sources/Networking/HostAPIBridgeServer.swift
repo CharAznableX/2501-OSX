@@ -98,8 +98,8 @@ private final class HostAPIBridgeHandler: ChannelInboundHandler, RemovableChanne
     }
 
     private func handleRequest(context: ChannelHandlerContext, head: HTTPRequestHead, body: String) {
-        let callingUser = head.headers["X-Osaurus-User"].first ?? "unknown"
-        let pluginName = head.headers["X-Osaurus-Plugin"].first
+        let callingUser = head.headers["X-Project2501-User"].first ?? "unknown"
+        let pluginName = head.headers["X-Project2501-Plugin"].first
         let path = head.uri.split(separator: "?").first.map(String.init) ?? head.uri
         let version = head.version
         let method = head.method
@@ -215,7 +215,7 @@ private final class HostAPIBridgeHandler: ChannelInboundHandler, RemovableChanne
             return .error(400, "GET /api/secrets/{name} expected")
         }
         guard let pluginName = pluginName else {
-            return .error(400, "X-Osaurus-Plugin header required")
+            return .error(400, "X-Project2501-Plugin header required")
         }
 
         let agentId = resolveAgentUUID(callingUser)
@@ -240,7 +240,7 @@ private final class HostAPIBridgeHandler: ChannelInboundHandler, RemovableChanne
         }
 
         // Plugin config is non-sensitive -- use a file-based JSON store, not Keychain
-        let configDir = OsaurusPaths.pluginDataDirectory(for: pluginName)
+        let configDir = Project2501Paths.pluginDataDirectory(for: pluginName)
         let configFile = configDir.appendingPathComponent("config.json")
 
         if method == .GET {
@@ -253,7 +253,7 @@ private final class HostAPIBridgeHandler: ChannelInboundHandler, RemovableChanne
             return .ok("{\"value\":\(jsonEscape(value))}")
         } else if method == .POST {
             if let parsed = parseJSON(body), let value = parsed["value"] as? String {
-                OsaurusPaths.ensureExistsSilent(configDir)
+                Project2501Paths.ensureExistsSilent(configDir)
                 var dict: [String: String] = [:]
                 if let data = try? Data(contentsOf: configFile),
                     let existing = try? JSONSerialization.jsonObject(with: data) as? [String: String]
@@ -553,7 +553,7 @@ private final class HostAPIBridgeHandler: ChannelInboundHandler, RemovableChanne
 
     // MARK: - Helpers
 
-    /// Map a Linux username (e.g. "agent-researcher") back to an Osaurus agent UUID.
+    /// Map a Linux username (e.g. "agent-researcher") back to an Project2501 agent UUID.
     /// Uses the persistent mapping populated when agent users are created.
     private func resolveAgentUUID(_ linuxUser: String) -> UUID {
         SandboxAgentMap.resolve(linuxName: linuxUser) ?? Agent.defaultId

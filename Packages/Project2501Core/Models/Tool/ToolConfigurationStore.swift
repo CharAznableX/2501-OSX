@@ -18,7 +18,7 @@ enum ToolConfigurationStore {
             do {
                 return try JSONDecoder().decode(ToolConfiguration.self, from: Data(contentsOf: url))
             } catch {
-                print("[Osaurus] Failed to load ToolConfiguration: \(error)")
+                print("[Project2501] Failed to load ToolConfiguration: \(error)")
             }
         }
         let defaults = ToolConfiguration()
@@ -28,13 +28,13 @@ enum ToolConfigurationStore {
 
     static func save(_ configuration: ToolConfiguration) {
         let url = configurationFileURL()
-        OsaurusPaths.ensureExistsSilent(url.deletingLastPathComponent())
+        Project2501Paths.ensureExistsSilent(url.deletingLastPathComponent())
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(configuration).write(to: url, options: [.atomic])
         } catch {
-            print("[Osaurus] Failed to save ToolConfiguration: \(error)")
+            print("[Project2501] Failed to save ToolConfiguration: \(error)")
         }
     }
 
@@ -42,6 +42,6 @@ enum ToolConfigurationStore {
         if let dir = overrideDirectory {
             return dir.appendingPathComponent("tools.json")
         }
-        return OsaurusPaths.resolvePath(new: OsaurusPaths.toolConfigFile(), legacy: "ToolConfiguration.json")
+        return Project2501Paths.resolvePath(new: Project2501Paths.toolConfigFile(), legacy: "ToolConfiguration.json")
     }
 }

@@ -1,6 +1,6 @@
-# Osaurus Feature Inventory
+# Project2501 Feature Inventory
 
-Canonical reference for all Osaurus features, their status, and documentation.
+Canonical reference for all Project2501 features, their status, and documentation.
 
 **This file is the source of truth.** When adding or modifying features, update this inventory to keep documentation in sync.
 
@@ -13,7 +13,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 | Local LLM Server (MLX)           | Stable    | "Key Features"     | OpenAI_API_GUIDE.md           | Services/Inference/MLXService.swift, Services/ModelRuntime/                                     |
 | Remote Providers                 | Stable    | "Key Features"     | REMOTE_PROVIDERS.md           | Managers/RemoteProviderManager.swift, Services/Provider/RemoteProviderService.swift            |
 | Remote MCP Providers             | Stable    | "Key Features"     | REMOTE_MCP_PROVIDERS.md       | Managers/MCPProviderManager.swift, Tools/MCPProviderTool.swift                        |
-| MCP Server                       | Stable    | "MCP Server"       | (in README)                   | Networking/OsaurusServer.swift, Services/MCP/MCPServerManager.swift                       |
+| MCP Server                       | Stable    | "MCP Server"       | (in README)                   | Networking/Project2501Server.swift, Services/MCP/MCPServerManager.swift                       |
 | Tools & Plugins                  | Stable    | "Tools & Plugins"  | PLUGIN_AUTHORING.md           | Tools/, Managers/Plugin/PluginManager.swift, Services/Plugin/PluginHostAPI.swift, Storage/PluginDatabase.swift, Models/Plugin/PluginHTTP.swift, Views/Plugin/PluginConfigView.swift |
 | Skills                           | Stable    | "Skills"           | SKILLS.md                     | Managers/SkillManager.swift, Views/Skill/SkillsView.swift, Services/Skill/SkillSearchService.swift |
 | Methods                          | Stable    | "Skills & Methods" | SKILLS.md                     | Models/Method/Method.swift, Services/Method/MethodService.swift, Services/Method/MethodSearchService.swift, Storage/MethodDatabase.swift, Tools/MethodTools.swift |
@@ -25,7 +25,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 | Agents                           | Stable    | "Agents"           | WORK.md                     | Work/, Services/WorkEngine.swift, Views/Work/WorkView.swift                             |
 | Developer Tools: Insights        | Stable    | "Developer Tools"  | DEVELOPER_TOOLS.md            | Views/Insights/InsightsView.swift, Managers/InsightsService.swift                              |
 | Developer Tools: Server Explorer | Stable    | "Developer Tools"  | DEVELOPER_TOOLS.md            | Views/Settings/ServerView.swift                                                                |
-| Apple Foundation Models          | macOS 26+ | "What is Osaurus?" | (in README)                   | Services/Inference/FoundationModelService.swift                                                 |
+| Apple Foundation Models          | macOS 26+ | "What is Project2501?" | (in README)                   | Services/Inference/FoundationModelService.swift                                                 |
 | Menu Bar Chat                    | Stable    | "Highlights"       | (in README)                   | Views/Chat/ChatView.swift, Views/ChatOverlayView.swift                                     |
 | Chat Session Management          | Stable    | "Highlights"       | (in README)                   | Managers/Chat/ChatSessionsManager.swift, Models/Chat/ChatSessionData.swift                      |
 | Custom Themes                    | Stable    | "Highlights"       | (in README)                   | Views/Theme/ThemesView.swift, Views/Theme/ThemeEditorView.swift                        |
@@ -47,7 +47,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                              Osaurus App                                 │
+│                              Project2501 App                                 │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  Views Layer                                                             │
 │  ├── ContentView (Menu Bar)                                              │
@@ -76,7 +76,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 │  │   ├── RemoteProviderManager (Remote OpenAI-compatible APIs)           │
 │  │   └── RemoteProviderService (Per-provider connection handling)        │
 │  ├── MCP                                                                 │
-│  │   ├── MCPServerManager (Osaurus as MCP server)                        │
+│  │   ├── MCPServerManager (Project2501 as MCP server)                        │
 │  │   └── MCPProviderManager (Remote MCP client connections)              │
 │  ├── Tools                                                               │
 │  │   ├── ToolRegistry                                                    │
@@ -131,7 +131,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 │      └── SharedConfigurationService                                      │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  Networking Layer                                                        │
-│  ├── OsaurusServer (HTTP + MCP server)                                   │
+│  ├── Project2501Server (HTTP + MCP server)                                   │
 │  ├── Router (Request routing)                                            │
 │  └── HTTPHandler (OpenAI/Anthropic/Ollama API handlers)                  │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -227,12 +227,12 @@ Canonical reference for all Osaurus features, their status, and documentation.
 
 ### MCP Server
 
-**Purpose:** Expose Osaurus tools to AI agents via Model Context Protocol.
+**Purpose:** Expose Project2501 tools to AI agents via Model Context Protocol.
 
 **Components:**
 
 - `Services/MCP/MCPServerManager.swift` — MCP server lifecycle
-- `Networking/OsaurusServer.swift` — HTTP MCP endpoints
+- `Networking/Project2501Server.swift` — HTTP MCP endpoints
 - `Tools/ToolRegistry.swift` — Tool registration and lookup
 
 **Endpoints:**
@@ -585,7 +585,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 - **Multi-agent isolation** — Each agent gets its own Linux user and home directory, preventing cross-contamination
 - **Lightweight plugins** — JSON recipe plugins require no compilation, no Xcode, no code signing
 - **Local-first** — Apple Virtualization framework with native Apple Silicon performance; no Docker or cloud VMs
-- **Seamless host bridge** — Agents in the VM access Osaurus inference, memory, secrets, and events via vsock
+- **Seamless host bridge** — Agents in the VM access Project2501 inference, memory, secrets, and events via vsock
 
 **Components:**
 
@@ -596,7 +596,7 @@ Canonical reference for all Osaurus features, their status, and documentation.
 - `Managers/Plugin/SandboxPluginManager.swift` — Per-agent plugin install, uninstall, and update tracking
 - `Managers/Plugin/SandboxPluginLibrary.swift` — Plugin library storage and discovery
 - `Tools/BuiltinSandboxTools.swift` — Built-in tools for file ops, shell, package management, secrets, and plugin creation
-- `Tools/SandboxPluginTool.swift` — Wraps plugin tool specs as OsaurusTool instances
+- `Tools/SandboxPluginTool.swift` — Wraps plugin tool specs as Project2501Tool instances
 - `Tools/SandboxSecretTools.swift` — Secret check and set tools with direct-value and secure-prompt paths
 - `Tools/SandboxPluginRegisterTool.swift` — Hot-registers agent-created plugins with file auto-packaging
 - `Tools/ToolRegistry.swift` — Sandbox tool registration and namespace management
@@ -708,11 +708,11 @@ Read-only tools are always available. Write/exec/package/secret tools require `a
 
 ### Tools & Plugins
 
-**Purpose:** Extend Osaurus with custom functionality including tools, HTTP routes, storage, configuration UI, and web apps.
+**Purpose:** Extend Project2501 with custom functionality including tools, HTTP routes, storage, configuration UI, and web apps.
 
 **Components:**
 
-- `Tools/OsaurusTool.swift` — Tool protocol
+- `Tools/Project2501Tool.swift` — Tool protocol
 - `Tools/ExternalTool.swift` — External plugin wrapper
 - `Tools/ToolRegistry.swift` — Tool registration
 - `Tools/SchemaValidator.swift` — JSON schema validation
@@ -948,7 +948,7 @@ All three search services use VecturaKit (hybrid BM25 + vector search):
 **Features:**
 
 - **Wake-word activation** — Say a agent's name to open chat
-- **Custom wake phrase** — Set a phrase like "Hey Osaurus"
+- **Custom wake phrase** — Set a phrase like "Hey Project2501"
 - **Per-agent enablement** — Choose which agents respond to voice
 - **Menu bar indicator** — Shows listening status with audio level
 - **Auto-start voice input** — Begin recording after activation
@@ -961,7 +961,7 @@ All three search services use VecturaKit (hybrid BM25 + vector search):
 | ----------------------- | -------------------------------------------- |
 | `vadModeEnabled`        | Master toggle for VAD mode                   |
 | `enabledAgentIds`     | UUIDs of agents that respond to wake-words |
-| `customWakePhrase`      | Optional phrase like "Hey Osaurus"           |
+| `customWakePhrase`      | Optional phrase like "Hey Project2501"           |
 | `wakeWordSensitivity`   | Detection sensitivity level                  |
 | `autoStartVoiceInput`   | Start recording after activation             |
 | `silenceTimeoutSeconds` | Auto-close timeout (0 = disabled)            |

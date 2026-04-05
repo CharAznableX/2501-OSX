@@ -1,4 +1,4 @@
-// osaurus_plugin.h
+// project2501_plugin.h
 #ifndef OSAURUS_PLUGIN_H
 #define OSAURUS_PLUGIN_H
 
@@ -47,7 +47,7 @@ typedef void        (*osr_dispatch_cancel_fn)(const char* task_id);
 typedef void        (*osr_dispatch_clarify_fn)(const char* task_id,
                                                const char* response);
 
-// Inference — routes through the Osaurus unified inference layer.
+// Inference — routes through the Project2501 unified inference layer.
 // Model resolution: specific name, null/"" for default, "local" for MLX,
 // "foundation" for Apple Foundation Model.
 
@@ -194,8 +194,8 @@ typedef struct {
     uint32_t version;
 
     // HTTP route handler. Called when a request hits a plugin route.
-    // request_json: JSON-encoded OsaurusHTTPRequest.
-    // Returns a JSON-encoded OsaurusHTTPResponse. Host must call free_string.
+    // request_json: JSON-encoded Project2501HTTPRequest.
+    // Returns a JSON-encoded Project2501HTTPResponse. Host must call free_string.
     // May be NULL if the plugin has no routes.
     const char* (*handle_route)(osr_plugin_ctx_t ctx, const char* request_json);
 
@@ -214,12 +214,12 @@ typedef struct {
 // ── Entry points ──
 
 // v1 (legacy): Plugins export this symbol. Returns a pointer to the static API struct.
-const osr_plugin_api* osaurus_plugin_entry(void);
+const osr_plugin_api* project2501_plugin_entry(void);
 
-// v2 (new): Receives host-provided callbacks. Osaurus tries this symbol first.
-// If the plugin was compiled against v1, this symbol won't exist and Osaurus
-// falls back to osaurus_plugin_entry. Plugins should set api->version = 2.
-const osr_plugin_api* osaurus_plugin_entry_v2(const osr_host_api* host);
+// v2 (new): Receives host-provided callbacks. Project2501 tries this symbol first.
+// If the plugin was compiled against v1, this symbol won't exist and Project2501
+// falls back to project2501_plugin_entry. Plugins should set api->version = 2.
+const osr_plugin_api* project2501_plugin_entry_v2(const osr_host_api* host);
 
 #ifdef __cplusplus
 }

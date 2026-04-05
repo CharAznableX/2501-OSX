@@ -113,7 +113,7 @@ public struct Skill: Codable, Identifiable, Sendable, Equatable {
                 name: "Research Analyst",
                 description: "In-depth research with fact-checking and balanced analysis",
                 version: "1.0.0",
-                author: "Osaurus",
+                author: "Project2501",
                 category: "research",
                 keywords: ["research", "fact-check", "sources", "analysis", "citations", "evidence"],
                 enabled: false,
@@ -158,7 +158,7 @@ public struct Skill: Codable, Identifiable, Sendable, Equatable {
                 name: "Creative Brainstormer",
                 description: "Generate ideas, overcome creative blocks, and explore possibilities",
                 version: "1.0.0",
-                author: "Osaurus",
+                author: "Project2501",
                 category: "creative",
                 keywords: ["brainstorm", "ideation", "creative", "ideas", "innovation", "imagination"],
                 enabled: false,
@@ -204,7 +204,7 @@ public struct Skill: Codable, Identifiable, Sendable, Equatable {
                 name: "Study Tutor",
                 description: "Patient explanations, practice problems, and learning strategies",
                 version: "1.0.0",
-                author: "Osaurus",
+                author: "Project2501",
                 category: "learning",
                 keywords: ["tutor", "teach", "learn", "study", "explain", "practice", "education"],
                 enabled: false,
@@ -250,7 +250,7 @@ public struct Skill: Codable, Identifiable, Sendable, Equatable {
                 name: "Productivity Coach",
                 description: "Task management, prioritization, and goal achievement",
                 version: "1.0.0",
-                author: "Osaurus",
+                author: "Project2501",
                 category: "productivity",
                 keywords: ["productivity", "tasks", "prioritize", "goals", "time-management", "planning"],
                 enabled: false,
@@ -296,7 +296,7 @@ public struct Skill: Codable, Identifiable, Sendable, Equatable {
                 name: "Content Summarizer",
                 description: "Extract key points and create structured summaries",
                 version: "1.0.0",
-                author: "Osaurus",
+                author: "Project2501",
                 category: "productivity",
                 keywords: ["summarize", "summary", "tldr", "key-points", "digest", "condense"],
                 enabled: false,
@@ -341,7 +341,7 @@ public struct Skill: Codable, Identifiable, Sendable, Equatable {
                 name: "Debug Assistant",
                 description: "Systematic debugging and problem-solving approach",
                 version: "1.0.0",
-                author: "Osaurus",
+                author: "Project2501",
                 category: "development",
                 keywords: ["debug", "bug", "error", "crash", "fix", "troubleshoot", "diagnose"],
                 enabled: false,
@@ -393,7 +393,7 @@ public struct Skill: Codable, Identifiable, Sendable, Equatable {
                 description:
                     "Create new sandbox plugins when you need an integration or capability that doesn't exist yet",
                 version: "1.0.0",
-                author: "Osaurus",
+                author: "Project2501",
                 category: "development",
                 keywords: [
                     "plugin", "integration", "connect", "api", "create plugin",
@@ -946,7 +946,7 @@ extension Skill {
                 keywords = raw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             }
 
-            // Osaurus-specific metadata
+            // Project2501-specific metadata
             if let idString = metadata["project2501-id"] as? String {
                 project2501Id = UUID(uuidString: idString)
             }
@@ -991,7 +991,7 @@ extension Skill {
         return hasName && !hasId
     }
 
-    /// Parse from either Osaurus or Agent Skills format (auto-detect)
+    /// Parse from either Project2501 or Agent Skills format (auto-detect)
     public static func parseAnyFormat(from markdown: String) throws -> Skill {
         if isAgentSkillsFormat(markdown) {
             return try parseAgentSkillsFormat(from: markdown)

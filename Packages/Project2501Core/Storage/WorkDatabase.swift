@@ -2,7 +2,7 @@
 //  WorkDatabase.swift
 //  project2501
 //
-//  SQLite database management for Osaurus Agents.
+//  SQLite database management for Project2501 Agents.
 //  Handles schema creation, migrations, and database lifecycle.
 //
 
@@ -28,7 +28,7 @@ public enum WorkDatabaseError: Error, LocalizedError {
     }
 }
 
-/// SQLite database manager for Osaurus Agents
+/// SQLite database manager for Project2501 Agents
 /// Manages the work.db database containing issues, dependencies, and events
 public final class WorkDatabase: @unchecked Sendable {
     /// Shared singleton instance
@@ -56,7 +56,7 @@ public final class WorkDatabase: @unchecked Sendable {
 
     // MARK: - Lifecycle
 
-    private static let legacyDatabasePath: URL = OsaurusPaths.root()
+    private static let legacyDatabasePath: URL = Project2501Paths.root()
         .appendingPathComponent("agent", isDirectory: true)
         .appendingPathComponent("agent.db")
 
@@ -65,7 +65,7 @@ public final class WorkDatabase: @unchecked Sendable {
         try queue.sync {
             guard db == nil else { return }
 
-            OsaurusPaths.ensureExistsSilent(OsaurusPaths.workData())
+            Project2501Paths.ensureExistsSilent(Project2501Paths.workData())
 
             try openConnection()
             try runMigrations()
@@ -99,7 +99,7 @@ public final class WorkDatabase: @unchecked Sendable {
 
         if let connection = db { sqlite3_close(connection); db = nil }
 
-        let newPath = OsaurusPaths.workDatabaseFile()
+        let newPath = Project2501Paths.workDatabaseFile()
         try? FileManager.default.removeItem(at: newPath)
         try FileManager.default.copyItem(at: Self.legacyDatabasePath, to: newPath)
         print("[WorkDatabase] Recovered data from legacy agent.db")
@@ -110,7 +110,7 @@ public final class WorkDatabase: @unchecked Sendable {
 
     /// Opens the SQLite connection and enables foreign keys.
     private func openConnection() throws {
-        let path = OsaurusPaths.workDatabaseFile().path
+        let path = Project2501Paths.workDatabaseFile().path
         var dbPointer: OpaquePointer?
         let result = sqlite3_open(path, &dbPointer)
         guard result == SQLITE_OK, let connection = dbPointer else {

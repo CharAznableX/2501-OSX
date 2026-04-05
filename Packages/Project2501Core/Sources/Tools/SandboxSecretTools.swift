@@ -11,7 +11,7 @@ import Foundation
 
 // MARK: - sandbox_secret_check
 
-struct SandboxSecretCheckTool: OsaurusTool, @unchecked Sendable {
+struct SandboxSecretCheckTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_secret_check"
     let description =
         "Check whether a secret (API key, token) exists for the current agent. "
@@ -58,7 +58,7 @@ enum SecretPromptAction {
     static let actionKey = "secret_prompt"
 }
 
-struct SandboxSecretSetTool: OsaurusTool, @unchecked Sendable {
+struct SandboxSecretSetTool: Project2501Tool, @unchecked Sendable {
     let name = "sandbox_secret_set"
     let description =
         "Store a secret (API key, token) securely for the current agent. "

@@ -8,7 +8,7 @@
 
 import Foundation
 
-final class SearchWorkingMemoryTool: OsaurusTool, @unchecked Sendable {
+final class SearchWorkingMemoryTool: Project2501Tool, @unchecked Sendable {
     let name = "search_working_memory"
     let description =
         "Search structured memory entries (facts, preferences, decisions, corrections, commitments). Returns matching entries with type, content, and confidence."

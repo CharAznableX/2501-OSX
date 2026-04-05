@@ -25,9 +25,9 @@ public final class SandboxPluginLibrary: ObservableObject {
         var pluginToSave = plugin
         pluginToSave.modifiedAt = Date()
 
-        let dir = OsaurusPaths.sandboxPluginLibrary()
+        let dir = Project2501Paths.sandboxPluginLibrary()
         let fm = FileManager.default
-        OsaurusPaths.ensureExistsSilent(dir)
+        Project2501Paths.ensureExistsSilent(dir)
         let file = dir.appendingPathComponent("\(pluginToSave.id).json")
 
         let versionsDir = Self.versionsDirectory(for: pluginToSave.id)
@@ -47,7 +47,7 @@ public final class SandboxPluginLibrary: ObservableObject {
 
         try? data.write(to: file, options: .atomic)
 
-        OsaurusPaths.ensureExistsSilent(versionsDir)
+        Project2501Paths.ensureExistsSilent(versionsDir)
         let versionFile = versionsDir.appendingPathComponent("\(pluginToSave.version!).json")
         try? data.write(to: versionFile, options: .atomic)
 
@@ -64,7 +64,7 @@ public final class SandboxPluginLibrary: ObservableObject {
             let oldVersionsDir = Self.versionsDirectory(for: oldId)
             let newVersionsDir = Self.versionsDirectory(for: plugin.id)
             if fm.fileExists(atPath: oldVersionsDir.path) {
-                OsaurusPaths.ensureExistsSilent(newVersionsDir.deletingLastPathComponent())
+                Project2501Paths.ensureExistsSilent(newVersionsDir.deletingLastPathComponent())
                 try? fm.moveItem(at: oldVersionsDir, to: newVersionsDir)
             }
             delete(id: oldId)
@@ -73,7 +73,7 @@ public final class SandboxPluginLibrary: ObservableObject {
     }
 
     public func delete(id: String) {
-        let dir = OsaurusPaths.sandboxPluginLibrary()
+        let dir = Project2501Paths.sandboxPluginLibrary()
         let fm = FileManager.default
         try? fm.removeItem(at: dir.appendingPathComponent("\(id).json"))
         try? fm.removeItem(at: Self.versionsDirectory(for: id))
@@ -122,7 +122,7 @@ public final class SandboxPluginLibrary: ObservableObject {
 
         guard let data = try? Data(contentsOf: versionFile) else { return }
 
-        let dir = OsaurusPaths.sandboxPluginLibrary()
+        let dir = Project2501Paths.sandboxPluginLibrary()
         try? data.write(to: dir.appendingPathComponent("\(id).json"), options: .atomic)
 
         if let files = try? fm.contentsOfDirectory(at: versionsDir, includingPropertiesForKeys: nil) {
@@ -172,9 +172,9 @@ public final class SandboxPluginLibrary: ObservableObject {
     // MARK: - Persistence
 
     private func loadAll() {
-        let dir = OsaurusPaths.sandboxPluginLibrary()
+        let dir = Project2501Paths.sandboxPluginLibrary()
         let fm = FileManager.default
-        OsaurusPaths.ensureExistsSilent(dir)
+        Project2501Paths.ensureExistsSilent(dir)
         guard let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return }
 
         var loaded: [SandboxPlugin] = []
@@ -192,7 +192,7 @@ public final class SandboxPluginLibrary: ObservableObject {
     // MARK: - Version Helpers
 
     private static func versionsDirectory(for pluginId: String) -> URL {
-        OsaurusPaths.sandboxPluginLibrary()
+        Project2501Paths.sandboxPluginLibrary()
             .appendingPathComponent("versions", isDirectory: true)
             .appendingPathComponent(pluginId, isDirectory: true)
     }
@@ -213,7 +213,7 @@ public final class SandboxPluginLibrary: ObservableObject {
 
     private func archiveLegacyPlugin(at file: URL, to versionsDir: URL) {
         let fm = FileManager.default
-        OsaurusPaths.ensureExistsSilent(versionsDir)
+        Project2501Paths.ensureExistsSilent(versionsDir)
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601

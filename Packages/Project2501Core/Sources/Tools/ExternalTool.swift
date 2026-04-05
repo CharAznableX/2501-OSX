@@ -8,7 +8,7 @@
 import Foundation
 import Project2501Repository
 
-final class ExternalTool: OsaurusTool, PermissionedTool, @unchecked Sendable {
+final class ExternalTool: Project2501Tool, PermissionedTool, @unchecked Sendable {
     let name: String
     let description: String
     let parameters: JSONValue?

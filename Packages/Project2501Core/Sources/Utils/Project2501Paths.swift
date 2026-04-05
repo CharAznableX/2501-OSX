@@ -1,16 +1,16 @@
 //
-//  OsaurusPaths.swift
+//  Project2501Paths.swift
 //  project2501
 //
-//  Centralized path management for all Osaurus app data.
+//  Centralized path management for all Project2501 app data.
 //  Provides consistent directory structure across all components.
 //
 
 import Foundation
 
-/// Centralized path management for all Osaurus app data.
+/// Centralized path management for all Project2501 app data.
 /// All stores and services should use this module for path resolution.
-public enum OsaurusPaths {
+public enum Project2501Paths {
     /// Optional root directory override for tests
     /// Note: nonisolated(unsafe) since this is only set during test setup before any concurrent access
     public nonisolated(unsafe) static var overrideRoot: URL?
@@ -28,20 +28,20 @@ public enum OsaurusPaths {
             if !fm.fileExists(atPath: newRoot.path) {
                 do {
                     try fm.copyItem(at: oldRoot, to: newRoot)
-                    print("[Osaurus] Copied data from \(oldRoot.path) to \(newRoot.path)")
+                    print("[Project2501] Copied data from \(oldRoot.path) to \(newRoot.path)")
                     return newRoot
                 } catch {
-                    print("[Osaurus] Copy failed, falling back to merge: \(error)")
+                    print("[Project2501] Copy failed, falling back to merge: \(error)")
                 }
             }
             mergeDirectory(from: oldRoot, into: newRoot)
-            print("[Osaurus] Merged data from \(oldRoot.path) into \(newRoot.path)")
+            print("[Project2501] Merged data from \(oldRoot.path) into \(newRoot.path)")
         }
 
         return newRoot
     }()
 
-    /// The root data directory for Osaurus: `~/.project2501/`
+    /// The root data directory for Project2501: `~/.project2501/`
     public static func root() -> URL {
         if let override = overrideRoot {
             return override

@@ -323,7 +323,7 @@ struct AgentsView: View {
                 showSuccess("Exported \"\(agent.name)\"")
             }
         } catch {
-            print("[Osaurus] Failed to export agent: \(error)")
+            print("[Project2501] Failed to export agent: \(error)")
         }
     }
 }
