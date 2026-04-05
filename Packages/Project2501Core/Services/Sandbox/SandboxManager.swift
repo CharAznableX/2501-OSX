@@ -20,7 +20,7 @@
         public static let shared = SandboxManager()
 
         private static let containerID = "project2501-sandbox"
-        private static let containerImage = "ghcr.io/project2501-ai/sandbox:latest"
+        private static let containerImage = "ghcr.io/charaznablex/2501-sandbox:latest"
         private static let kernelDownloadURLs = [
             "https://github.com/kata-containers/kata-containers/releases/download/3.17.0/kata-static-3.17.0-arm64.tar.xz"
         ]

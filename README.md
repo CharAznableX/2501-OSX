@@ -10,10 +10,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/project2501-ai/project2501/releases/latest"><img src="https://img.shields.io/github/v/release/project2501-ai/project2501?sort=semver" alt="Release"></a>
-  <a href="https://github.com/project2501-ai/project2501/releases"><img src="https://img.shields.io/github/downloads/project2501-ai/project2501/total" alt="Downloads"></a>
-  <a href="https://github.com/project2501-ai/project2501/blob/main/LICENSE"><img src="https://img.shields.io/github/license/project2501-ai/project2501" alt="License"></a>
-  <a href="https://github.com/project2501-ai/project2501/stargazers"><img src="https://img.shields.io/github/stars/project2501-ai/project2501?style=social" alt="Stars"></a>
+  <a href="https://github.com/CharAznableX/2501-OSX/releases/latest"><img src="https://img.shields.io/github/v/release/CharAznableX/2501-OSX?sort=semver" alt="Release"></a>
+  <a href="https://github.com/CharAznableX/2501-OSX/releases"><img src="https://img.shields.io/github/downloads/CharAznableX/2501-OSX/total" alt="Downloads"></a>
+  <a href="https://github.com/CharAznableX/2501-OSX/blob/main/LICENSE"><img src="https://img.shields.io/github/license/CharAznableX/2501-OSX" alt="License"></a>
+  <a href="https://github.com/CharAznableX/2501-OSX/stargazers"><img src="https://img.shields.io/github/stars/CharAznableX/2501-OSX?style=social" alt="Stars"></a>
 </p>
 
 <p align="center">
@@ -27,11 +27,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/project2501-ai/project2501/releases/latest/download/Project2501.dmg">Download for Mac</a> ·
+  <a href="https://github.com/CharAznableX/2501-OSX/releases/latest/download/Project2501.dmg">Download for Mac</a> ·
   <a href="https://docs.project2501.ai">Docs</a> ·
   <a href="https://discord.com/invite/cuadralabs">Discord</a> ·
   <a href="https://x.com/Project2501AI">Twitter</a> ·
-  <a href="https://github.com/project2501-ai/project2501-tools">Plugin Registry</a>
+  <a href="https://github.com/CharAznableX/2501-OSX-tools">Plugin Registry</a>
 </p>
 
 ---
@@ -52,7 +52,7 @@ Native Swift on Apple Silicon. No Electron. No compromises. MIT licensed.
 brew install --cask project2501
 ```
 
-Or download the latest `.dmg` from [Releases](https://github.com/project2501-ai/project2501/releases/latest). After installing, launch from Spotlight (`⌘ Space` → "Project2501") or the CLI:
+Or download the latest `.dmg` from [Releases](https://github.com/CharAznableX/2501-OSX/releases/latest). After installing, launch from Spotlight (`⌘ Space` → "Project2501") or the CLI:
 
 ```bash
 project2501 ui       # Open the chat UI
@@ -215,7 +215,7 @@ Most features are accessible through the Management window (`⌘ ⇧ M`).
 ## Build from Source
 
 ```bash
-git clone https://github.com/project2501-ai/project2501.git
+git clone https://github.com/CharAznableX/2501-OSX.git
 cd project2501
 open project2501.xcworkspace
 ```
@@ -265,7 +265,7 @@ See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for the architecture guide and layer
 
 Project2501 is actively developed and we welcome contributions: bug fixes, new plugins, documentation, UI/UX improvements, and testing.
 
-Check out [Good First Issues](https://github.com/project2501-ai/project2501/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22), read the [Contributing Guide](CONTRIBUTING.md), or join [Discord](https://discord.com/invite/cuadralabs). See [docs/FEATURES.md](docs/FEATURES.md) for the full feature inventory.
+Check out [Good First Issues](https://github.com/CharAznableX/2501-OSX/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22), read the [Contributing Guide](CONTRIBUTING.md), or join [Discord](https://discord.com/invite/cuadralabs). See [docs/FEATURES.md](docs/FEATURES.md) for the full feature inventory.
 
 ## Community
 
@@ -274,7 +274,7 @@ Check out [Good First Issues](https://github.com/project2501-ai/project2501/issu
 - [Community Calls](https://lu.ma/project2501) -- bi-weekly, open to everyone
 - [Blog](https://project2501.ai/blog) -- long-form thinking on personal AI
 - [Docs](https://docs.project2501.ai) -- guides and tutorials
-- [Plugin Registry](https://github.com/project2501-ai/project2501-tools) -- browse and contribute tools
+- [Plugin Registry](https://github.com/CharAznableX/2501-OSX-tools) -- browse and contribute tools
 
 ## License
 
