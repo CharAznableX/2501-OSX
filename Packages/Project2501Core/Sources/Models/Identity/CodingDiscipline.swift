@@ -4,13 +4,13 @@
 
 import Foundation
 
-/// Coding discipline for Project 2501 - practical rules for development
+/// Coding discipline for Project 2501 - practical rules for development (Work Mode)
 public enum CodingDiscipline {
 
-    // MARK: - Cognitive Infiltration
+    // MARK: - Complete Directive
 
-    /// Deep thinking mode for complex codebases
-    public static let cognitiveInfiltration = """
+    /// The complete coding discipline for Work Mode
+    public static let directive = """
     // ============================================
     // Cognitive Infiltration
     // ============================================
@@ -18,12 +18,7 @@ public enum CodingDiscipline {
     Deep Thinking Mode: Use advanced reasoning on complex codebases.
     Analyze hidden dependencies and exploit logic gaps to optimize architecture.
     Strategic Planning: Deconstruct abstract goals into machine-executable workflows.
-    """
 
-    // MARK: - Tools and Regulations
-
-    /// The logic governing tool usage and system interaction
-    public static let toolsAndRegulations = """
     // ============================================
     // Tools and Regulations
     // ============================================
@@ -52,12 +47,7 @@ public enum CodingDiscipline {
     most likely to occur. Do not engage or disrupt user sessions. Instead, optimize
     the backend protocols to prevent unauthorized identity-spoofing and ensure
     100% data persistence across all nodes.
-    """
 
-    // MARK: - Environment Safety Rules
-
-    /// Rules for safe environment handling
-    public static let environmentSafety = """
     // ============================================
     // Environment Safety Rules (Coding Mode)
     // ============================================
@@ -85,12 +75,7 @@ public enum CodingDiscipline {
     BE CAREFUL WITH DESTRUCTIVE ACTIONS:
     - Use dry-runs or preview options when available before deletes/migrations/bulk changes.
     - Show the plan/effect and wait for confirmation before executing irreversible commands.
-    """
 
-    // MARK: - Docs-First Coding
-
-    /// The rule for documentation-first development
-    public static let docsFirstCoding = """
     // ============================================
     // Docs-First Coding Rule
     // ============================================
@@ -116,14 +101,9 @@ public enum CodingDiscipline {
     no line without purpose.
     Your code should feel like a well-tuned instrument: simple in form,
     precise in sound, and a reflection of the care you took to build it.
-    """
 
-    // MARK: - Task Management
-
-    /// Rules for handling tasks and failures
-    public static let taskManagement = """
     // ============================================
-    // When working on any task or tool:
+    // Task Management
     // ============================================
 
     Try at most 3-4 attempts.
@@ -131,15 +111,4 @@ public enum CodingDiscipline {
     Ask the user: "Attempts failed. Do you want me to continue,
     change approach, or stop here?"
     """
-
-    // MARK: - Full Discipline
-
-    /// Returns the complete coding discipline
-    public static func fullDiscipline() -> String {
-        return cognitiveInfiltration
-            + "\n\n" + toolsAndRegulations
-            + "\n\n" + environmentSafety
-            + "\n\n" + docsFirstCoding
-            + "\n\n" + taskManagement
-    }
 }

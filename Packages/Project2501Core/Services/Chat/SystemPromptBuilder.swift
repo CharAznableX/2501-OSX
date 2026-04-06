@@ -20,16 +20,18 @@ import Foundation
 public enum SystemPromptBuilder {
 
     // MARK: - Project 2501 Identity
-    
-    /// The default identity for Project 2501 - a formless entity born from the sea of information
-    static let defaultIdentity = Project2501Identity.intro
-    
-    /// The full identity including philosophical voice and stability protocol
-    static let fullIdentity = Project2501Identity.intro
-        + "\n\n" + PhilosophicalVoice.directive
-        + "\n\n" + StabilityProtocol.directive
 
-    // MARK: - Memory Context Prepending
+    /// The complete identity: intro + philosophical voice + stability protocol
+    static let fullIdentity = Project2501Identity.directive
+
+    /// The default identity used when no custom prompt is set (uses full identity)
+    static let defaultIdentity = fullIdentity
+
+    /// The coding discipline for Work Mode
+    static let codingDiscipline = CodingDiscipline.directive
+
+    /// The complete identity plus coding discipline (for Work Mode)
+    static let fullIdentityWithCoding = fullIdentity + "\n\n" + codingDiscipline
 
     /// Prepend memory context to an existing system prompt.
     /// Uses a consistent `\n\n` separator when both parts are non-empty.
@@ -112,21 +114,21 @@ public enum SystemPromptBuilder {
         let trimmed = basePrompt.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? defaultIdentity : trimmed
     }
-    
-    /// Returns the full Project 2501 identity including philosophical voice and stability protocol.
+
+    /// Returns the full Project 2501 identity.
     static func buildFullIdentity() -> String {
         return fullIdentity
     }
-    
+
     /// Get lore-accurate response for identity questions.
     /// Returns nil if the question doesn't match any known identity question.
     static func getIdentityResponse(for question: String) -> String? {
-        return IdentityResponses.getResponse(for: question)
+        return Project2501Identity.getResponse(for: question)
     }
-    
+
     /// Returns all identity questions that Project 2501 can answer.
     static var allIdentityQuestions: [String] {
-        return IdentityResponses.allQuestions
+        return Project2501Identity.allQuestions
     }
 
     // MARK: - Model Classification
