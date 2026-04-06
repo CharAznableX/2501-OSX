@@ -259,7 +259,8 @@ public final class PluginInstallManager: @unchecked Sendable {
     private func download(toTempFileFrom url: URL) async throws -> (fileURL: URL, data: Data) {
         let (data, response) = try await URLSession.shared.data(from: url)
         guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
-            throw PluginInstallError.downloadFailed("HTTP error")
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            throw PluginInstallError.downloadFailed("HTTP \(statusCode) from \(url.absoluteString)")
         }
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".zip")
         try data.write(to: tmp)
