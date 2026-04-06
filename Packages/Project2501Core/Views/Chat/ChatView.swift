@@ -986,7 +986,10 @@ final class ChatSession: ObservableObject {
                 @MainActor
                 func buildMessages() -> [ChatMessage] {
                     var msgs: [ChatMessage] = []
-                    if !sys.isEmpty { msgs.append(ChatMessage(role: "system", content: sys)) }
+                    if !sys.isEmpty {
+                        debugLog("[ChatView] System prompt (\(sys.count) chars): \(sys.prefix(500))...")
+                        msgs.append(ChatMessage(role: "system", content: sys))
+                    }
 
                     for (index, t) in turns.enumerated() {
                         let isLastTurn = index == turns.count - 1
