@@ -33,5 +33,5 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: |
-            ghcr.io/project2501-ai/sandbox:latest
-            ghcr.io/project2501-ai/sandbox:${{ github.sha }}
+            ghcr.io/charaznablex/2501-sandbox:latest
+            ghcr.io/charaznablex/2501-sandbox:${{ github.sha }}

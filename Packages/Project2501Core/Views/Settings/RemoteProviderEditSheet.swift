@@ -66,6 +66,13 @@ private struct AddProviderFlow: View {
         if preset == .custom {
             return !customHost.trimmingCharacters(in: .whitespaces).isEmpty
         }
+
+        // Providers with no auth (like Ollama) don't need an API key
+        let config = preset.configuration
+        if config.authType == .none {
+            return true
+        }
+
         return !apiKey.isEmpty && apiKey.count > 5
     }
 
@@ -733,6 +740,12 @@ private struct AddProviderFlow: View {
         isTesting = true
         testResult = nil
 
+        // Merge preset headers with any user-added headers
+        var mergedHeaders = config.customHeaders
+        for (key, value) in HeaderEntry.buildHeaders(from: customHeaders) {
+            mergedHeaders[key] = value
+        }
+
         Task {
             do {
                 let models = try await RemoteProviderManager.shared.testConnection(
@@ -740,10 +753,10 @@ private struct AddProviderFlow: View {
                     providerProtocol: config.providerProtocol,
                     port: config.port,
                     basePath: config.basePath,
-                    authType: .apiKey,
+                    authType: config.authType,
                     providerType: config.providerType,
                     apiKey: apiKey,
-                    headers: HeaderEntry.buildHeaders(from: customHeaders)
+                    headers: mergedHeaders
                 )
                 await MainActor.run {
                     withAnimation {
@@ -763,7 +776,12 @@ private struct AddProviderFlow: View {
     private func saveKnownProvider() {
         guard let preset = selectedPreset else { return }
         let config = preset.configuration
+        // Merge preset headers with any user-added headers
+        var mergedHeaders = config.customHeaders
         let (regularHeaders, secretKeys) = HeaderEntry.partition(customHeaders)
+        for (key, value) in regularHeaders {
+            mergedHeaders[key] = value
+        }
 
         let remoteProvider = RemoteProvider(
             name: config.name,
@@ -771,8 +789,8 @@ private struct AddProviderFlow: View {
             providerProtocol: config.providerProtocol,
             port: config.port,
             basePath: config.basePath,
-            customHeaders: regularHeaders,
-            authType: .apiKey,
+            customHeaders: mergedHeaders,
+            authType: config.authType,
             providerType: config.providerType,
             enabled: true,
             autoConnect: true,

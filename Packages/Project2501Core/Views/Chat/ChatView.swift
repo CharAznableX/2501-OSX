@@ -774,6 +774,32 @@ final class ChatSession: ObservableObject {
         let isRegeneration = !hasContent && !turns.isEmpty
         guard hasContent || isRegeneration else { return }
 
+        // Check if this is an identity question that should be answered with lore-accurate response
+        if attachments.isEmpty, let identityResponse = SystemPromptBuilder.getIdentityResponse(for: trimmed) {
+            // Add user turn
+            turns.append(ChatTurn(role: .user, content: trimmed))
+            isDirty = true
+            rebuildVisibleBlocks()
+
+            // Save session if needed
+            if sessionId == nil {
+                sessionId = UUID()
+                createdAt = Date()
+                updatedAt = Date()
+                isDirty = false
+                let turnData = turns.map { ChatTurnData(from: $0) }
+                title = ChatSessionData.generateTitle(from: turnData)
+                let data = toSessionData()
+                ChatSessionsManager.shared.save(data)
+                onSessionChanged?()
+            }
+
+            // Add assistant turn with lore-accurate response
+            turns.append(ChatTurn(role: .assistant, content: identityResponse))
+            rebuildVisibleBlocks()
+            return
+        }
+
         if hasContent {
             turns.append(ChatTurn(role: .user, content: trimmed, attachments: attachments))
             isDirty = true

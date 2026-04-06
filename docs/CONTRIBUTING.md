@@ -239,6 +239,6 @@ This project follows the Contributor Covenant. By participating, you agree to up
 ## Join the community
 
 - **[Discord](https://github.com/CharAznableX/2501-OSX)** — Chat with contributors and maintainers
-- **[Good First Issues](https://github.com/project2501-ai/project2501/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)** — Great starting points
+- **[Good First Issues](https://github.com/CharAznableX/2501-OSX/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)** — Great starting points
 
 Thank you for helping make Project2501 better!

@@ -371,3 +371,4 @@ The address-based design naturally extends to agent-to-agent communication acros
 | `RecoveryManager.swift` | One-time recovery code generation at identity creation |
 | `CryptoHelpers.swift` | Keccak-256, domain-separated signing, ecrecover, address derivation, encoding utilities |
 | `Project2501IdentityError.swift` | Error types for the identity system |
+

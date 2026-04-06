@@ -21,7 +21,7 @@ public final class CentralRepositoryManager: @unchecked Sendable {
     private init() {}
 
     public var central: CentralRepository = .init(
-        url: "https://github.com/project2501-ai/project2501-tools.git",
+        url: "https://github.com/CharAznableX/2501-OSX-tools.git",
         branch: nil
     )
 

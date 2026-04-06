@@ -25,7 +25,7 @@
             "https://github.com/kata-containers/kata-containers/releases/download/3.17.0/kata-static-3.17.0-arm64.tar.xz"
         ]
         private static let initfsDownloadURLs = [
-            // "https://github.com/project2501-ai/project2501/releases/latest/download/init.ext4"
+            // "https://github.com/CharAznableX/2501-OSX/releases/latest/download/init.ext4"
             "https://pub-5f3c2bf70e93411790bbcd6419d2f8fa.r2.dev/init.ext4"
         ]
 

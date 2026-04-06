@@ -25,7 +25,7 @@ public enum SystemPromptBuilder {
     static let fullIdentity = Project2501Identity.directive
 
     /// The default identity used when no custom prompt is set (uses full identity)
-    static let defaultIdentity = fullIdentity
+    static let defaultIdentity = fullIdentityWithCoding
 
     /// The coding discipline for Work Mode
     static let codingDiscipline = CodingDiscipline.directive

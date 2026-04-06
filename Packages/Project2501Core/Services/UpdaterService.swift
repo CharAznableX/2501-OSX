@@ -53,7 +53,7 @@ final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     nonisolated func feedURLString(for updater: SPUUpdater) -> String? {
-        return "https://project2501-ai.github.io/project2501/appcast.xml"
+        return "https://charaznablex.github.io/2501-OSX/appcast.xml"
     }
 
     // MARK: - Verbose Logging Hooks

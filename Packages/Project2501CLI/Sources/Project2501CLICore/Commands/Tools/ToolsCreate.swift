@@ -97,7 +97,7 @@ public struct ToolsCreate {
 
             jobs:
               release:
-                uses: project2501-ai/project2501-tools/.github/workflows/build-plugin.yml@master
+                uses: CharAznableX/2501-OSX-tools/.github/workflows/build-plugin.yml@master
                 secrets: inherit
             """
         try? releaseYml.write(
@@ -1806,7 +1806,7 @@ public struct ToolsCreate {
 
             ### Registry Submission
 
-            1. Fork the [project2501-tools](https://github.com/project2501-ai/project2501-tools) repository
+            1. Fork the [2501-OSX-tools](https://github.com/CharAznableX/2501-OSX-tools) repository
             2. Add `plugins/<your-plugin-id>.json` with metadata
             3. Submit a pull request
 

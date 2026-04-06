@@ -219,7 +219,7 @@ struct AcknowledgementsView: View {
 
             HStack(spacing: 16) {
                 Button("View on GitHub") {
-                    if let url = URL(string: "https://github.com/project2501-ai/project2501") {
+                    if let url = URL(string: "https://github.com/CharAznableX/2501-OSX") {
                         NSWorkspace.shared.open(url)
                     }
                 }

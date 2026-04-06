@@ -983,7 +983,7 @@ When using `project2501 tools dev`, only the root-level `SKILL.md` file is copie
 
 **Example:**
 
-The [project2501-pptx](https://github.com/project2501-ai/project2501-pptx) plugin includes a SKILL.md that covers the required tool call sequence, slide coordinate system, layout recipes for common slide types, theme selection guidance, and design best practices.
+The [2501-OSX-pptx](https://github.com/CharAznableX/2501-OSX-pptx) plugin includes a SKILL.md that covers the required tool call sequence, slide coordinate system, layout recipes for common slide types, theme selection guidance, and design best practices.
 
 ### Plugin Documentation
 
@@ -2065,7 +2065,7 @@ The registry entry should include publishing metadata (`homepage`, `license`, `a
 
 The `capabilities` block is **informational only** — it is used for the plugin listing in the registry UI. The actual skills are discovered automatically from `SKILL.md` files in the archive at install time (see [Plugin Skills](#plugin-skills-skillmd)).
 
-> **Note:** If you use the shared CI workflow (`project2501-ai/project2501-tools/.github/workflows/build-plugin.yml`), the `capabilities` block is generated automatically. Tools are extracted from the dylib manifest, and skills are detected from any `SKILL.md` file at the repository root. You do not need to write this JSON by hand.
+> **Note:** If you use the shared CI workflow (`CharAznableX/2501-OSX-tools/.github/workflows/build-plugin.yml`), the `capabilities` block is generated automatically. Tools are extracted from the dylib manifest, and skills are detected from any `SKILL.md` file at the repository root. You do not need to write this JSON by hand.
 
 ---
 

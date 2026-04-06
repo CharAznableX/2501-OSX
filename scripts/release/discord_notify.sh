@@ -21,16 +21,16 @@ fi
 TRUNCATED=$(printf '%s' "$RAW_CHANGELOG" | head -c 1900)
 
 jq -n \
-  --arg content  "🚀 **New Osaurus Release!**" \
+  --arg content  "🚀 **New Project2501 Release!**" \
   --arg version  "${VERSION}" \
   --arg desc     "$TRUNCATED" \
-  --arg download "[Download Osaurus.dmg](https://github.com/osaurus-ai/osaurus/releases/latest/download/Osaurus.dmg)" \
-  --arg page     "[View on GitHub](https://github.com/osaurus-ai/osaurus/releases/tag/${VERSION})" \
+  --arg download "[Download Project2501.dmg](https://github.com/CharAznableX/2501-OSX/releases/latest/download/Project2501.dmg)" \
+  --arg page     "[View on GitHub](https://github.com/CharAznableX/2501-OSX/releases/tag/${VERSION})" \
   '{
     content: $content,
     embeds: [
       {
-        title: ("Osaurus " + $version),
+        title: ("Project2501 " + $version),
         description: $desc,
         color: 5814783,
         fields: [

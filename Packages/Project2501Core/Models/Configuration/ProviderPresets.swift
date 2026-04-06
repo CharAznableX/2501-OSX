@@ -208,7 +208,11 @@ enum ProviderPreset: String, CaseIterable, Identifiable {
                 port: nil,
                 basePath: "/api/v1",
                 authType: .apiKey,
-                providerType: .openai
+                providerType: .openai,
+                customHeaders: [
+                    "HTTP-Referer": "https://project2501.ai",
+                    "X-Title": "Project2501"
+                ]
             )
         case .ollama:
             return ProviderPresetConfiguration(
@@ -255,6 +259,27 @@ struct ProviderPresetConfiguration {
     let basePath: String
     let authType: RemoteProviderAuthType
     let providerType: RemoteProviderType
+    let customHeaders: [String: String]
+
+    init(
+        name: String,
+        host: String,
+        providerProtocol: RemoteProviderProtocol,
+        port: Int? = nil,
+        basePath: String,
+        authType: RemoteProviderAuthType,
+        providerType: RemoteProviderType,
+        customHeaders: [String: String] = [:]
+    ) {
+        self.name = name
+        self.host = host
+        self.providerProtocol = providerProtocol
+        self.port = port
+        self.basePath = basePath
+        self.authType = authType
+        self.providerType = providerType
+        self.customHeaders = customHeaders
+    }
 }
 
 // MARK: - Provider Badge View

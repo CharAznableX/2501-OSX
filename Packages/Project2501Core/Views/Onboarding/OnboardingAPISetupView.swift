@@ -33,7 +33,7 @@ struct OnboardingAPISetupView: View {
 
     /// Presets shown in onboarding (subset of all presets - excludes OpenRouter for simplicity), sorted alphabetically with Custom last.
     private static let onboardingPresets: [ProviderPreset] = [
-        .anthropic, .google, .openai, .venice, .xai, .custom,
+        .anthropic, .google, .ollama, .openai, .venice, .xai, .custom,
     ]
 
     private enum TestResult {
@@ -47,6 +47,13 @@ struct OnboardingAPISetupView: View {
         if provider == .custom {
             return !customHost.isEmpty && !apiKey.isEmpty && apiKey.count > 5
         }
+
+        // Providers with no auth (like Ollama) don't need an API key
+        let config = provider.configuration
+        if config.authType == .none {
+            return true
+        }
+
         return !apiKey.isEmpty && apiKey.count > 10
     }
 
@@ -416,7 +423,7 @@ struct OnboardingAPISetupView: View {
     /// Builds provider configuration from current state
     private func buildProviderConfig() -> (
         name: String, host: String, port: Int?, basePath: String, providerType: RemoteProviderType,
-        providerProtocol: RemoteProviderProtocol
+        providerProtocol: RemoteProviderProtocol, authType: RemoteProviderAuthType, customHeaders: [String: String]
     )? {
         guard let provider = selectedProvider else { return nil }
 
@@ -427,7 +434,9 @@ struct OnboardingAPISetupView: View {
                 port: customPort.isEmpty ? nil : Int(customPort),
                 basePath: customBasePath.isEmpty ? "/v1" : customBasePath,
                 providerType: .openai,
-                providerProtocol: customProtocol
+                providerProtocol: customProtocol,
+                authType: .apiKey,
+                customHeaders: [:]
             )
         } else {
             let config = provider.configuration
@@ -437,7 +446,9 @@ struct OnboardingAPISetupView: View {
                 port: config.port,
                 basePath: config.basePath,
                 providerType: config.providerType,
-                providerProtocol: config.providerProtocol
+                providerProtocol: config.providerProtocol,
+                authType: config.authType,
+                customHeaders: config.customHeaders
             )
         }
     }
@@ -455,10 +466,10 @@ struct OnboardingAPISetupView: View {
                     providerProtocol: config.providerProtocol,
                     port: config.port,
                     basePath: config.basePath,
-                    authType: .apiKey,
+                    authType: config.authType,
                     providerType: config.providerType,
                     apiKey: apiKey,
-                    headers: [:]
+                    headers: config.customHeaders
                 )
 
                 await MainActor.run {
@@ -489,8 +500,8 @@ struct OnboardingAPISetupView: View {
             providerProtocol: config.providerProtocol,
             port: config.port,
             basePath: config.basePath,
-            customHeaders: [:],
-            authType: .apiKey,
+            customHeaders: config.customHeaders,
+            authType: config.authType,
             providerType: config.providerType,
             enabled: true,
             autoConnect: true,

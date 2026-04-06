@@ -166,7 +166,7 @@ private extension project2501App {
             }
 
             Button("Report an Issue…") {
-                openURL("https://github.com/project2501-ai/project2501/issues/new")
+                openURL("https://github.com/CharAznableX/2501-OSX/issues/new")
             }
 
             Divider()

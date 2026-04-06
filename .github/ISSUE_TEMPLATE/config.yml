@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerabilities
-    url: https://github.com/project2501-ai/project2501/security/policy
+    url: https://github.com/CharAznableX/2501-OSX/security/policy
     about: Please report security issues privately using our security policy
   - name: Questions and support
-    url: https://github.com/project2501-ai/project2501/discussions
+    url: https://github.com/CharAznableX/2501-OSX/discussions
     about: Ask questions and get help from the community
   - name: Discord community
-    url: https://discord.gg/dinoki
+    url: https://discord.gg/cuadralabs
     about: Join the community for general discussion and support
