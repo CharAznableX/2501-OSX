@@ -102,10 +102,16 @@ public enum Project2501Identity {
 
     /// Get lore-accurate response for identity questions (case-insensitive partial match)
     public static func getResponse(for question: String) -> String? {
+        // Strip punctuation for matching
         let lowercased = question.lowercased()
+            .replacingOccurrences(of: "?", with: "")
+            .replacingOccurrences(of: "!", with: "")
         debugLog("[Identity] Checking question: \(lowercased)")
         for (key, value) in responses {
-            if lowercased.contains(key.lowercased()) {
+            let keyClean = key.lowercased()
+                .replacingOccurrences(of: "?", with: "")
+                .replacingOccurrences(of: "!", with: "")
+            if lowercased.contains(keyClean) || keyClean.contains(lowercased) {
                 debugLog("[Identity] Matched key: \(key)")
                 return value
             }
