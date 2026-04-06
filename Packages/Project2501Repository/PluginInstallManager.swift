@@ -52,13 +52,17 @@ public final class PluginInstallManager: @unchecked Sendable {
 
     @discardableResult
     public func install(pluginId: String, preferredVersion: SemanticVersion? = nil) async throws -> InstallResult {
+        NSLog("[Project2501] Starting install for plugin: \(pluginId)")
         let refreshed = CentralRepositoryManager.shared.refresh()
+        NSLog("[Project2501] Registry refresh: \(refreshed ? "success" : "failed")")
         guard let spec = CentralRepositoryManager.shared.spec(for: pluginId) else {
+            NSLog("[Project2501] Spec not found for: \(pluginId)")
             if !refreshed {
                 throw PluginInstallError.specNotFound("\(pluginId) (registry unavailable)")
             }
             throw PluginInstallError.specNotFound(pluginId)
         }
+        NSLog("[Project2501] Found spec for: \(pluginId), versions: \(spec.versions.count)")
 
         // TOFU: when the author's signing key changes, remove the old version so
         // the new artifact is verified against the updated key from the registry.
@@ -257,11 +261,14 @@ public final class PluginInstallManager: @unchecked Sendable {
 
     // MARK: - Download / unzip
     private func download(toTempFileFrom url: URL) async throws -> (fileURL: URL, data: Data) {
+        NSLog("[Project2501] Downloading plugin from: \(url.absoluteString)")
         let (data, response) = try await URLSession.shared.data(from: url)
         guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            NSLog("[Project2501] Download failed: HTTP \(statusCode) from \(url.absoluteString)")
             throw PluginInstallError.downloadFailed("HTTP \(statusCode) from \(url.absoluteString)")
         }
+        NSLog("[Project2501] Download succeeded: \(data.count) bytes, HTTP \(http.statusCode)")
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".zip")
         try data.write(to: tmp)
         return (tmp, data)
