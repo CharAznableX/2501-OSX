@@ -475,8 +475,22 @@ final class PluginManager {
             let apiPtr = apiRawPtr.assumingMemoryBound(to: osr_plugin_api.self)
             api = apiPtr.pointee
             abiVersion = 1
+        } else if let v1sym = dlsym(handle, "osaurus_plugin_entry") {
+            // Backwards compatibility: osaurus-named plugins
+            let entryFn = unsafeBitCast(v1sym, to: osr_plugin_entry_t.self)
+            guard let apiRawPtr = entryFn() else {
+                let errorMsg = "Plugin entry returned null API"
+                print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
+                dlclose(handle)
+                return .failure(PluginLoadError(message: errorMsg))
+            }
+
+            let apiPtr = apiRawPtr.assumingMemoryBound(to: osr_plugin_api.self)
+            api = apiPtr.pointee
+            abiVersion = 1
+            print("[Project2501] Loaded osaurus-compatible plugin from \(url.lastPathComponent)")
         } else {
-            let errorMsg = "Missing plugin entry point (project2501_plugin_entry or project2501_plugin_entry_v2)"
+            let errorMsg = "Missing plugin entry point (project2501_plugin_entry, project2501_plugin_entry_v2, or osaurus_plugin_entry)"
             print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
             dlclose(handle)
             return .failure(PluginLoadError(message: errorMsg))
