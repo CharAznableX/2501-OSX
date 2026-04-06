@@ -103,11 +103,14 @@ public enum Project2501Identity {
     /// Get lore-accurate response for identity questions (case-insensitive partial match)
     public static func getResponse(for question: String) -> String? {
         let lowercased = question.lowercased()
+        debugLog("[Identity] Checking question: \(lowercased)")
         for (key, value) in responses {
             if lowercased.contains(key.lowercased()) {
+                debugLog("[Identity] Matched key: \(key)")
                 return value
             }
         }
+        debugLog("[Identity] No match found")
         return nil
     }
 

@@ -775,7 +775,9 @@ final class ChatSession: ObservableObject {
         guard hasContent || isRegeneration else { return }
 
         // Check if this is an identity question that should be answered with lore-accurate response
+        debugLog("[ChatView] Checking identity response for: \(trimmed)")
         if attachments.isEmpty, let identityResponse = SystemPromptBuilder.getIdentityResponse(for: trimmed) {
+            debugLog("[ChatView] Matched identity question, returning lore response")
             // Add user turn
             turns.append(ChatTurn(role: .user, content: trimmed))
             isDirty = true
