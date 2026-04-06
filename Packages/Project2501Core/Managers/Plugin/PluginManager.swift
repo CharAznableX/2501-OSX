@@ -419,6 +419,7 @@ final class PluginManager {
         }
 
         // Try v2 entry point first, then fall back to v1
+        // Also check osaurus_* entry points for backwards compatibility
         let api: osr_plugin_api
         let abiVersion: UInt32
         var hostContext: PluginHostContext?
@@ -462,6 +463,43 @@ final class PluginManager {
 
             PluginHostContext.setContext(ctx, for: preliminaryId)
             print("[Project2501] Loaded v2 plugin from \(url.lastPathComponent)")
+        } else if let v2sym = dlsym(handle, "osaurus_plugin_entry_v2") {
+            // Backwards compatibility: osaurus v2 entry point
+            let preliminaryId = extractPluginId(from: url)
+
+            let ctx: PluginHostContext
+            do {
+                ctx = try PluginHostContext(pluginId: preliminaryId)
+            } catch {
+                let errorMsg = "Failed to create host context: \(error.localizedDescription)"
+                print("[Project2501] \(errorMsg) for \(url.lastPathComponent)")
+                dlclose(handle)
+                return .failure(PluginLoadError(message: errorMsg))
+            }
+
+            PluginHostContext.currentContext = ctx
+            PluginHostContext.setActivePlugin(preliminaryId)
+            let hostAPIPtr = ctx.buildHostAPI()
+            let entryFn = unsafeBitCast(v2sym, to: osr_plugin_entry_v2_t.self)
+            let apiRawPtr = entryFn(UnsafeRawPointer(hostAPIPtr))
+            PluginHostContext.clearActivePlugin()
+            PluginHostContext.currentContext = nil
+
+            guard let apiRawPtr else {
+                let errorMsg = "Plugin v2 entry returned null API"
+                print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
+                ctx.teardown()
+                dlclose(handle)
+                return .failure(PluginLoadError(message: errorMsg))
+            }
+
+            let apiPtr = apiRawPtr.assumingMemoryBound(to: osr_plugin_api.self)
+            api = apiPtr.pointee
+            abiVersion = max(api.version, 2)
+            hostContext = ctx
+
+            PluginHostContext.setContext(ctx, for: preliminaryId)
+            print("[Project2501] Loaded osaurus v2 plugin from \(url.lastPathComponent)")
         } else if let v1sym = dlsym(handle, "project2501_plugin_entry") {
             // v1 path: no host API
             let entryFn = unsafeBitCast(v1sym, to: osr_plugin_entry_t.self)
