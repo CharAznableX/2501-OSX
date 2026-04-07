@@ -15,7 +15,7 @@ security unlock-keychain -p "" "$KEYCHAIN_PATH"
 # Ensure the temporary keychain is the default and in the search list
 security default-keychain -d user -s "$KEYCHAIN_PATH"
 
-security import "$CERTIFICATE_PATH" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+security import "$CERTIFICATE_PATH" -P "" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
 security list-keychain -d user -s "$KEYCHAIN_PATH"
 
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN_PATH"
