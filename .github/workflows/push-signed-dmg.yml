@@ -1,0 +1,218 @@
+name: Build and Push Signed DMG
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+      - "*.*.*-beta.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (e.g., 1.2.3 or 1.2.3-beta.1) - auto-detected from tag if not provided"
+        required: false
+        type: string
+      skip_notarize:
+        description: "Skip notarization (for testing)"
+        required: false
+        default: false
+        type: boolean
+      skip_release:
+        description: "Skip GitHub release creation"
+        required: false
+        default: false
+        type: boolean
+      skip_appcast:
+        description: "Skip Sparkle appcast update"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-sign:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install Metal Toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+
+      - name: Setup build environment
+        run: bash scripts/setup_env.sh
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            # Get version from Info.plist or default
+            VERSION=$(defaults read "$(pwd)/App/project2501/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "1.0.0")
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+          # Detect if beta
+          if [[ "$VERSION" == *"-beta"* ]]; then
+            echo "is_beta=true" >> $GITHUB_OUTPUT
+            echo "IS_BETA=true" >> $GITHUB_ENV
+          else
+            echo "is_beta=false" >> $GITHUB_OUTPUT
+            echo "IS_BETA=false" >> $GITHUB_ENV
+          fi
+
+      - name: Install certificates
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: bash scripts/build/install_certificates.sh
+
+      - name: Build Project 2501 (ARM64)
+        env:
+          DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          DEVELOPER_ID_NAME: ${{ secrets.DEVELOPER_ID_NAME }}
+          VERSION: ${{ env.VERSION }}
+        run: bash scripts/build/build_arm64.sh
+
+      - name: Verify App Signing
+        run: bash scripts/build/verify_signing.sh
+
+      - name: Create Signed DMGs
+        env:
+          DEVELOPER_ID_NAME: ${{ secrets.DEVELOPER_ID_NAME }}
+        run: bash scripts/build/create_dmgs.sh
+
+      - name: Notarize DMG
+        if: github.event.inputs.skip_notarize != 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: bash scripts/build/notarize.sh
+
+      - name: Upload signed DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Project2501-signed-${{ env.VERSION }}
+          path: |
+            build_output/Project2501-${{ env.VERSION }}.dmg
+            build_output/Project2501.dmg
+          if-no-files-found: error
+
+  create-release:
+    needs: build-and-sign
+    if: github.event.inputs.skip_release != 'true'
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download signed DMG
+        uses: actions/download-artifact@v4
+        with:
+          name: Project2501-signed-${{ env.VERSION }}
+          path: build_output
+        env:
+          VERSION: ${{ needs.build-and-sign.outputs.version }}
+
+      - name: Set version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          if [[ "$VERSION" == *"-beta"* ]]; then
+            echo "IS_BETA=true" >> $GITHUB_ENV
+          fi
+
+      - name: Get Release Notes
+        id: changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/release/get_release_notes.sh
+
+      - name: Write Release Notes
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cat > RELEASE_NOTES.md <<'CHANGELOG_EOF'
+          ${{ steps.changelog.outputs.changelog }}
+          CHANGELOG_EOF
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLIC_REPO: ${{ github.repository }}
+          IS_BETA: ${{ env.IS_BETA }}
+        run: bash scripts/build/create_release.sh
+
+      - name: Generate and Deploy Sparkle Appcast
+        if: github.event.inputs.skip_appcast != 'true'
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          PUBLIC_REPO: ${{ github.repository }}
+          SPARKLE_CHANNEL: ${{ env.IS_BETA == 'true' && 'beta' || 'release' }}
+        run: bash scripts/release/generate_and_deploy_appcast.sh
+
+      - name: Post to Discord
+        if: env.IS_BETA != 'true'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: bash scripts/release/discord_notify.sh
+
+  # Job for just uploading a pre-built DMG (manual trigger only)
+  upload-only:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download DMG artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: signed-dmg
+          path: build_output
+        continue-on-error: true
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          # Check for DMG files
+          if [ ! -f "build_output/Project2501-${VERSION}.dmg" ]; then
+            echo "::error::No DMG found. Upload as artifact named 'signed-dmg' first."
+            exit 1
+          fi
+
+          gh release create "${VERSION}" \
+            build_output/Project2501-${VERSION}.dmg \
+            build_output/Project2501.dmg \
+            --title "Project2501 ${VERSION}" \
+            --notes "Release ${VERSION}" \
+            --latest || \
+          gh release upload "${VERSION}" \
+            build_output/Project2501-${VERSION}.dmg \
+            build_output/Project2501.dmg \
+            --clobber
