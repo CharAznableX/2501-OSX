@@ -173,6 +173,7 @@ final class PluginManager {
 
                 // Register tools
                 for tool in loaded.tools {
+                    NSLog("[Project2501] Registering plugin tool: \(tool.name)")
                     ToolRegistry.shared.registerPluginTool(tool)
                 }
 
@@ -600,6 +601,7 @@ final class PluginManager {
             abiVersion: abiVersion
         )
         let tools = (manifest.capabilities.tools ?? []).map { ExternalTool(plugin: plugin, spec: $0) }
+        NSLog("[Project2501] Plugin '\(manifest.plugin_id)' loaded with \(tools.count) tools, \(manifest.capabilities.tools ?? []) tools in manifest")
         let skills = loadPluginSkills(from: url, pluginId: manifest.plugin_id)
         let routes = manifest.capabilities.routes ?? []
         let webConfig = manifest.capabilities.web
