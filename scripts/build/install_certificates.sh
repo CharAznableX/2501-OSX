@@ -2,8 +2,8 @@
 set -euo pipefail
 
 : "${MACOS_CERTIFICATE_BASE64:?MACOS_CERTIFICATE_BASE64 is required}"
-: "${KEYCHAIN_PASSWORD:?KEYCHAIN_PASSWORD is required}"
 
+KEYCHAIN_PASSWORD="${KEYCHAIN_PASSWORD:-}"
 CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
 KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
 
@@ -20,5 +20,3 @@ security import "$CERTIFICATE_PATH" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
 security list-keychain -d user -s "$KEYCHAIN_PATH"
 
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-
