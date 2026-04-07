@@ -243,46 +243,46 @@ public struct ToolsCreate {
             private typealias osr_on_task_event_t = @convention(c) (osr_plugin_ctx_t?, UnsafePointer<CChar>?, Int32, UnsafePointer<CChar>?) -> Void
 
             private struct osr_plugin_api {
-                var free_string: osr_free_string_t?
-                var `init`: osr_init_t?
-                var destroy: osr_destroy_t?
-                var get_manifest: osr_get_manifest_t?
-                var invoke: osr_invoke_t?
-                var version: UInt32
-                var handle_route: osr_handle_route_t?
-                var on_config_changed: osr_on_config_changed_t?
-                var on_task_event: osr_on_task_event_t?
+                var free_string: osr_free_string_t? = nil
+                var `init`: osr_init_t? = nil
+                var destroy: osr_destroy_t? = nil
+                var get_manifest: osr_get_manifest_t? = nil
+                var invoke: osr_invoke_t? = nil
+                var version: UInt32 = 2
+                var handle_route: osr_handle_route_t? = nil
+                var on_config_changed: osr_on_config_changed_t? = nil
+                var on_task_event: osr_on_task_event_t? = nil
             }
 
-            private var hostAPI: UnsafePointer<osr_host_api>?
+            nonisolated(unsafe) private var hostAPI: UnsafePointer<osr_host_api>?
 
             private class PluginContext {
                 let tool = HelloTool()
             }
 
             private func makeCString(_ s: String) -> UnsafePointer<CChar>? {
-                return strdup(s)
+                return strdup(s).map { UnsafePointer($0) }
             }
 
-            private var api: osr_plugin_api = {
+            nonisolated(unsafe) private var api: osr_plugin_api = {
                 var api = osr_plugin_api()
-                
+
                 api.free_string = { ptr in
                     if let p = ptr { free(UnsafeMutableRawPointer(mutating: p)) }
                 }
-                
+
                 api.`init` = {
                     let ctx = PluginContext()
                     return Unmanaged.passRetained(ctx).toOpaque()
                 }
-                
+
                 api.destroy = { ctxPtr in
                     guard let ctxPtr = ctxPtr else { return }
                     Unmanaged<PluginContext>.fromOpaque(ctxPtr).release()
                 }
-                
+
                 api.get_manifest = { ctxPtr in
-                    let manifest = \\"\\"\\"
+                    let manifest = \"\"\"
                     {
                       "plugin_id": "dev.example.\(name)",
                       "name": "\(displayName)",
@@ -313,42 +313,42 @@ public struct ToolsCreate {
                         ]
                       }
                     }
-                    \\"\\"\\"
+                    \"\"\"
                     return makeCString(manifest)
                 }
-                
+
                 api.invoke = { ctxPtr, typePtr, idPtr, payloadPtr in
                     guard let ctxPtr = ctxPtr,
                           let typePtr = typePtr,
                           let idPtr = idPtr,
                           let payloadPtr = payloadPtr else { return nil }
-                    
+
                     let ctx = Unmanaged<PluginContext>.fromOpaque(ctxPtr).takeUnretainedValue()
                     let type = String(cString: typePtr)
                     let id = String(cString: idPtr)
                     let payload = String(cString: payloadPtr)
-                    
+
                     if type == "tool" && id == ctx.tool.name {
                          let result = ctx.tool.run(args: payload)
                          return makeCString(result)
                     }
-                    
+
                     return makeCString("{\\"error\\": \\"Unknown capability\\"}")
                 }
-                
+
                 api.version = 2
-                
+
                 api.handle_route = { ctxPtr, requestJsonPtr in
                     guard let requestJsonPtr = requestJsonPtr else { return nil }
                     let requestJson = String(cString: requestJsonPtr)
-                    
+
                     struct RouteRequest: Decodable { let route_id: String }
                     guard let data = requestJson.data(using: .utf8),
                           let req = try? JSONDecoder().decode(RouteRequest.self, from: data)
                     else {
                         return makeCString("{\\"status\\":400}")
                     }
-                    
+
                     switch req.route_id {
                     case "health":
                         let body: [String: Any] = ["ok": true]
@@ -368,17 +368,17 @@ public struct ToolsCreate {
                         return makeCString("{\\"status\\":404}")
                     }
                 }
-                
+
                 api.on_config_changed = { _, _, _ in }
-                
+
                 api.on_task_event = { _, _, _, _ in }
-                
+
                 return api
             }()
 
             @_cdecl("project2501_plugin_entry_v2")
-            public func project2501_plugin_entry_v2(_ host: UnsafePointer<osr_host_api>?) -> UnsafeRawPointer? {
-                hostAPI = host
+            public func project2501_plugin_entry_v2(_ host: UnsafeRawPointer?) -> UnsafeRawPointer? {
+                hostAPI = host?.assumingMemoryBound(to: osr_host_api.self)
                 return UnsafeRawPointer(&api)
             }
 
