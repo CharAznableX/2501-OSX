@@ -1,6 +1,6 @@
 //
 //  PluginConfigView.swift
-//  project2501
+//  osaurus
 //
 //  Declarative configuration UI for plugins, rendered from PluginManifest.ConfigSpec.
 //

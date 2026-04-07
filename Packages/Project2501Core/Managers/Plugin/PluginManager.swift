@@ -173,7 +173,6 @@ final class PluginManager {
 
                 // Register tools
                 for tool in loaded.tools {
-                    NSLog("[Project2501] Registering plugin tool: \(tool.name)")
                     ToolRegistry.shared.registerPluginTool(tool)
                 }
 
@@ -420,7 +419,6 @@ final class PluginManager {
         }
 
         // Try v2 entry point first, then fall back to v1
-        // Also check osaurus_* entry points for backwards compatibility
         let api: osr_plugin_api
         let abiVersion: UInt32
         var hostContext: PluginHostContext?
@@ -464,43 +462,6 @@ final class PluginManager {
 
             PluginHostContext.setContext(ctx, for: preliminaryId)
             print("[Project2501] Loaded v2 plugin from \(url.lastPathComponent)")
-        } else if let v2sym = dlsym(handle, "osaurus_plugin_entry_v2") {
-            // Backwards compatibility: osaurus v2 entry point
-            let preliminaryId = extractPluginId(from: url)
-
-            let ctx: PluginHostContext
-            do {
-                ctx = try PluginHostContext(pluginId: preliminaryId)
-            } catch {
-                let errorMsg = "Failed to create host context: \(error.localizedDescription)"
-                print("[Project2501] \(errorMsg) for \(url.lastPathComponent)")
-                dlclose(handle)
-                return .failure(PluginLoadError(message: errorMsg))
-            }
-
-            PluginHostContext.currentContext = ctx
-            PluginHostContext.setActivePlugin(preliminaryId)
-            let hostAPIPtr = ctx.buildHostAPI()
-            let entryFn = unsafeBitCast(v2sym, to: osr_plugin_entry_v2_t.self)
-            let apiRawPtr = entryFn(UnsafeRawPointer(hostAPIPtr))
-            PluginHostContext.clearActivePlugin()
-            PluginHostContext.currentContext = nil
-
-            guard let apiRawPtr else {
-                let errorMsg = "Plugin v2 entry returned null API"
-                print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
-                ctx.teardown()
-                dlclose(handle)
-                return .failure(PluginLoadError(message: errorMsg))
-            }
-
-            let apiPtr = apiRawPtr.assumingMemoryBound(to: osr_plugin_api.self)
-            api = apiPtr.pointee
-            abiVersion = max(api.version, 2)
-            hostContext = ctx
-
-            PluginHostContext.setContext(ctx, for: preliminaryId)
-            print("[Project2501] Loaded osaurus v2 plugin from \(url.lastPathComponent)")
         } else if let v1sym = dlsym(handle, "project2501_plugin_entry") {
             // v1 path: no host API
             let entryFn = unsafeBitCast(v1sym, to: osr_plugin_entry_t.self)
@@ -514,22 +475,8 @@ final class PluginManager {
             let apiPtr = apiRawPtr.assumingMemoryBound(to: osr_plugin_api.self)
             api = apiPtr.pointee
             abiVersion = 1
-        } else if let v1sym = dlsym(handle, "osaurus_plugin_entry") {
-            // Backwards compatibility: osaurus-named plugins
-            let entryFn = unsafeBitCast(v1sym, to: osr_plugin_entry_t.self)
-            guard let apiRawPtr = entryFn() else {
-                let errorMsg = "Plugin entry returned null API"
-                print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
-                dlclose(handle)
-                return .failure(PluginLoadError(message: errorMsg))
-            }
-
-            let apiPtr = apiRawPtr.assumingMemoryBound(to: osr_plugin_api.self)
-            api = apiPtr.pointee
-            abiVersion = 1
-            print("[Project2501] Loaded osaurus-compatible plugin from \(url.lastPathComponent)")
         } else {
-            let errorMsg = "Missing plugin entry point (project2501_plugin_entry, project2501_plugin_entry_v2, or osaurus_plugin_entry)"
+            let errorMsg = "Missing plugin entry point (project2501_plugin_entry or project2501_plugin_entry_v2)"
             print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
             dlclose(handle)
             return .failure(PluginLoadError(message: errorMsg))
@@ -601,7 +548,6 @@ final class PluginManager {
             abiVersion: abiVersion
         )
         let tools = (manifest.capabilities.tools ?? []).map { ExternalTool(plugin: plugin, spec: $0) }
-        NSLog("[Project2501] Plugin '\(manifest.plugin_id)' loaded with \(tools.count) tools, \(manifest.capabilities.tools ?? []) tools in manifest")
         let skills = loadPluginSkills(from: url, pluginId: manifest.plugin_id)
         let routes = manifest.capabilities.routes ?? []
         let webConfig = manifest.capabilities.web

@@ -1,6 +1,6 @@
 //
 //  PluginsView.swift
-//  project2501
+//  osaurus
 //
 //  Manage plugins: browse repository, install, update, and configure installed plugins.
 //
@@ -135,27 +135,12 @@ struct PluginsView: View {
     }
 
     private func showSecretsSheetForPlugin(pluginId: String) {
-        guard let loaded = PluginManager.shared.plugins.first(where: { $0.plugin.id == pluginId }) else {
+        guard let loaded = PluginManager.shared.plugins.first(where: { $0.plugin.id == pluginId }),
+            let secrets = loaded.plugin.manifest.secrets,
+            !secrets.isEmpty
+        else {
             return
         }
-
-        // Collect secrets from both manifest.secrets and config.sections[].fields[] with type .secret
-        var secrets: [PluginManifest.SecretSpec] = loaded.plugin.manifest.secrets ?? []
-        if let config = loaded.plugin.manifest.capabilities.config {
-            for section in config.sections {
-                for field in section.fields where field.type == .secret {
-                    secrets.append(PluginManifest.SecretSpec(
-                        id: field.key,
-                        label: field.label,
-                        description: nil,
-                        required: field.validation?.required ?? true,
-                        url: nil
-                    ))
-                }
-            }
-        }
-
-        guard !secrets.isEmpty else { return }
 
         secretsSheetPluginId = pluginId
         secretsSheetPluginName = loaded.plugin.manifest.name ?? pluginId
@@ -639,22 +624,7 @@ private struct PluginCard: View {
         }
         .onAppear {
             if let loaded = PluginManager.shared.plugins.first(where: { $0.plugin.id == plugin.pluginId }) {
-                // Collect secrets from both manifest.secrets and config.sections[].fields[] with type .secret
-                var secrets: [PluginManifest.SecretSpec] = loaded.plugin.manifest.secrets ?? []
-                if let config = loaded.plugin.manifest.capabilities.config {
-                    for section in config.sections {
-                        for field in section.fields where field.type == .secret {
-                            secrets.append(PluginManifest.SecretSpec(
-                                id: field.key,
-                                label: field.label,
-                                description: nil,
-                                required: field.validation?.required ?? true,
-                                url: nil
-                            ))
-                        }
-                    }
-                }
-                cachedSecrets = secrets
+                cachedSecrets = loaded.plugin.manifest.secrets ?? []
             }
             updateSecretsStatus()
         }
@@ -1532,23 +1502,7 @@ private struct PluginDetailView: View {
 
     private func loadPluginData() {
         if let loaded = PluginManager.shared.plugins.first(where: { $0.plugin.id == plugin.pluginId }) {
-            // Collect secrets from both manifest.secrets and config.sections[].fields[] with type .secret
-            var secrets: [PluginManifest.SecretSpec] = loaded.plugin.manifest.secrets ?? []
-            if let config = loaded.plugin.manifest.capabilities.config {
-                for section in config.sections {
-                    for field in section.fields where field.type == .secret {
-                        // Convert config secret field to SecretSpec
-                        secrets.append(PluginManifest.SecretSpec(
-                            id: field.key,
-                            label: field.label,
-                            description: nil,
-                            required: field.validation?.required ?? true,
-                            url: nil
-                        ))
-                    }
-                }
-            }
-            cachedSecrets = secrets
+            cachedSecrets = loaded.plugin.manifest.secrets ?? []
         }
         updateSecretsStatus()
 

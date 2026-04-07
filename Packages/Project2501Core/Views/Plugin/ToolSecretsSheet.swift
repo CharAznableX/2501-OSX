@@ -1,6 +1,6 @@
 //
 //  ToolSecretsSheet.swift
-//  project2501
+//  osaurus
 //
 //  Sheet for configuring plugin secrets (API keys, tokens, etc.).
 //
