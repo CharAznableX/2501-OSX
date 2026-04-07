@@ -19,3 +19,14 @@ security import "$CERTIFICATE_PATH" -P "freedom" -T /usr/bin/codesign -k "$KEYCH
 security list-keychain -d user -s "$KEYCHAIN_PATH"
 
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN_PATH"
+
+# Extract the Developer ID name from the certificate
+DEVELOPER_ID_NAME=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Developer ID Application" | sed 's/.*"\(.*\)".*/\1/' | head -1)
+
+if [[ -z "$DEVELOPER_ID_NAME" ]]; then
+  echo "::error::Could not find Developer ID Application identity in certificate"
+  exit 1
+fi
+
+echo "DEVELOPER_ID_NAME=${DEVELOPER_ID_NAME}" >> $GITHUB_OUTPUT
+echo "Found signing identity: $DEVELOPER_ID_NAME"

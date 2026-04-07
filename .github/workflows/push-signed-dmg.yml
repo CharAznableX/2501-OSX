@@ -75,13 +75,14 @@ jobs:
           fi
 
       - name: Install certificates
+        id: install_certs
         env:
           MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
         run: bash scripts/build/install_certificates.sh
 
       - name: Build Project 2501 (ARM64)
         env:
-          DEVELOPER_ID_NAME: ${{ secrets.DEVELOPER_ID_NAME }}
+          DEVELOPER_ID_NAME: ${{ steps.install_certs.outputs.DEVELOPER_ID_NAME }}
           VERSION: ${{ env.VERSION }}
         run: bash scripts/build/build_arm64.sh
 
@@ -90,7 +91,7 @@ jobs:
 
       - name: Create Signed DMGs
         env:
-          DEVELOPER_ID_NAME: ${{ secrets.DEVELOPER_ID_NAME }}
+          DEVELOPER_ID_NAME: ${{ steps.install_certs.outputs.DEVELOPER_ID_NAME }}
         run: bash scripts/build/create_dmgs.sh
 
       - name: Notarize DMG
