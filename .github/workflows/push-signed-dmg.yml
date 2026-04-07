@@ -77,7 +77,6 @@ jobs:
       - name: Install certificates
         env:
           MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
-          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
         run: bash scripts/build/install_certificates.sh
 
       - name: Build Project 2501 (ARM64)

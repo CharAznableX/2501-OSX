@@ -2,7 +2,6 @@
 set -euo pipefail
 
 : "${MACOS_CERTIFICATE_BASE64:?MACOS_CERTIFICATE_BASE64 is required}"
-: "${MACOS_CERTIFICATE_PASSWORD:?MACOS_CERTIFICATE_PASSWORD is required}"
 
 CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
 KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
@@ -16,7 +15,7 @@ security unlock-keychain -p "" "$KEYCHAIN_PATH"
 # Ensure the temporary keychain is the default and in the search list
 security default-keychain -d user -s "$KEYCHAIN_PATH"
 
-security import "$CERTIFICATE_PATH" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -k "$KEYCHAIN_PATH"
+security import "$CERTIFICATE_PATH" -P "freedom" -T /usr/bin/codesign -k "$KEYCHAIN_PATH"
 security list-keychain -d user -s "$KEYCHAIN_PATH"
 
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN_PATH"
