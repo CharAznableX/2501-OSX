@@ -260,7 +260,17 @@ final class PluginRepositoryService: ObservableObject {
         var license: String?
         var capabilities: RegistryCapabilities?
 
-        if let loaded = PluginManager.shared.plugins.first(where: { $0.plugin.id == pluginId }) {
+        // Try to find loaded plugin by directory name (pluginId) or by manifest plugin_id
+        // Plugins may have different directory names vs manifest IDs (e.g., project2501.telegram vs osaurus.telegram)
+        let loaded = PluginManager.shared.plugins.first { candidate in
+            // Match by directory name (how we were called)
+            if candidate.plugin.id == pluginId { return true }
+            // Match by manifest plugin_id (if directory name differs)
+            if candidate.plugin.manifest.plugin_id == pluginId { return true }
+            return false
+        }
+
+        if let loaded = loaded {
             let manifest = loaded.plugin.manifest
             name = manifest.name
             desc = manifest.description
@@ -278,6 +288,12 @@ final class PluginRepositoryService: ObservableObject {
             )
         }
 
+        // Check for load errors by both directory name and manifest ID
+        var loadErr = PluginManager.shared.loadError(for: pluginId)
+        if loadErr == nil, let loaded = loaded {
+            loadErr = PluginManager.shared.loadError(for: loaded.plugin.id)
+        }
+
         return PluginState(
             pluginId: pluginId,
             name: name,
@@ -286,7 +302,7 @@ final class PluginRepositoryService: ObservableObject {
             license: license,
             capabilities: capabilities,
             installedVersion: InstalledPluginsStore.shared.latestInstalledVersion(pluginId: pluginId),
-            loadError: PluginManager.shared.loadError(for: pluginId)
+            loadError: loadErr
         )
     }
 
