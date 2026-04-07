@@ -419,11 +419,18 @@ final class PluginManager {
         }
 
         // Try v2 entry point first, then fall back to v1
+        // Support both new (project2501_*) and legacy (osaurus_*) symbol names for backwards compatibility
         let api: osr_plugin_api
         let abiVersion: UInt32
         var hostContext: PluginHostContext?
 
-        if let v2sym = dlsym(handle, "project2501_plugin_entry_v2") {
+        // Try v2 entry: new name first, then legacy
+        var v2sym = dlsym(handle, "project2501_plugin_entry_v2")
+        if v2sym == nil {
+            v2sym = dlsym(handle, "osaurus_plugin_entry_v2")
+        }
+
+        if let v2sym = v2sym {
             // v2 path: create host context and pass to plugin
             // We need the plugin ID to scope the host context. We'll use the
             // directory name as a preliminary ID, then confirm from the manifest.
@@ -462,24 +469,32 @@ final class PluginManager {
 
             PluginHostContext.setContext(ctx, for: preliminaryId)
             print("[Project2501] Loaded v2 plugin from \(url.lastPathComponent)")
-        } else if let v1sym = dlsym(handle, "project2501_plugin_entry") {
-            // v1 path: no host API
-            let entryFn = unsafeBitCast(v1sym, to: osr_plugin_entry_t.self)
-            guard let apiRawPtr = entryFn() else {
-                let errorMsg = "Plugin entry returned null API"
+        } else {
+            // Try v1 entry: new name first, then legacy
+            var v1sym = dlsym(handle, "project2501_plugin_entry")
+            if v1sym == nil {
+                v1sym = dlsym(handle, "osaurus_plugin_entry")
+            }
+
+            if let v1sym = v1sym {
+                // v1 path: no host API
+                let entryFn = unsafeBitCast(v1sym, to: osr_plugin_entry_t.self)
+                guard let apiRawPtr = entryFn() else {
+                    let errorMsg = "Plugin entry returned null API"
+                    print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
+                    dlclose(handle)
+                    return .failure(PluginLoadError(message: errorMsg))
+                }
+
+                let apiPtr = apiRawPtr.assumingMemoryBound(to: osr_plugin_api.self)
+                api = apiPtr.pointee
+                abiVersion = 1
+            } else {
+                let errorMsg = "Missing plugin entry point (project2501_plugin_entry, osaurus_plugin_entry, or v2 variants)"
                 print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
                 dlclose(handle)
                 return .failure(PluginLoadError(message: errorMsg))
             }
-
-            let apiPtr = apiRawPtr.assumingMemoryBound(to: osr_plugin_api.self)
-            api = apiPtr.pointee
-            abiVersion = 1
-        } else {
-            let errorMsg = "Missing plugin entry point (project2501_plugin_entry or project2501_plugin_entry_v2)"
-            print("[Project2501] \(errorMsg) in \(url.lastPathComponent)")
-            dlclose(handle)
-            return .failure(PluginLoadError(message: errorMsg))
         }
 
         // Initialize Plugin
