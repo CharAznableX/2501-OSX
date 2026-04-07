@@ -81,7 +81,6 @@ jobs:
 
       - name: Build Project 2501 (ARM64)
         env:
-          DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
           DEVELOPER_ID_NAME: ${{ secrets.DEVELOPER_ID_NAME }}
           VERSION: ${{ env.VERSION }}
         run: bash scripts/build/build_arm64.sh

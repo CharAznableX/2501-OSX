@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Backward-compat: if DEVELOPMENT_TEAM not set, fall back to APPLE_TEAM_ID
-if [[ -z "${DEVELOPMENT_TEAM:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
-  export DEVELOPMENT_TEAM="${APPLE_TEAM_ID}"
-fi
-
-: "${DEVELOPMENT_TEAM:?DEVELOPMENT_TEAM is required}"
 : "${DEVELOPER_ID_NAME:?DEVELOPER_ID_NAME is required}"
 : "${VERSION:?VERSION is required}"
 
@@ -32,7 +26,6 @@ xcodebuild -project App/project2501.xcodeproj \
   VALID_ARCHS=arm64 \
   ONLY_ACTIVE_ARCH=NO \
   CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY_VALUE}" \
-  DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
   CODE_SIGN_STYLE=Manual \
   clean build
 
@@ -48,7 +41,6 @@ xcodebuild -project App/project2501.xcodeproj \
   MARKETING_VERSION="${VERSION}" \
   CURRENT_PROJECT_VERSION="${VERSION}" \
   CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY_VALUE}" \
-  DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
   CODE_SIGN_STYLE=Manual \
   archive -archivePath build/project2501.xcarchive
 
@@ -79,8 +71,6 @@ cat > ExportOptions.plist <<EOF
 <dict>
     <key>method</key>
     <string>developer-id</string>
-    <key>teamID</key>
-    <string>${DEVELOPMENT_TEAM}</string>
     <key>signingStyle</key>
     <string>manual</string>
     <key>signingCertificate</key>
